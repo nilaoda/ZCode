@@ -51,29 +51,31 @@ jobs:
         include:
           - label: macOS arm64
             platform: macos-arm64
-            runner: macos-latest
+            # 固定 macOS 版本而非 -latest：运行包含 node-pty 等原生产物，
+            # 构建基线不应随镜像自动漂移。
+            runner: macos-15
           - label: macOS x64
             platform: macos-x64
-            # Intel runner。若该镜像不可用，改成 macos-15-intel 或删除本条目。
-            runner: macos-13
+            # macos-13 已于 2025-12-04 退役；标准 Intel 标签是 macos-15-intel。
+            runner: macos-15-intel
           - label: Windows x64
             platform: windows-x64
-            runner: windows-latest
+            runner: windows-2025
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -123,7 +125,7 @@ jobs:
           ' "${{ matrix.platform }}"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zcode-cli-${{ matrix.platform }}
           path: dist/zcode-${{ matrix.platform }}/**

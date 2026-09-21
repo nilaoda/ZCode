@@ -43,8 +43,9 @@ jobs:
           - label: macOS arm64
             os: mac
             arch: arm64
-            # macOS arm64 runner。
-            runner: macos-latest
+            # 固定 macOS 版本而非 -latest：运行包含 node-pty 等原生产物，
+            # 构建基线的 OS 版本会直接影响产物的最低系统要求，不应随镜像自动漂移。
+            runner: macos-15
             artifact_glob: |
               packages/desktop/dist/*.dmg
               packages/desktop/dist/*.zip
@@ -53,9 +54,9 @@ jobs:
           - label: macOS x64
             os: mac
             arch: x64
-            # Intel runner。若该镜像不可用，改成 macos-15-intel，
-            # 或删除本条目（arm64 包在 Apple Silicon 上仍可运行）。
-            runner: macos-13
+            # Intel runner。注意 macos-13 已于 2025-12-04 退役，
+            # 当前可用的标准 Intel 标签是 macos-15-intel。
+            runner: macos-15-intel
             artifact_glob: |
               packages/desktop/dist/*.dmg
               packages/desktop/dist/*.zip
@@ -64,7 +65,7 @@ jobs:
           - label: Windows x64
             os: win
             arch: x64
-            runner: windows-latest
+            runner: windows-2025
             artifact_glob: |
               packages/desktop/dist/*.exe
               packages/desktop/dist/*.blockmap
@@ -72,19 +73,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # release 版本号与构建元数据需要完整 tag 历史。
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -106,7 +107,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zcode-desktop-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ matrix.artifact_glob }}
