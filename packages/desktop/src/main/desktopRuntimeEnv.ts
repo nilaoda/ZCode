@@ -8,6 +8,7 @@ import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/he
 import {
   ZCODE_APP_VERSION_ENV,
   ZCODE_AGENT_RUNTIME,
+  ZCODE_DISABLE_PRODUCT_ENDPOINT_ENV,
   ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
@@ -52,6 +53,8 @@ export const desktopRuntimeEnv: ZCodeRuntimeEnv = isLocalDevelopmentRuntime
 const packagedProductIdentity =
   desktopProductIdentities[ZCODE_PRODUCT_FLAVOR] ?? desktopProductIdentities.production;
 const isPreviewPackagedRuntime = !isLocalDevelopmentRuntime && ZCODE_PRODUCT_FLAVOR === "preview";
+/** 本地化发行版：默认安装后不得有任何主动出网请求，见下面两处开关的说明。 */
+const isLocalPackagedRuntime = !isLocalDevelopmentRuntime && ZCODE_PRODUCT_FLAVOR === "local";
 /** 打包态下该身份需要的 Helper 安装变体；开发态与正式身份都不隔离 Helper。 */
 export const packagedCuaHelperInstallVariant = isLocalDevelopmentRuntime
   ? null
@@ -456,7 +459,14 @@ function resolveWindowsAppInstallDirForDataBaseDirGuard(
  *   - 未打包 dev：透传 shell 里的合法取值，方便手工切档；非法值直接丢弃而不是转发给 Host，
  *     Host 因此不必再判一次来源；
  *   - 打包 preview：固定写入 `alwaysOn`，忽略 shell，preview 用户始终拥有该功能；
- *   - 打包 production：不写入，且继承值必须被删除，否则本机环境变量就能自行打开灰度。
+ *   - 打包 production：不写入，且继承值必须被删除，否则本机环境变量就能自行打开灰度；
+ *   - 打包 local：固定写入一个**合法**取值。
+ *
+ * local 为什么必须写值：`getDynamicWorkflowClientConfig` 会先看本地覆盖，
+ * **命中即在任何网络动作之前短路返回**；没有覆盖才会去请求 `<端点>/api/v1/client/configs`。
+ * 对「默认安装后零出网」的本地发行版，写一个合法值即可彻底避免这次请求。
+ * 默认 `alwaysOn` 保留该功能（与 preview 一致）；运维可用 OS 级环境变量覆盖为 `disabled`。
+ *
  * Main 是唯一决策者：对这个键只有「写」和「删」两种动作，绝不原样透传，
  * Host 端的 resolveDynamicWorkflowClientConfig 才能无条件相信读到的值。
  */
@@ -464,10 +474,17 @@ function resolveDynamicWorkflowModeHostEnv(options: {
   inheritedValue: string | undefined;
   isPackaged: boolean;
   isPreview: boolean;
+  isLocal: boolean;
 }): Record<string, string> {
   if (!options.isPackaged) {
     const mode = normalizeDynamicWorkflowMode(options.inheritedValue);
     return mode ? { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: mode } : {};
+  }
+  if (options.isLocal) {
+    return {
+      [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]:
+        normalizeDynamicWorkflowMode(options.inheritedValue) ?? "alwaysOn",
+    };
   }
   if (options.isPreview) {
     return { [ZCODE_DYNAMIC_WORKFLOW_MODE_ENV]: "alwaysOn" };
@@ -541,6 +558,7 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     inheritedValue: rawInheritedEnv[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV],
     isPackaged: packagedDesktop,
     isPreview: isPreviewPackagedRuntime,
+    isLocal: isLocalPackagedRuntime,
   });
   // 三层里有两层不写这个键，空对象无法覆盖 inheritedEnv，所以先无条件删掉继承值再按决策 spread 回去。
   // 少了这一行，production 包和 dev 的非法取值都会原样穿透到 Host。
@@ -565,6 +583,12 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
       : {}),
     // Dynamic Workflow 灰度的本地覆盖：Main 决策后写入，production 包为空对象（继承值已在上面删除）。
     ...dynamicWorkflowModeHostEnv,
+    // 本地化发行版：整体关闭「内置 Provider 目录的远端刷新」。
+    // 该刷新默认最多每小时向产品 Endpoint 发一次请求；只把本地 revision 钉高只能让远端结果
+    // 被忽略，请求照样会发出去。置位后 Host 侧不再创建同步器，既不发请求也不写控制文件。
+    ...(isLocalPackagedRuntime
+      ? { [ZCODE_DISABLE_PRODUCT_ENDPOINT_ENV]: "1" }
+      : {}),
     // 模型请求默认 header 由 agent 进程构造，过去只继承 shell env 导致桌面启动时拿不到 app 版本。
     // 这里从 main 进程显式下发，agent 子进程继承 host env 后即可稳定写入请求 header。
     [ZCODE_APP_VERSION_ENV]: ZCODE_VERSION,

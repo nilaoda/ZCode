@@ -1,6 +1,7 @@
 import {
   buildZCodeEndpointUrls,
   clientConfigReadOptionsSchema,
+  isProductEndpointDisabled,
   parseClientConfigSnapshot,
   type ApiClient,
   type ClientConfigSnapshot,
@@ -62,10 +63,15 @@ export function createClientConfigService(dependencies: {
     }
   }
 
-  return {
-    async getSnapshot(options = {}) {
-      const { forceRefresh } = clientConfigReadOptionsSchema.parse(options);
-      const context = await dependencies.resolveRequestContext();
+    return {
+      async getSnapshot(options = {}) {
+        const { forceRefresh } = clientConfigReadOptionsSchema.parse(options);
+        // 纯内网 / 纯本地发行版：不请求产品 Endpoint，直接返回空快照。
+        // ClientConfigSnapshot 只有一个字段，消费方按 null 回退各自默认值。
+        if (isProductEndpointDisabled()) {
+          return { pluginStoreOrder: null };
+        }
+        const context = await dependencies.resolveRequestContext();
       const url = new URL(
         "/api/v1/client/configs",
         buildZCodeEndpointUrls(context.endpointOrigin).origin,

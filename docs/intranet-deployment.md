@@ -442,21 +442,39 @@ sh install.sh
 
 ---
 
-## 10. 运行时残留出网清单（终审）
+## 10. 运行时出网清单（终审）
 
-改造完成后再全仓扫一遍，**运行时仍会主动发起**的出网只剩下面两条。二者都指向
-「产品 Endpoint」（默认 `https://zcode.z.ai`），都可被 `ZCODE_BASE_URL` /
-`ZCODE_ENDPOINT_ORIGIN` 重定向到内网地址。
+**Local 档位默认安装后，运行时主动出网为 0 条。** 下面记录曾经的路径及其现状。
 
-| # | 行为 | 触发时机 | 端点 | 可否配置 | 失败行为 |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 拉取动态工作流客户端配置 | **应用启动**（每次会话一次，1 小时缓存） | `<端点>/api/v1/client/configs` | ✅ `ZCODE_BASE_URL` | fail-closed，功能按禁用处理，不报错 |
-| 2 | 刷新内置 Provider 目录 | 后台，最多 1 小时一次（失败按指数退避，上限 1 小时） | `<端点>/…`（内置 release） | ✅ `ZCODE_BASE_URL` | 保留本地 bundled 目录 |
+### 10.1 已主动关闭的两条
 
-触发点：`packages/ui/src/Root.tsx:187`（`useDynamicWorkflowAvailabilityLoader`）、
-`packages/provider-node/src/endpoint-scoped-zcode-builtin-source.ts:94`。
+这两条曾经是**默认会发生**的请求。现在由 Local 档位在 Host 进程环境里关掉，
+不需要任何运维配置：
 
-**其余曾经的出网路径都已失效或改为按需：**
+| 行为 | 关闭方式 | 关闭后的行为 |
+| --- | --- | --- |
+| 拉取客户端配置 `<端点>/api/v1/client/configs` | `ZCODE_DISABLE_PRODUCT_ENDPOINT=1` | `clientConfigService` 与 `bigmodelCodingPlanSubscriptionProvider` 两个源头都直接返回空值，不建请求 |
+| 刷新内置 Provider 目录（默认最多 1 小时一次） | 同上 | `EndpointScopedZCodeBuiltinSource` 不再创建远端同步器：不发请求、不写刷新控制文件 |
+
+`ZCODE_DISABLE_PRODUCT_ENDPOINT` 是本次改造新增的开关
+（`packages/shared/src/env.ts`），语义是「禁用一切指向产品 Endpoint 的自动请求」。
+它**不影响**用户主动触发的动作（反馈提交、会话分享、MCP OAuth 等），
+也不影响模型请求（模型走各自 Provider 的 `baseUrl`）。
+
+**为什么必须真正关掉请求、而不是只让结果失效**：内置目录的优先级规则是
+「revision 高者胜」（`selectReleaseCandidate`）。把本地 revision 钉到 999999
+只能保证远端结果**被忽略**，请求本身照样会发出去 —— 对「默认零出网」的要求
+这是不够的。revision 钉定作为纵深防御保留（防止将来有人关掉开关后本地目录被覆盖）。
+
+### 10.2 动态工作流灰度：用既有开关短路
+
+`packages/ui/src/Root.tsx` 的 `useDynamicWorkflowAvailabilityLoader` 在**应用启动时**
+会读取动态工作流灰度配置。这条走的是既有开关 `ZCODE_DYNAMIC_WORKFLOW_MODE` ——
+`getDynamicWorkflowClientConfig` 会**在任何网络动作之前**用本地覆盖裁决，命中即返回。
+Local 档位由桌面主进程固定写入 `alwaysOn`（与 Preview 一致），因此这次请求不会发生，
+同时保留该功能。运维可用 OS 级环境变量覆盖为 `disabled`。
+
+### 10.3 已失效或本就按需
 
 | 行为 | 现状 |
 | --- | --- |
@@ -464,16 +482,18 @@ sh install.sh
 | 遥测 / ARMS RUM / OTLP | 端点默认空且**不内嵌进产物**，解析器无端点即返回 `undefined`，不启动 exporter |
 | 自动更新 | Local 身份不启用（`enabled: flavor === "production"`） |
 | 登录态相关的计费 / 团队 / 额度 / 反馈 | 需要账号，无登录即不可达 |
-| Off-Peak 客户端配置 | 仅打开「设置 → 自动化」页面时触发，非启动路径 |
 | 插件商店目录与资源 | 仅打开商店时按需加载，基址可用 `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL` 指向内网镜像 |
 | WebSearch | 走模型原生能力，无独立端点 |
 | Node 运行时下载 | 构建期行为，`ZCODE_NODE_DIST_MIRROR` 可换源 |
 
-**已确认无出网但仍需留意的一处硬编码**：
+### 10.4 一处隐患（当前不会触发）
+
 `packages/ui/src/components/ai-elements/persona.tsx` 里 6 个 `.riv` 动画写死了
 `https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/...`。该组件**当前没有任何地方引用**
 （全仓 64 处 `ai-elements/*` 引用中不含 `persona`），所以不会加载。但若将来接上这个组件，
 在无外网环境会加载失败。届时需要把 `.riv` 资源本地化。
 
-**结论**：把 `ZCODE_BASE_URL` 指向内网地址（或直接指向一个不可达地址）后，
-运行时不再有任何主动外网连接。
+### 10.5 若需要恢复联网能力
+
+把 `ZCODE_DISABLE_PRODUCT_ENDPOINT` 设为 `0`（或删除该变量）即可恢复这两条请求；
+但 Local 档位由主进程固定写入 `1`，需要改成在 `desktopRuntimeEnv.ts` 里按需下发。

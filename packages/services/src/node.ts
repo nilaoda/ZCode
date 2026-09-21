@@ -12,6 +12,7 @@ import {
 import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
   buildLocalMediaPreviewUrl,
+  isProductEndpointDisabled,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
 } from "@zcode/shared";
@@ -1516,6 +1517,8 @@ export function createLocalServices(options: {
       platform: clientConfigPlatform,
       appVersion: ZCODE_VERSION,
       resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
+      // 纯内网 / 纯本地发行版整体关闭远端刷新：不建同步器即不发请求。
+      remoteRefresh: !isProductEndpointDisabled(),
       onRefreshResult: (event) => {
         if (event.result === "updated")
           providerConfigLog.info(undefined, "ZCode Built-in CDN 配置已更新", event);

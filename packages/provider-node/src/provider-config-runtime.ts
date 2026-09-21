@@ -3,6 +3,7 @@ import {
   type ProviderConfigLayerSnapshot,
   type ProviderConfigLayerUpdate,
 } from "@zcode/provider";
+import { isProductEndpointDisabled } from "@zcode/shared";
 import { NodeZCodeBuiltinProviderConfigSource } from "./zcode-builtin-provider-config-source.js";
 import {
   EndpointScopedZCodeBuiltinSource,
@@ -63,14 +64,17 @@ export class NodeProviderConfigRuntime {
           activeFilePath: options.zcodeBuiltinActiveFilePath,
           watch: options.watch,
         });
-    this.#remoteSynchronizer =
-      options.zcodeBuiltinRemote &&
-      this.#zcodeBuiltinSource instanceof NodeZCodeBuiltinProviderConfigSource
-        ? new ZCodeBuiltinRemoteSynchronizer({
-            source: this.#zcodeBuiltinSource,
-            ...options.zcodeBuiltinRemote,
-          })
-        : undefined;
+      this.#remoteSynchronizer =
+        options.zcodeBuiltinRemote &&
+        // 纯内网 / 纯本地发行版整体关闭远端刷新。endpoint-scoped 路径在
+        // EndpointScopedZCodeBuiltinSource 内部另有一处同样的判断（它自建同步器）。
+        !isProductEndpointDisabled() &&
+        this.#zcodeBuiltinSource instanceof NodeZCodeBuiltinProviderConfigSource
+          ? new ZCodeBuiltinRemoteSynchronizer({
+              source: this.#zcodeBuiltinSource,
+              ...options.zcodeBuiltinRemote,
+            })
+          : undefined;
     this.#onRemoteRefreshError = options.onZCodeBuiltinRefreshError;
     this.#personalRepository = new NodePersonalProviderConfigRepository({
       filePath: options.personalFilePath,

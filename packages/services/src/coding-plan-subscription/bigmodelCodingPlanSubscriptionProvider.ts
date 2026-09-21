@@ -51,6 +51,7 @@ import type {
   ZCodeModelContextBudgetStrategy,
   DynamicWorkflowClientConfig,
 } from "@zcode/shared";
+import { isProductEndpointDisabled } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/provider";
 import type { OffPeakClientConfig } from "./codingPlanSubscription.js";
 import {
@@ -120,6 +121,14 @@ interface ZCodeClientConfigEnvelope {
     } | null;
   } | null;
 }
+
+/**
+ * 禁用产品 Endpoint 时返回的空信封。
+ *
+ * 所有消费方都按 `payload.data?.configs?.<key>` 可选链取值，缺省即回退各自的
+ * fail-closed 默认值 —— 与请求失败时的行为完全一致，因此不需要伪造具体字段。
+ */
+const EMPTY_CLIENT_CONFIG_ENVELOPE: ZCodeClientConfigEnvelope = {};
 
 interface BigModelCodingPlanSubscriptionProviderOptions {
   apiClient: ApiClient;
@@ -597,6 +606,12 @@ export class BigModelCodingPlanSubscriptionProvider {
   }
 
   private async getClientConfigs(): Promise<ZCodeClientConfigEnvelope> {
+    // 纯内网 / 纯本地发行版：不请求产品 Endpoint，返回空信封。
+    // 所有消费方都按 `payload.data?.configs?.<key>` 可选链取值，缺省即回退各自的
+    // fail-closed 默认值（与请求失败时的行为一致），因此这里不需要伪造具体字段。
+    if (isProductEndpointDisabled()) {
+      return EMPTY_CLIENT_CONFIG_ENVELOPE;
+    }
     if (this.clientConfigSnapshot && this.clientConfigSnapshotExpiresAt > Date.now()) {
       return this.clientConfigSnapshot;
     }

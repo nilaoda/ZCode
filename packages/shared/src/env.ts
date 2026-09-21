@@ -42,6 +42,33 @@ export const ZCODE_PRODUCT_FLAVOR = normalizeZCodeProductFlavor(
   ZCODE_ENV,
 );
 export const ZCODE_APP_VERSION_ENV = "ZCODE_APP_VERSION" as const;
+
+/**
+ * 禁用一切**指向产品 Endpoint 的自动请求**（纯内网 / 纯本地发行版用）。
+ *
+ * 默认安装后不应有任何主动出网行为。仅靠「把本地配置的 revision 钉高」或
+ * 「让远端结果被忽略」是不够的 —— 那些做法只改变结果，**请求照样会发出去**。
+ *
+ * 置位后关掉两条自动请求：
+ *   1. 内置 Provider 目录的远端刷新（`EndpointScopedZCodeBuiltinSource` 不再创建同步器）；
+ *   2. 客户端配置 `/api/v1/client/configs`（`clientConfigService` 与
+ *      `bigmodelCodingPlanSubscriptionProvider` 两个源头都直接返回空信封）。
+ *
+ * 不影响用户主动触发的动作（反馈提交、会话分享、MCP OAuth 等），也不影响
+ * 模型请求 —— 模型走各自的 Provider baseUrl。
+ *
+ * 动态工作流灰度有独立开关 `ZCODE_DYNAMIC_WORKFLOW_MODE`：它在任何网络动作之前
+ * 短路，桌面 Local 档位由 main 固定写入合法值，因此不依赖本开关。
+ */
+export const ZCODE_DISABLE_PRODUCT_ENDPOINT_ENV = "ZCODE_DISABLE_PRODUCT_ENDPOINT" as const;
+
+/** 真值语法与仓库其它开关一致（1 / true / yes / on，大小写不敏感）。 */
+export function isProductEndpointDisabled(
+  env: Record<string, string | undefined> = typeof process === "undefined" ? {} : process.env,
+): boolean {
+  const value = env[ZCODE_DISABLE_PRODUCT_ENDPOINT_ENV]?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
 export const ZCODE_BUILD_COMMIT_ID_ENV = "ZCODE_BUILD_COMMIT_ID" as const;
 
 // ── 运行时环境变量（不经过编译打包，启动时从 process.env 读取） ──
