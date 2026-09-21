@@ -70,7 +70,18 @@ jobs:
           - label: Windows x64
             os: win
             arch: x64
-            runner: windows-2025
+            # 用 windows-2022 而不是 windows-2025：后者预装 Visual Studio 2026（版本号 18），
+            # 而 node-gyp 11.5.0 的 VS 探测不认识该版本，会报
+            #   gyp ERR! find VS unknown version "undefined" found at
+            #   "C:\Program Files\Microsoft Visual Studio\18\Enterprise"
+            # 导致 ssh2 的可选原生加速模块 cpu-features 编译失败。
+            # 该失败本身不致命（ssh2 会回退纯 JS 实现），但会在日志里刷几十行噪音，
+            # 也掩盖真正的错误。windows-2022 预装 VS 2022（v17），node-gyp 可正常识别。
+            #
+            # 注：macOS 上 cpu-features 能正常编译，所以不要改 pnpm-workspace.yaml 的
+            # allowBuilds 去全局关闭它 —— 那会白白让 macOS/Linux 失去 AES 硬件加速。
+            # 待 node-gyp 支持 VS 18 后可改回 windows-2025。
+            runner: windows-2022
             artifact_glob: |
               packages/desktop/dist/*.exe
               packages/desktop/dist/*.blockmap

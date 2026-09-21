@@ -60,7 +60,10 @@ jobs:
             runner: macos-15-intel
           - label: Windows x64
             platform: windows-x64
-            runner: windows-2025
+            # 与 build-desktop 同因：windows-2025 预装的 VS 2026（版本号 18）
+            # 不被 node-gyp 11.5.0 识别，会让 ssh2 的可选模块 cpu-features 编译失败
+            # （不致命，但日志噪音很大）。windows-2022 预装 VS 2022，可正常识别。
+            runner: windows-2022
 
     steps:
       - name: Checkout

@@ -285,6 +285,11 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 > 两个构建流水线都会显式注入 `ZCODE_ENV=production`。缺少它时 `ZCODE_ENV` 会回退为 `test`，
 > 导致产品身份变成 Preview、产物名被加 `_TEST` 后缀、包内指向测试后端。
 
+> Windows 任务固定用 `windows-2022` 而非 `windows-2025`：后者预装 Visual Studio 2026
+> （版本号 18），node-gyp 11.5.0 不识别该版本，会让 `ssh2` 的可选加速模块 `cpu-features`
+> 编译失败（不致命，但日志噪音大）。`windows-2022` 预装 VS 2022，可正常识别。
+> 待 node-gyp 支持 VS 18 后可改回。
+
 ---
 
 ## 8. 与官方版本共存
