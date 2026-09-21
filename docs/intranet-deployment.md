@@ -278,12 +278,96 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 
 - 产物每次运行都上传为 Actions artifacts，保留 1 天。
 - 在 `release_tag` 输入框填写 tag 名（或从 tag ref 手动运行），才会额外上传到 GitHub Release。
+- `build-desktop.yml` 的 `preview_identity` 输入默认开启，产出可与官方版并存的包（见第 8 节）。
 - `build-cli.yml` 的 `dist_base_url` 用于生成 `install.sh` 的下载根地址，留空则默认指向
   `https://github.com/<owner>/<repo>/releases/latest/download/`。
 
+> 两个构建流水线都会显式注入 `ZCODE_ENV=production`。缺少它时 `ZCODE_ENV` 会回退为 `test`，
+> 导致产品身份变成 Preview、产物名被加 `_TEST` 后缀、包内指向测试后端。
+
 ---
 
-## 8. 验证清单
+## 8. 与官方版本共存
+
+目标是让本版本与官方 ZCode **并排安装、同时运行、互不干扰**。仓库已内置这套机制，
+桌面端不需要改代码。
+
+### 8.1 桌面端：用 Preview 身份
+
+构建时设 `ZCODE_PREVIEW_IDENTITY=1`（对应 `build-desktop.yml` 的 `preview_identity`
+输入，默认开启）。它与 `ZCODE_ENV` 是**两个独立的轴**：前者决定产品身份，后者决定后端环境。
+
+| | 官方版 | 本版本（Preview 身份） |
+| --- | --- | --- |
+| `productName` | `ZCode` | `ZCode Preview` |
+| `appId` | `dev.zcode.app` | `dev.zcode.app.preview` |
+| Electron `userData` | `<appData>/ZCode` | `<appData>/ZCode Preview` |
+| CUA Helper 安装目录 | 默认 variant | `preview` variant |
+| Linux 可执行 / 包名 | `zcode` | `zcode-preview` |
+| 产物文件名 | `ZCode-<版本>-…` | `ZCode Preview-<版本>-…` |
+
+因此两版有不同的安装目录、不同的 Electron 状态目录，同时运行不会触发单实例锁冲突。
+`ZCODE_ENV=production` 保证产物名不带 `_TEST` 后缀——该后缀标记的是**后端环境**而非身份，
+生产后端的 Preview 包靠 `productName` 前缀与正式包区分。
+
+依据：`packages/desktop/scripts/desktop-product-identity.mjs`、
+`packages/desktop/src/main/desktopRuntimeEnv.ts:61-78`、`packages/desktop/src/main/index.ts:261-272`。
+
+### 8.2 业务数据根是共用的
+
+**Preview 身份只隔离 Electron 自身的状态目录，不隔离业务数据。**
+`desktopRuntimeEnv.ts:548` 的注释写得很明确：
+
+> Preview 与生产版共享任务、配置和凭据……不改写 ZCODE_HOME / ZCODE_DATA_BASE_DIR 业务数据根。
+
+业务数据根 = `<dataBaseDir>/.zcode`，默认 `~/.zcode`
+（`packages/services/src/paths.ts` 的 `getZCodeDataRootDir`）。两版共用：任务列表、设置、
+凭据，以及官方插件缓存分片。
+
+实际影响：两版交替启动会互相覆盖「官方插件市场分片」（本版本只 seed 两个内置插件），
+设置页也会看到对方添加的 Provider。不会损坏数据，但会互相干扰。
+
+**要完全隔离**，把数据根指到别处：
+
+```bash
+ZCODE_DATA_BASE_DIR="$HOME/.zcode-local"
+```
+
+注意这是**运行时**变量。安装包从 Finder / Dock 启动时不继承 shell 环境，需设为
+OS 级环境变量（见 2.1 途径 2）。桌面主进程只在 `dataBaseDir !== homedir()` 时
+才把它下发给 Agent 子进程（`desktopRuntimeEnv.ts:556`）。
+
+### 8.3 CLI：需要显式改名
+
+CLI 运行包的 `install.sh` 默认装到 `~/.zcode/runtime`，并在 `~/.local/bin` 建
+`zcode` 命令——**会直接覆盖官方 CLI**。三个变量可避免冲突：
+
+```bash
+ZCODE_DIST_HOME="$HOME/.zcode-local/runtime" \
+ZCODE_DIST_BIN_DIR="$HOME/.local/bin" \
+ZCODE_DIST_COMMAND_NAME="zcode-local" \
+sh install.sh
+```
+
+`ZCODE_DIST_COMMAND_NAME` 是本分支新增的开关（默认 `zcode`，不改变原有行为），
+只影响生成的 wrapper 文件名，运行包内部的 `bin/zcode.mjs` 路径不变。
+
+> Windows 没有对应的安装脚本，只能手动解压；命令名冲突需自行处理 PATH。
+
+### 8.4 现状小结
+
+| 项 | 状态 |
+| --- | --- |
+| 桌面端并排安装 / 同时运行 | 机制已内置，流水线默认开启 |
+| 桌面端业务数据隔离 | 未内置，需设 `ZCODE_DATA_BASE_DIR` |
+| CLI 并存 | 已支持改名，需手动传三个变量 |
+
+若希望「装完即隔离、无需任何环境变量」，需要给业务数据根加一个按身份区分的默认值——
+这属于代码改动，尚未实施。
+
+---
+
+## 9. 验证清单
 
 内网部署完成后建议逐项确认：
 
@@ -295,3 +379,4 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 - [ ] WebFetch 能读取白名单内的内网地址，且白名单外的私网地址仍被拒绝
 - [ ] 断网（或抓包）确认无遥测上报
 - [ ] 代理环境下 MCP server 与 Bash 工具能正常出网
+- [ ] 与官方版共存时：两版可同时启动，且业务数据互不覆盖（见 8.2）
