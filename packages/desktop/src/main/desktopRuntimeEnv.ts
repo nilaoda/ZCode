@@ -25,6 +25,7 @@ import {
   sanitizeZCodeRuntimeEnv,
   type ZCodeRuntimeEnv,
 } from "@zcode/shared";
+import { desktopProductIdentities } from "../../scripts/desktop-product-identity.mjs";
 import { resolvePlatformKeyForPackagedApp } from "../../scripts/target-platform.mjs";
 import {
   getAppConfigDir,
@@ -42,9 +43,19 @@ const isLocalDevelopmentRuntime = !isElectronAppPackaged();
 export const desktopRuntimeEnv: ZCodeRuntimeEnv = isLocalDevelopmentRuntime
   ? "development"
   : "production";
-// 身份看编译期 flavor 而不是 ZCODE_ENV：ZCODE_PREVIEW_IDENTITY=1 的生产后端构建同样是 Preview，
+// 身份看编译期 flavor 而不是 ZCODE_ENV：显式身份开关的生产后端构建同样是 Preview / Local，
 // 需要独立的应用名、Electron 数据目录和 Helper 安装子目录才能与正式版并排运行。
+//
+// 这里必须用编译期常量 ZCODE_PRODUCT_FLAVOR 查表，**不能**调用
+// resolveDesktopProductFlavor(process.env)：身份开关只在构建期存在，打包后 process.env 里
+// 没有它们，运行时求值会退化成从 ZCODE_ENV 推导，得到错误身份。
+const packagedProductIdentity =
+  desktopProductIdentities[ZCODE_PRODUCT_FLAVOR] ?? desktopProductIdentities.production;
 const isPreviewPackagedRuntime = !isLocalDevelopmentRuntime && ZCODE_PRODUCT_FLAVOR === "preview";
+/** 打包态下该身份需要的 Helper 安装变体；开发态与正式身份都不隔离 Helper。 */
+export const packagedCuaHelperInstallVariant = isLocalDevelopmentRuntime
+  ? null
+  : packagedProductIdentity.cuaHelperInstallVariant;
 
 function readRuntimeEnvOverride(name: string): string | undefined {
   return process.env[name]?.trim() || undefined;
@@ -58,9 +69,10 @@ function isTruthyRuntimeEnvOverride(name: string): boolean {
 // e2e 运行的是生产构建，默认会和本机正式版 ZCode 共用 app name / userData，
 // 触发 Electron 单实例锁后只激活已有窗口，Chromedriver 无法接管测试进程。
 // 这里允许测试显式隔离运行时身份，正常桌面/远控路径保持原来的默认值。
+// 应用名统一取自身份表：正式 ZCode / ZCode Preview / ZCode Local。
 export const runtimeApplicationName =
   readRuntimeEnvOverride("ZCODE_DESKTOP_APPLICATION_NAME") ??
-  (isLocalDevelopmentRuntime ? "ZCode Dev" : isPreviewPackagedRuntime ? "ZCode Preview" : "ZCode");
+  (isLocalDevelopmentRuntime ? "ZCode Dev" : packagedProductIdentity.productName);
 // Electron 的 app.getPath("home") 不一定跟随测试进程里的 HOME 覆盖。
 // e2e 默认工作区依赖 home 路径，因此提供显式覆盖，避免测试写到开发者真实 ~/ZCodeProject。
 export const runtimeHomePath = readRuntimeEnvOverride("ZCODE_DESKTOP_HOME_DIR");
@@ -547,7 +559,10 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     ZCODE_ENV,
     // Preview 与生产版共享任务、配置和凭据，但不同版本的 Helper 不能互相覆盖或触发降级保护。
     // 只隔离 computer-use 下的运行组件，不改写 ZCODE_HOME / ZCODE_DATA_BASE_DIR 业务数据根。
-    ...(isPreviewPackagedRuntime ? { ZCODE_CUA_HELPER_INSTALL_VARIANT: "preview" } : {}),
+    // Local 身份在 desktopDataBaseDirBootstrap 里另行隔离业务数据根（见该文件说明）。
+    ...(packagedCuaHelperInstallVariant
+      ? { ZCODE_CUA_HELPER_INSTALL_VARIANT: packagedCuaHelperInstallVariant }
+      : {}),
     // Dynamic Workflow 灰度的本地覆盖：Main 决策后写入，production 包为空对象（继承值已在上面删除）。
     ...dynamicWorkflowModeHostEnv,
     // 模型请求默认 header 由 agent 进程构造，过去只继承 shell env 导致桌面启动时拿不到 app 版本。

@@ -20,8 +20,8 @@ on:
         description: 发布到该 tag 的 GitHub Release（留空则只上传 artifacts）
         required: false
         type: string
-      preview_identity:
-        description: 使用 Preview 身份构建（可与官方版并排安装、同时运行）
+      local_identity:
+        description: 使用 Local 身份构建（可与官方版并存，且业务数据默认隔离）
         required: false
         default: true
         type: boolean
@@ -115,13 +115,11 @@ jobs:
           ZCODE_ENV: "production"
           # 桌面安装包不依赖 mock-cdn 远程资源；跳过可显著缩短构建时间。
           ZCODE_SKIP_REMOTE_ASSETS: "1"
-          # 与官方版共存：Preview 身份使用独立的 productName（ZCode Preview）、
-          # appId（dev.zcode.app.preview）与 Electron 数据目录，可与官方 ZCode 并排安装、
-          # 同时运行而不触发单实例锁冲突。
-          # 注意：业务数据根 ~/.zcode 仍与官方版共用（上游有意设计），
-          # 需要完全隔离时另设 ZCODE_DATA_BASE_DIR，详见 docs/intranet-deployment.md。
+          # 与官方版并存：Local 身份使用独立的 productName（ZCode Local）、
+          # appId（dev.zcode.app.local）、Electron 数据目录，并且**业务数据根默认切到
+          # ~/.zcode-local-home**，因此安装后无需任何环境变量即可与官方版完全隔离。
           # 该变量只接受 "1" / "0" / 空，其他取值会直接抛错。
-          ZCODE_PREVIEW_IDENTITY: ${{ inputs.preview_identity && '1' || '0' }}
+          ZCODE_LOCAL_IDENTITY: ${{ inputs.local_identity && '1' || '0' }}
           # 未签名构建：禁止 electron-builder 自动发现本机签名身份。
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
