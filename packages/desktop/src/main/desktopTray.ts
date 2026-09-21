@@ -42,6 +42,16 @@ export function createWindowsDesktopTray(options: {
 
   const getLabel = (id: (typeof desktopMenuMessageIds)[keyof typeof desktopMenuMessageIds]) =>
     getDesktopMenuMessage(options.getLocale(), id);
+  /**
+   * 带品牌名的菜单文案。
+   *
+   * 品牌名取自 `app.name`（main 早期用 runtimeApplicationName 设置，等于产品身份表里的
+   * productName），而不是把 "ZCode" 写死在 i18n 文案里 —— 否则 Local 档位的托盘仍显示
+   * "ZCode"，与身份表出现两个事实源。占位符 `{appName}` 与 desktopApplicationMenu 的
+   * getAppLabel 保持同一套约定。
+   */
+  const getAppLabel = (id: (typeof desktopMenuMessageIds)[keyof typeof desktopMenuMessageIds]) =>
+    getLabel(id).replaceAll("{appName}", app.name);
   const showTrayWindow = () => {
     void Promise.resolve(options.showCurrentWindow()).catch((error) => {
       options.logger.warn("[desktop-tray] failed to show current window", error);
@@ -55,11 +65,11 @@ export function createWindowsDesktopTray(options: {
       });
   };
   const rebuildContextMenu = () => {
-    desktopTray?.setToolTip(getLabel(desktopMenuMessageIds.trayTooltip));
+    desktopTray?.setToolTip(getAppLabel(desktopMenuMessageIds.trayTooltip));
     desktopTray?.setContextMenu(
       Menu.buildFromTemplate([
         {
-          label: getLabel(desktopMenuMessageIds.trayOpenZCode),
+          label: getAppLabel(desktopMenuMessageIds.trayOpenZCode),
           click: showTrayWindow,
         },
         { type: "separator" },
@@ -82,7 +92,7 @@ export function createWindowsDesktopTray(options: {
             ]
           : []),
         {
-          label: getLabel(desktopMenuMessageIds.helpAbout),
+          label: getAppLabel(desktopMenuMessageIds.helpAbout),
           click: () => executeTrayCommand(DesktopCommandIds.ShowAbout),
         },
         {
