@@ -222,10 +222,17 @@ export const ZCODE_ARMS_RUM_ENDPOINT = process.env.ZCODE_ARMS_RUM_ENDPOINT ?? ""
 | 工作流 | 用途 |
 | --- | --- |
 | `placeholder.yml` | 占位，仅用于启用 Actions 页面的手动运行按钮 |
+| `verify.yml` | 手动跑 `pnpm typecheck` / `pnpm lint` / `pnpm architecture:check` |
 | `build-desktop.yml` | 构建 Windows / macOS 桌面安装包 |
 | `build-cli.yml` | 构建 Windows / macOS 命令行运行包 |
 
-产物同时上传为 Actions artifacts（保留 1 天）并在打 tag 时创建 GitHub Release。
+**所有工作流都只配置了 `workflow_dispatch`，没有任何自动触发器**——不会因为 push、
+tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow** 手动启动。
+
+- 产物每次运行都上传为 Actions artifacts，保留 1 天。
+- 在 `release_tag` 输入框填写 tag 名（或从 tag ref 手动运行），才会额外上传到 GitHub Release。
+- `build-cli.yml` 的 `dist_base_url` 用于生成 `install.sh` 的下载根地址，留空则默认指向
+  `https://github.com/<owner>/<repo>/releases/latest/download/`。
 
 ---
 

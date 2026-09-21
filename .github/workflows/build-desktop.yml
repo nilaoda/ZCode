@@ -2,13 +2,12 @@ name: Build Desktop
 
 # 构建 Windows / macOS 桌面安装包。
 #
-# 触发方式：
-#   1. 手动运行（Actions 页面 Run workflow），可选填 release_tag 直接把产物挂到 Release。
-#   2. 推送 v* tag 时自动构建并发布到同名 Release。
+# 触发方式：**仅手动触发**（Actions 页面 Run workflow）。本仓库不配置任何自动触发器，
+# 不会因为 push、tag 或 PR 自动消耗构建资源。
 #
 # 产物：
 #   - 每次运行都上传 Actions artifacts，保留 1 天。
-#   - 有 tag 时额外上传到 GitHub Release。
+#   - 填了 release_tag（或从 tag ref 手动运行时）额外上传到 GitHub Release。
 #
 # 签名：默认产出**未签名**包。仓库的 electron-builder 配置要求显式
 # ZCODE_ENABLE_MAC_SIGN=1 且提供 APPLE_SIGNING_IDENTITY / CSC_NAME 才启用
@@ -21,9 +20,6 @@ on:
         description: 发布到该 tag 的 GitHub Release（留空则只上传 artifacts）
         required: false
         type: string
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: write

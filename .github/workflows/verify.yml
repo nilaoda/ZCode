@@ -2,15 +2,12 @@ name: Verify
 
 # 类型检查、Lint 与架构检查。
 #
-# 这是本仓库唯一的自动化校验入口：本地开发环境不保证能跑完整的
-# typecheck / lint，因此把仓库约定的三道门禁放到 CI 上执行。
+# 触发方式：**仅手动触发**（Actions 页面 Run workflow）。本仓库不配置任何自动触发器，
+# 不会因为 push 或 PR 自动消耗构建资源。
 #
 # 三个检查步骤都带 if: always()，任何一道失败都不会掩盖其余两道的结果。
 
 on:
-  # 所有分支的推送都跑，便于在开 PR 之前就拿到校验结果。
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:

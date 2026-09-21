@@ -2,13 +2,12 @@ name: Build CLI
 
 # 构建 Windows / macOS 命令行运行包（zcode）。
 #
-# 触发方式：
-#   1. 手动运行（Actions 页面 Run workflow），可选填 release_tag 直接把产物挂到 Release。
-#   2. 推送 v* tag 时自动构建并发布到同名 Release。
+# 触发方式：**仅手动触发**（Actions 页面 Run workflow）。本仓库不配置任何自动触发器，
+# 不会因为 push、tag 或 PR 自动消耗构建资源。
 #
 # 产物：
 #   - 每次运行都上传 Actions artifacts，保留 1 天。
-#   - 有 tag 时额外上传到 GitHub Release。
+#   - 填了 release_tag（或从 tag ref 手动运行时）额外上传到 GitHub Release。
 #
 # 关于平台差异：
 #   scripts/build-zcode.mjs 按**宿主平台**打包（无 --os/--arch 参数），运行包内含
@@ -30,9 +29,6 @@ on:
         required: false
         default: ""
         type: string
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: write
