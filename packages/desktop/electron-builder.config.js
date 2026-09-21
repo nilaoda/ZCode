@@ -206,15 +206,16 @@ const commandStdoutMaxBuffer = 64 * 1024 * 1024;
 // 产物后缀只标记后端环境（_TEST）；身份靠 productName 区分，生产后端的 Preview 包没有后缀。
 const desktopArtifactEnvSuffix = resolveDesktopArtifactSuffix(process.env);
 
-// Preview 是内部签名测试包。CI 明确打开 macOS 签名时若没有身份，必须在生成未签名包前失败，
-// 避免“产物存在”被误认为已经走完和生产版相同的签名链路。
+// 非正式身份（Preview / Local）都是内部或自建包。CI 明确打开 macOS 签名时若没有身份，
+// 必须在生成未签名包前失败，避免"产物存在"被误认为已经走完和生产版相同的签名链路。
+// 用 !== "production" 而不是 === "preview"：新增身份时自动纳入该保护。
 if (
-  desktopProductIdentity.flavor === "preview" &&
+  desktopProductIdentity.flavor !== "production" &&
   process.env.ZCODE_ENABLE_MAC_SIGN === "1" &&
   !macSigningIdentity
 ) {
   throw new Error(
-    "ZCode Preview macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
+    `${desktopProductIdentity.productName} macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1`,
   );
 }
 
