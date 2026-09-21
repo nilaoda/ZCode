@@ -23,6 +23,10 @@ import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
 import type { ICommandsService } from "./commands.js";
 import { CommandFileParser, type CommandFileFormat } from "./commandFileParser.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
+import {
+  resolveAgentConfigBaseDir,
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 function resolveUserHomeDir() {
   const envHome = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
@@ -82,11 +86,14 @@ function getCommandSourceDescriptor(
 
 function getUserCommandsRoot(agentSource?: CommandAgentSource): string {
   const descriptor = getCommandSourceDescriptor(agentSource);
-  return join(resolveUserHomeDir(), ...descriptor.userDirectorySegments);
+  return join(
+    resolveAgentConfigBaseDir(descriptor.userDirectorySegments),
+    ...descriptor.userDirectorySegments,
+  );
 }
 
 function getUserCliConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  return join(resolveZCodeUserRootDir(), "cli", "config.json");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -417,7 +424,10 @@ async function resolvePluginCommandRootDescriptors(): Promise<PluginCommandRootD
 }
 
 function getUserCommandsRootForDescriptor(descriptor: CommandAgentSourceDescriptor): string {
-  return join(resolveUserHomeDir(), ...descriptor.userDirectorySegments);
+  return join(
+    resolveAgentConfigBaseDir(descriptor.userDirectorySegments),
+    ...descriptor.userDirectorySegments,
+  );
 }
 
 function getCommandsRootForStorage(params: {

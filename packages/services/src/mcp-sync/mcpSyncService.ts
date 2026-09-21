@@ -20,6 +20,9 @@ import type {
 } from "@zcode/shared";
 import type { IMcpSyncService } from "./mcpSync.js";
 import { checkRemoteSyncDirectoryWriteAccess } from "../remote-sync/remoteSyncWriteAccess.js";
+import {
+  resolveAgentConfigBaseDir,
+} from "@zcode/shared/node";
 
 type McpConfigKeyName = "mcp.servers" | "mcpServers";
 
@@ -154,14 +157,15 @@ function buildDirectoryConfigPath(
   scope: Exclude<McpScope, "common">,
   workspacePath?: string,
 ): string {
-  const baseDir = scope === "user" ? resolveUserHomeDir() : workspacePath;
+  const segments =
+    scope === "user" ? descriptor.userConfigDirSegments : descriptor.workspaceConfigDirSegments;
+  // 只有 `.zcode` 目录跟随数据基目录；`.agents` 等跨工具目录留在真实家目录。
+  const baseDir = scope === "user" ? resolveAgentConfigBaseDir(segments) : workspacePath;
   if (!baseDir) {
     throw new Error(
       `Missing workspace path for ${descriptor.directorySource} workspace MCP config`,
     );
   }
-  const segments =
-    scope === "user" ? descriptor.userConfigDirSegments : descriptor.workspaceConfigDirSegments;
   return join(baseDir, ...segments, descriptor.fileName);
 }
 

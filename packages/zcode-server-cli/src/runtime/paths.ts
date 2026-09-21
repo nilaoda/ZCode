@@ -1,6 +1,9 @@
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import {
+  resolveZCodeDataBaseDir,
+} from "@zcode/shared/node";
 
 export interface ServerLayout {
   readonly dataBaseDir: string;
@@ -22,7 +25,7 @@ export interface ServerLayout {
 
 function getDefaultServerDataRoot(): string {
   const configured = process.env.ZCODE_DATA_BASE_DIR?.trim();
-  return join(configured || homedir(), ".zcode", "server");
+  return join(configured || resolveZCodeDataBaseDir(), ".zcode", "server");
 }
 
 export function resolveServerLayout(serverRoot = getDefaultServerDataRoot()): ServerLayout {

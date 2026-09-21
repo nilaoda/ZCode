@@ -41,6 +41,10 @@ import type { ISettingService } from "../setting/setting.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 import { walkSkillMarkdownPaths } from "../skills/skillDiscoveryWalk.js";
 import type { ISettingsSyncService } from "./settingsSync.js";
+import {
+  resolveAgentConfigBaseDir,
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 const log = createServiceLogger("settings-sync");
 
@@ -426,7 +430,7 @@ function getWorkspaceZcodeSkillRoot(workspacePath: string): string {
 }
 
 function getUserZcodeSkillRoot(): string {
-  return join(resolveUserHomeDir(), ".zcode", "skills");
+  return join(resolveZCodeUserRootDir(), "skills");
 }
 
 function getWorkspaceZcodeCommandRoot(workspacePath: string): string {
@@ -434,7 +438,7 @@ function getWorkspaceZcodeCommandRoot(workspacePath: string): string {
 }
 
 function getUserZcodeCommandRoot(): string {
-  return join(resolveUserHomeDir(), ".zcode", "commands");
+  return join(resolveZCodeUserRootDir(), "commands");
 }
 
 function getWorkspaceZcodePluginRoot(workspacePath: string): string {
@@ -442,11 +446,11 @@ function getWorkspaceZcodePluginRoot(workspacePath: string): string {
 }
 
 function getUserZcodePluginRoot(): string {
-  return join(resolveUserHomeDir(), ".zcode", "plugins");
+  return join(resolveZCodeUserRootDir(), "plugins");
 }
 
 function getUserZcodeCliConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  return join(resolveZCodeUserRootDir(), "cli", "config.json");
 }
 
 function getWorkspaceZcodeConfigPath(workspacePath: string): string {
@@ -458,7 +462,7 @@ function getClaudeUserAgentsFileSourcePath(): string {
 }
 
 function getUserZcodeAgentsFilePath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "AGENTS.md");
+  return join(resolveZCodeUserRootDir(), "AGENTS.md");
 }
 
 function resolveTargetRootForScope(
@@ -632,10 +636,9 @@ async function importPluginDirectory(
 }
 
 function getExternalSkillRoots(workspacePath?: string): SkillSourceRoot[] {
-  const home = resolveUserHomeDir();
   const userRoots: SkillSourceRoot[] = SUPPORTED_SKILL_AGENT_SOURCES.map((source) => ({
     agent: source.agent,
-    rootPath: join(home, ...source.globalPath),
+    rootPath: join(resolveAgentConfigBaseDir(source.globalPath), ...source.globalPath),
     scope: "user",
   }));
   if (!workspacePath) {
@@ -653,10 +656,9 @@ function getExternalSkillRoots(workspacePath?: string): SkillSourceRoot[] {
 }
 
 function getExternalCommandRoots(workspacePath?: string): CommandSourceRoot[] {
-  const home = resolveUserHomeDir();
   const userRoots: CommandSourceRoot[] = SUPPORTED_COMMAND_AGENT_SOURCES.map((source) => ({
     agent: source.agent,
-    rootPath: join(home, ...source.globalPath),
+    rootPath: join(resolveAgentConfigBaseDir(source.globalPath), ...source.globalPath),
     scope: "user",
   }));
   if (!workspacePath) {
@@ -673,10 +675,9 @@ function getExternalCommandRoots(workspacePath?: string): CommandSourceRoot[] {
 }
 
 function getExternalPluginRoots(workspacePath?: string): PluginSourceRoot[] {
-  const home = resolveUserHomeDir();
   const userRoots: PluginSourceRoot[] = SUPPORTED_PLUGIN_AGENT_SOURCES.map((source) => ({
     agent: source.agent,
-    rootPath: join(home, ...source.globalPath),
+    rootPath: join(resolveAgentConfigBaseDir(source.globalPath), ...source.globalPath),
     scope: "user",
   }));
   if (!workspacePath) {
@@ -693,11 +694,10 @@ function getExternalPluginRoots(workspacePath?: string): PluginSourceRoot[] {
 }
 
 function getExternalMcpRoots(workspacePath?: string): McpSourceRoot[] {
-  const home = resolveUserHomeDir();
   const userRoots: McpSourceRoot[] = SUPPORTED_MCP_AGENT_SOURCES.flatMap((source) =>
     source.globalFiles.map((globalFile) => ({
       agent: source.agent,
-      rootPath: join(home, ...globalFile),
+      rootPath: join(resolveAgentConfigBaseDir(globalFile), ...globalFile),
       scope: "user" as const,
       format: source.format,
     })),

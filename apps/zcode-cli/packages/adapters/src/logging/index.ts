@@ -3,7 +3,6 @@
 // ============================================================
 
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { LogContext, LogEntry, Logger, LoggerFactory, LogRedactor } from "@zcode/contracts";
 import { LogLevel, LogLevelName } from "@zcode/contracts";
@@ -37,6 +36,9 @@ export type {
   LogRetentionScheduleOptions,
   LogRetentionTimer,
 } from "./retention.js";
+import {
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 export { DefaultLogRedactor } from "./serialize.js";
 export type { SerializableLogEntry, SerializedLogError } from "./serialize.js";
 
@@ -220,7 +222,7 @@ export function createNodeLoggerFactory(options: NodeLoggerFactoryOptions = {}):
 }
 
 export function getDefaultLogDir(): string {
-  return join(homedir(), ".zcode", "cli", "log");
+  return join(resolveZCodeUserRootDir(), "cli", "log");
 }
 
 function getDefaultMinLevel(env: NodeJS.ProcessEnv | undefined): LogLevel {

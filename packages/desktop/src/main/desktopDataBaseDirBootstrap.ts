@@ -67,12 +67,24 @@ function readBootstrapDataBaseDirFromDisk(
   }
 }
 
+/**
+ * 同时写入两条通道。
+ *
+ * `setDataBaseDir()` 只影响 `@zcode/services` 自身的 `getDataBaseDir()`；
+ * 而 `apps/zcode-cli` 全树（agent / CLI / bootstrap）不依赖 services，只能读
+ * `ZCODE_DATA_BASE_DIR` 环境变量。两处写同一个值，主进程与子进程才会解析到同一个根。
+ */
+function applyDataBaseDir(dataBaseDir: string): void {
+  setDataBaseDir(dataBaseDir);
+  process.env.ZCODE_DATA_BASE_DIR = dataBaseDir;
+}
+
 export function applyEarlyDataBaseDirBootstrap(): string | null {
   const dataBaseDir = readBootstrapDataBaseDirFromDisk();
   if (dataBaseDir) {
     // 启动早期就把 dataBaseDir 注入进来，避免 logger / crashReporter 先按默认 HOME 建目录，
     // 导致后续再切换到自定义目录时，日志和 crash dump 落在两套路径里。
-    setDataBaseDir(dataBaseDir);
+    applyDataBaseDir(dataBaseDir);
     return dataBaseDir;
   }
 
@@ -89,6 +101,6 @@ export function applyEarlyDataBaseDirBootstrap(): string | null {
     return null;
   }
 
-  setDataBaseDir(identityDefault);
+  applyDataBaseDir(identityDefault);
   return identityDefault;
 }

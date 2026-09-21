@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type {
   AgentTelemetryRuntimeOwner,
@@ -12,6 +11,9 @@ import type {
 } from "@zcode/contracts/telemetry";
 import type { ModelStatusSink } from "@zcode/contracts/model";
 import { NoopAgentExecutionTelemetry } from "./agent-trace-runtime.js";
+import {
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 type EnvRecord = Record<string, string | undefined>;
 
@@ -225,7 +227,7 @@ async function resolveStandaloneDeviceMid(
 ): Promise<string | undefined> {
   const stateFile = zcodeHome
     ? join(zcodeHome, "v2", "telemetry-state.json")
-    : join(homedir(), ".zcode", "v2", "telemetry-state.json");
+    : join(resolveZCodeUserRootDir(), "v2", "telemetry-state.json");
   const pending = pendingStandaloneDeviceMidByStateFile.get(stateFile);
   if (pending) return pending;
   const resolution = resolveStandaloneDeviceMidFromFile(stateFile);

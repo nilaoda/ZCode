@@ -317,17 +317,34 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 `packages/desktop/src/main/desktopDataBaseDirBootstrap.ts`、
 `packages/desktop/src/main/desktopRuntimeEnv.ts`、`packages/desktop/src/main/index.ts:261-272`。
 
-**仍然共用 `$HOME` 的部分**（刻意保留，未随身份隔离）：
+**用户级配置与日志也已隔离**。仓库里原本散落着大量按真实家目录解析的 `~/.zcode/**`
+路径（用户命令、技能、插件、CLI 配置与 MCP 配置、AGENTS.md、会话库、日志、rollout、
+workflows、hook 信任库等），它们不会跟随自定义数据根。现已统一收敛到
+`@zcode/shared/node` 的 `resolveZCodeUserRootDir()`：
 
-| 路径 | 用途 | 为什么不动 |
+| 原先路径 | 现在 | 说明 |
 | --- | --- | --- |
-| `~/.zcode/commands` | 用户级 slash 命令 | 这是「用户配置目录」约定，与 `~/.claude`、`~/.agents` 等并列，跨工具共享；改掉会让既有用户的命令消失 |
-| `~/.zcode/cli/config.json` | CLI 的 MCP 用户配置 | 同上，属 CLI 契约路径 |
-| `~/Library/...` 等 OS 目录 | Chrome/Chromium 探测、Finder 集成 | 系统级资源，本就该共用 |
+| `~/.zcode/commands` | `<数据根>/commands` | 用户级 slash 命令 |
+| `~/.zcode/skills`、`~/.zcode/plugins` | `<数据根>/…` | 用户级技能与插件 |
+| `~/.zcode/cli/config.json` | `<数据根>/cli/config.json` | CLI 与 MCP 用户配置 |
+| `~/.zcode/AGENTS.md` | `<数据根>/AGENTS.md` | 用户级指令 |
+| `~/.zcode/cli/db/db.sqlite` | `<数据根>/cli/db/db.sqlite` | CLI 会话库 |
+| `~/.zcode/cli/log`、`rollout`、`debug` | `<数据根>/…` | 日志与轨迹 |
+| `~/.zcode/workflows`、`security/…` | `<数据根>/…` | 脚本工作流与 hook 信任库 |
 
-两版会共用这些目录。对大多数部署这没问题；若你的场景要求连这些也隔离，
-需要另行调整 `commandsService` / `mcpUserDirectory` 的基目录解析——这属于语义变更，
-建议先确认是否真的需要。
+**仍然共用（刻意不改）**：
+
+| 路径 | 为什么不动 |
+| --- | --- |
+| `~/.claude`、`~/.agents`、`~/.codex` | **跨工具**配置约定，与 Claude Code / Codex 等共享；改掉会把别的工具的配置搬到它们不认识的位置。由 `resolveAgentConfigBaseDir()` 按路径首段判断，只有 `.zcode` 跟随数据根 |
+| `~/Library`、`AppData` 等 OS 目录 | Chrome/Chromium 探测、Finder 集成等系统级资源 |
+| 用户显式设置的 `ZCODE_STORAGE_DIR` | 优先级高于身份默认值，用户指定即生效 |
+
+实现入口：`packages/shared/src/node/zcodeUserRoot.ts`。选它是因为
+`apps/zcode-cli/*` 全树都不依赖 `@zcode/services`，`@zcode/shared` 是唯一公共依赖。
+`packages/services` 内部仍优先用自己的 `getZCodeDataRootDir()`（额外支持运行时
+`setDataBaseDir()`），桌面主进程在调用它的同时会把同一个值写入
+`ZCODE_DATA_BASE_DIR`，保证两套机制与子进程解析到同一个根。
 
 ### 8.2 为什么另起 Local 身份，而不是复用 Preview
 
@@ -376,6 +393,8 @@ sh install.sh
 | 桌面端并排安装 / 同时运行 | 默认启用（Local 身份） |
 | 桌面端业务数据隔离 | **默认启用**，装完即隔离，无需环境变量 |
 | 桌面端 Electron 状态隔离 | 默认启用 |
+| 用户级配置 / 日志 / CLI 会话库 | **默认启用**，随数据根走 |
+| 跨工具目录（`.claude` / `.agents` / `.codex`） | 共用（刻意，属跨工具约定） |
 | CLI 并存 | 需手动传三个变量改名与改路径 |
 | CLI 数据隔离 | 需自行设 `ZCODE_DATA_BASE_DIR` |
 

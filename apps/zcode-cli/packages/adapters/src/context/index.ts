@@ -3,7 +3,7 @@
 // ============================================================
 
 import { readFile, stat } from "node:fs/promises";
-import { arch, homedir, release } from "node:os";
+import { arch, release } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { formatLocalIsoDate } from "@zcode/contracts";
 import type {
@@ -20,6 +20,9 @@ import type {
   UserInstructionsOptions,
 } from "@zcode/contracts";
 import { resolveGitSnapshot } from "./git-snapshot.js";
+import {
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 const DEFAULT_PRIORITY_FILES = ["AGENTS.md"];
 const DEFAULT_MAX_BYTES = 100 * 1024;
@@ -234,7 +237,7 @@ async function findDefaultUserInstructionFile(
     return undefined;
   }
 
-  const filePath = join(resolveUserHomeDir(env), ".zcode", "AGENTS.md");
+  const filePath = join(resolveZCodeUserRootDir(env), "AGENTS.md");
   if (await isFile(filePath)) {
     return { filePath, fileName: "AGENTS.md" };
   }
@@ -242,10 +245,6 @@ async function findDefaultUserInstructionFile(
   return undefined;
 }
 
-function resolveUserHomeDir(env: NodeJS.ProcessEnv): string {
-  const envHome = env.HOME?.trim() || env.USERPROFILE?.trim();
-  return envHome && envHome.length > 0 ? envHome : homedir();
-}
 
 async function detectProjectContext(projectRoot: string): Promise<ProjectContext> {
   let type: ProjectType = "unknown";

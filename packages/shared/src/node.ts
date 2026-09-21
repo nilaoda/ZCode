@@ -6,6 +6,14 @@
 export { acquireFileLock } from "./node/atomicFileLock.js";
 export { scanOfficialPluginCacheRoots } from "./node/officialPluginCache.js";
 export {
+  ZCODE_CONFIG_DIR_NAME,
+  ZCODE_DATA_BASE_DIR_ENV,
+  resolveAgentConfigBaseDir,
+  resolveUserHomeDir,
+  resolveZCodeDataBaseDir,
+  resolveZCodeUserRootDir,
+} from "./node/zcodeUserRoot.js";
+export {
   migrateUserSubagentMarkdown,
   migrateSubagentStateFile,
 } from "./node/subagentMarkdownMigration.js";

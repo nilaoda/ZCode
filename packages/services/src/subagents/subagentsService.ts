@@ -26,19 +26,13 @@ import {
 } from "@zcode/shared";
 import { normalizeSubagentModelSelection } from "./subagentModelSelection.js";
 import { serializeSubagentMarkdown, parseSubagentMarkdown } from "./subagentMarkdown.js";
-import {
-  resolveSubagentStateFile,
-  resolveUserHomeDir,
-  resolveUserSubagentRoot,
-  resolveWorkspaceSubagentRoot,
-  resolveZCodeStorageRoot,
-  type SubagentStorageOptions,
-} from "./subagentStorage.js";
+import { resolveSubagentStateFile, resolveUserSubagentRoot, resolveWorkspaceSubagentRoot, resolveZCodeStorageRoot, type SubagentStorageOptions } from "./subagentStorage.js";
 import type { ISubagentsService } from "./subagents.js";
 import { atomicWriteText } from "#src/fs/atomicFileUtils.js";
 import {
-  migrateUserSubagentMarkdown,
   migrateSubagentStateFile,
+  migrateUserSubagentMarkdown,
+  resolveZCodeUserRootDir,
   scanOfficialPluginCacheRoots,
 } from "@zcode/shared/node";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
@@ -396,7 +390,7 @@ async function discoverPluginAgents(params: {
 
 async function readPluginConfig(options?: SubagentStorageOptions): Promise<PluginConfigSummary> {
   try {
-    const configPath = join(resolveUserHomeDir(options), ".zcode", "cli", "config.json");
+    const configPath = join(resolveZCodeUserRootDir(), "cli", "config.json");
     const raw = await readFile(configPath, "utf-8");
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed)) return { enabledPlugins: {}, suppressedBuiltins: [] };

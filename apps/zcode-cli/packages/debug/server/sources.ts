@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type {
@@ -14,13 +13,16 @@ import type {
   ObservationOptions,
   SourceLoadResult,
 } from "./types.js";
+import {
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 export function defaultLogDir(): string {
-  return join(homedir(), ".zcode", "cli", "log");
+  return join(resolveZCodeUserRootDir(), "cli", "log");
 }
 
 export function defaultDbPath(): string {
-  return join(homedir(), ".zcode", "cli", "db", "db.sqlite");
+  return join(resolveZCodeUserRootDir(), "cli", "db", "db.sqlite");
 }
 
 export async function loadLogs(options: ObservationOptions): Promise<SourceLoadResult<LogRecord>> {

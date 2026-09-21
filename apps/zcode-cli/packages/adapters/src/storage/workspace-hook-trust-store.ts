@@ -12,6 +12,9 @@ import {
   workspaceHookTrustRecordSchema,
   workspaceHookTrustStoreFileSchema,
 } from "@zcode/contracts";
+import {
+  resolveZCodeUserRootDir,
+} from "@zcode/shared/node";
 
 const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
 const DEFAULT_STALE_LOCK_MS = 30_000;
@@ -132,7 +135,7 @@ export async function resolveWorkspaceHookTrustStorePath(
 ): Promise<string> {
   const home = resolve(options.homeDir ?? homedir());
   const userConfigPath = resolve(
-    options.userConfigPath ?? join(home, ".zcode", "cli", "config.json"),
+    options.userConfigPath ?? join(resolveZCodeUserRootDir(), "cli", "config.json"),
   );
   const config = await readUserConfig(userConfigPath);
   const storage = isRecord(config.storage) ? config.storage : {};

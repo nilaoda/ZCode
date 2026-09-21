@@ -4,7 +4,6 @@
 
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { homedir } from "node:os";
 import type {
   CliMcpSource,
   LoadCliMcpFromUserDirectoryRequest,
@@ -18,6 +17,9 @@ import type {
 import type { McpConfigKeyName } from "./types.js";
 import { isRecord, readJsonObject, writeTextAtomic } from "./utils.js";
 import { migrateLegacyCommonMcp } from "./legacy.js";
+import {
+  resolveAgentConfigBaseDir,
+} from "@zcode/shared/node";
 
 // 重新导出类型和函数
 export type { McpConfigKeyName, McpSourceDescriptor } from "./types.js";
@@ -59,10 +61,6 @@ const AGENTS_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   configKeyName: "mcpServers",
 };
 
-function resolveUserHomeDir(): string {
-  const envHome = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
-  return envHome && envHome.length > 0 ? envHome : homedir();
-}
 
 const DIRECTORY_MCP_DESCRIPTORS: readonly DirectoryMcpDescriptor[] = [
   ZCODE_MCP_DESCRIPTOR,
@@ -74,14 +72,15 @@ function buildDirectoryConfigPath(
   scope: Exclude<McpScope, "common">,
   workspacePath?: string,
 ): string {
-  const baseDir = scope === "user" ? resolveUserHomeDir() : workspacePath;
+  const segments =
+    scope === "user" ? descriptor.userConfigDirSegments : descriptor.workspaceConfigDirSegments;
+  // 只有 `.zcode` 目录跟随数据基目录；`.agents` 等跨工具目录留在真实家目录。
+  const baseDir = scope === "user" ? resolveAgentConfigBaseDir(segments) : workspacePath;
   if (!baseDir) {
     throw new Error(
       `Missing workspace path for ${descriptor.directorySource} workspace MCP config`,
     );
   }
-  const segments =
-    scope === "user" ? descriptor.userConfigDirSegments : descriptor.workspaceConfigDirSegments;
   return join(baseDir, ...segments, descriptor.fileName);
 }
 
