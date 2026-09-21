@@ -51,9 +51,23 @@ jobs:
       # 必须按依赖顺序先构建再检查，无法并入根 tsc -b。
       # 缺少这一步时，"新增了 import 但没在 package.json 声明 workspace 依赖"
       # 这类错误要到 desktop/cli 构建阶段才会暴露——曾经就漏过一次。
-      # turbo 的 typecheck 任务声明了 dependsOn: ["^build"]，会自动按序构建依赖。
-      - name: Typecheck CLI workspace
-        run: pnpm --dir apps/zcode-cli run typecheck
+      #
+      # 走 build-desktop-agent-cli.mjs 而不是 `pnpm --dir apps/zcode-cli run typecheck`：
+      #   - apps/zcode-cli 是**独立嵌套 workspace**（自带 pnpm-lock.yaml 与
+      #     pnpm-workspace.yaml），turbo 是它自己的 devDependency，根 install 不装它，
+      #     直接调用会报 `sh: 1: turbo: not found`；
+      #   - 而 CLI 各包本身也在**根 workspace** 里（根 pnpm-workspace.yaml 含
+      #     apps/zcode-cli/packages/*），根 pnpm --filter 就能构建；
+      #   - 该脚本内置有序包清单，复用它可避免在 workflow 里重复维护一份会漂移的列表。
+      #
+      # 代价是要多跑一次 agent 构建（比单纯 tsc 慢），换来的是与 desktop / CLI
+      # 构建链路完全一致的检查面。verify 仅手动触发，这个代价可接受。
+      - name: Build CLI workspace (agent bundle preflight)
+        run: node scripts/build-desktop-agent-cli.mjs
+        env:
+          # 与 build-desktop / build-cli 的构建步骤保持一致：该脚本会物化内置 Provider
+          # 配置，环境取值必须相同，否则这里的检查面与真实构建不等价。
+          ZCODE_ENV: "production"
 
       - name: Typecheck
         if: always()
