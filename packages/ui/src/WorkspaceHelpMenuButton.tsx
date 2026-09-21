@@ -2,6 +2,7 @@ import {
   DesktopCommandIds,
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
   TID_WORKSPACE_HELP_MENU_TRIGGER,
+  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 import {
   ActivityIcon,
@@ -88,22 +89,28 @@ export function WorkspaceHelpMenuButton({
         align="end"
         className="min-w-0 w-max [&_[data-slot=dropdown-menu-item]]:pr-6"
       >
-        <DropdownMenuItem onSelect={helpMenuActions.openProductDocs}>
-          <BookOpenIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={handleOpenCommunity}>
-          <UsersIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.community" })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
-          <MessageSquareIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={openFeatureRequest}>
-          <LightbulbIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
-        </DropdownMenuItem>
+        {/* 本地化发行版：这四项都指向外部站点（文档站 / 用户社群 / 问题上报 / 需求提交），
+            纯内网或离线环境不可用，整组不渲染。production 档位保持原样。 */}
+        {ZCODE_LOCAL_ONLY_BUILD ? null : (
+          <>
+            <DropdownMenuItem onSelect={helpMenuActions.openProductDocs}>
+              <BookOpenIcon className="size-4" />
+              {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleOpenCommunity}>
+              <UsersIcon className="size-4" />
+              {intl.formatMessage({ id: "workspaceHeader.help.community" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
+              <MessageSquareIcon className="size-4" />
+              {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={openFeatureRequest}>
+              <LightbulbIcon className="size-4" />
+              {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
+            </DropdownMenuItem>
+          </>
+        )}
         {/* Windows/Linux 没有原生菜单栏，自绘标题栏箭头菜单也已下线，
             资源管理器只能从这里进；Web 端没有该窗口，不渲染。 */}
         {isDesktop ? (
@@ -116,7 +123,9 @@ export function WorkspaceHelpMenuButton({
               <ActivityIcon className="size-4" />
               {intl.formatMessage({ id: "titleBar.menu.help.resourceManager" })}
             </DropdownMenuItem>
-            {updateMenu.visible ? (
+            {/* 本地化发行版不展示更新入口：自动更新本就不启用（initAutoUpdater 只在
+                production 档位开启），留着只会是一个点了没反应的菜单项。 */}
+            {!ZCODE_LOCAL_ONLY_BUILD && updateMenu.visible ? (
               <DropdownMenuItem
                 disabled={updateMenu.disabled}
                 onSelect={updateMenu.checkForUpdates}

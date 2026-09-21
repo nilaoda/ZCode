@@ -5,6 +5,7 @@ import {
   getDesktopMenuMessage,
   isValidShortcutBinding,
   ZCODE_ENV,
+  ZCODE_LOCAL_ONLY_BUILD,
   ZCODE_PRODUCT_FLAVOR,
   type DesktopCommandId,
   type Locale,
@@ -272,11 +273,17 @@ function buildApplicationMenuTemplate(options: {
               { type: "separator" as const },
             ]
           : []),
-        {
-          label: getLabel(desktopMenuMessageIds.helpWhatsNew),
-          click: () => void options.executeDesktopCommand(DesktopCommandIds.OpenChangelog),
-        },
-        { type: "separator" as const },
+          // 本地化发行版不展示更新日志：该入口指向的更新页依赖外网 feed。
+           ...(!ZCODE_LOCAL_ONLY_BUILD
+             ? [
+                 {
+                   label: getLabel(desktopMenuMessageIds.helpWhatsNew),
+                   click: () =>
+                     void options.executeDesktopCommand(DesktopCommandIds.OpenChangelog),
+                 },
+                 { type: "separator" as const },
+               ]
+             : []),
         ...(isLocalDevelopmentRuntime && stdioTapState.visible
           ? [
               {
@@ -333,10 +340,15 @@ function buildApplicationMenuTemplate(options: {
           click: () => void options.executeDesktopCommand(DesktopCommandIds.OpenResourceManager),
         },
         { type: "separator" as const },
-        {
-          label: getLabel(desktopMenuMessageIds.helpFeedback),
-          click: () => void options.executeDesktopCommand(DesktopCommandIds.OpenFeedback),
-        },
+          // 本地化发行版不展示问题上报：反馈需要上传到外部服务。
+           ...(!ZCODE_LOCAL_ONLY_BUILD
+             ? [
+                 {
+                   label: getLabel(desktopMenuMessageIds.helpFeedback),
+                   click: () => void options.executeDesktopCommand(DesktopCommandIds.OpenFeedback),
+                 },
+               ]
+             : []),
         {
           label: getLabel(desktopMenuMessageIds.helpExportLogs),
           click: () => void options.executeDesktopCommand(DesktopCommandIds.ExportLogs),

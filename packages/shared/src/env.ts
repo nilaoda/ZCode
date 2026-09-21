@@ -57,6 +57,21 @@ export const ZCODE_APP_VERSION_ENV = "ZCODE_APP_VERSION" as const;
 export const ZCODE_LOCAL_ONLY_BUILD: boolean = ZCODE_PRODUCT_FLAVOR === "local";
 
 /**
+ * 产品显示名，供 **renderer** 使用（桌面主进程另有身份表，见下）。
+ *
+ * ⚠️ 这里是 `packages/desktop/scripts/desktop-product-identity.mjs` 里 productName 的
+ * **镜像**。之所以重复一份：那个身份表属于 desktop 包，shared 无法引用；而 renderer
+ * 又需要展示名（例如侧栏个人区的品牌名、托盘之外的 UI 文案）。
+ * 两边必须保持一致 —— 改动 productName 时请同步这里。
+ */
+export const ZCODE_PRODUCT_NAME: string =
+  ZCODE_PRODUCT_FLAVOR === "local"
+    ? "ZCode Local"
+    : ZCODE_PRODUCT_FLAVOR === "preview"
+      ? "ZCode Preview"
+      : "ZCode";
+
+/**
  * 禁用一切**指向产品 Endpoint 的自动请求**（纯内网 / 纯本地发行版用）。
  *
  * 默认安装后不应有任何主动出网行为。仅靠「把本地配置的 revision 钉高」或

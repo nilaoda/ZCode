@@ -3,6 +3,7 @@ import type { Locale, UserInfo } from "@zcode/shared";
 import { memo, useCallback, useEffect, useState } from "react";
 import {
   DesktopCommandIds,
+  ZCODE_PRODUCT_NAME,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_TRIGGER,
   TID_LOGOUT_BUTTON,
@@ -64,18 +65,15 @@ function getSidebarProfileName(user?: UserInfo | null): string {
     return username;
   }
 
-  return "ZCode";
+  return ZCODE_PRODUCT_NAME;
 }
 
-function getSidebarProfileBadge(
-  user: UserInfo | null | undefined,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
-): string {
+function getSidebarProfileBadge(user: UserInfo | null | undefined): string {
   if (user) {
     return getSidebarProfileName(user);
   }
 
-  return formatMessage({ id: "sidebar.profile.notLoggedIn" });
+  return ZCODE_PRODUCT_NAME;
 }
 
 function getAvatarFallbackText(user: UserInfo | null | undefined): string {
@@ -130,7 +128,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
   const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
-  const profileBadge = getSidebarProfileBadge(user, intl.formatMessage);
+  const profileBadge = getSidebarProfileBadge(user);
   const avatarFallbackText = getAvatarFallbackText(user);
   const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";
   const showAuthRestoreLoading = !user && isRestoringOAuthSession;
