@@ -8,9 +8,8 @@ name: Verify
 # 三个检查步骤都带 if: always()，任何一道失败都不会掩盖其余两道的结果。
 
 on:
+  # 所有分支的推送都跑，便于在开 PR 之前就拿到校验结果。
   push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
 
