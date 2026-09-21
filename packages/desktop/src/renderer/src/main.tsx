@@ -26,6 +26,7 @@ import {
   LAUNCH_MARKS_QUERY_KEY,
   type LaunchMarks,
   DEFAULT_LOCALE,
+  ZCODE_PRODUCT_NAME,
 } from "@zcode/shared";
 import type { Locale } from "@zcode/shared";
 import type { IServiceAccessor } from "@zcode/services";
@@ -132,6 +133,14 @@ const initialWorkspaceAbsPath = readStringFlag("initialWorkspacePath");
 const initialWorkspacePurpose = readStringFlag("initialWorkspacePurpose");
 const unavailableWorkspacePath = readStringFlag("unavailableWorkspacePath");
 const windowKind = readStringFlag("windowKind");
+
+// 主窗口创建时没有传 BrowserWindow.title，Electron 会回退到页面 <title>，
+// 而 index.html 里写死的是 "ZCode" —— Windows 任务栏显示的就是它。
+// 这里按产品身份改写，任务栏名称随档位变化（Local 档位显示 "ZCode Local"）。
+// 更新状态窗口是独立小窗，沿用 HTML 固定标题，不参与产品命名。
+if (windowKind !== "update-status") {
+  document.title = ZCODE_PRODUCT_NAME;
+}
 const initialLocaleFlag = readStringFlag("locale");
 const initialLocale: Locale =
   initialLocaleFlag === "zh-CN" || initialLocaleFlag === "en-US"

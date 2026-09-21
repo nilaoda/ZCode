@@ -13,6 +13,7 @@ import {
   resolveModelProviderFamilySpecByProviderId,
   resolveProviderFamilyDomainFromOAuthProvider,
   type OAuthProviderId,
+  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
@@ -223,7 +224,8 @@ export function useModelProviderNavigation({
       },
     ];
 
-    return groups;
+    // 本地化发行版：预设分组是智谱系列（Z.ai / BigModel），只保留「自定义供应商」。
+    return ZCODE_LOCAL_ONLY_BUILD ? groups.filter((group) => group.id !== "preset") : groups;
   }, [
     customProviders,
     codingPlanItems,

@@ -1,3 +1,5 @@
+import { ZCODE_PRODUCT_NAME } from "./env.js";
+
 const ZCODE_PROCESS_PREFIX = "zcode";
 const MAX_PROCESS_NAME_SEGMENT_LENGTH = 24;
 
@@ -49,7 +51,9 @@ export function formatZCodeHostProcessName(label?: string): string {
 
 export function formatZCodeRendererProcessName(windowTitle?: string): string {
   const normalizedTitle = windowTitle?.trim();
-  if (!normalizedTitle || normalizedTitle === "ZCode") {
+  // 主窗口的标题现在随产品档位变化（ZCode / ZCode Preview / ZCode Local），
+  // 但进程名是**内部标识**，必须保持稳定，否则资源管理器里的进程列表会随档位漂移。
+  if (!normalizedTitle || normalizedTitle === "ZCode" || normalizedTitle === ZCODE_PRODUCT_NAME) {
     return joinZCodeProcessName("renderer", "main");
   }
 

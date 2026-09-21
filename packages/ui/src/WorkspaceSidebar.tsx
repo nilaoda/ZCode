@@ -47,7 +47,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Locale, RemoteTarget, UserInfo, ZCodeTaskMeta } from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import {
   TID_CONVERSATION_NEW_TASK,
   TID_CONVERSATION_SECTION,
@@ -1331,21 +1331,24 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
               <CalendarClock className="size-4" />
               {intl.formatMessage({ id: "workspace.openScheduledSettings" })}
             </Button>
-            <Button
-              variant="ghost"
-              onClick={handleOpenPluginStoreMain}
-              data-icon="inline-start"
-              data-testid="plugin-store-sidebar-open"
-              size="lg"
-              aria-pressed={pluginStoreActive}
-              className={cn(
-                "w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground",
-                pluginStoreActive && "bg-selected text-foreground",
-              )}
-            >
-              <Blocks className="size-4" />
-              {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
-            </Button>
+            {/* 本地化发行版：插件市场内容来自远端 marketplace（联网），侧边栏入口隐藏。 */}
+            {ZCODE_LOCAL_ONLY_BUILD ? null : (
+              <Button
+                variant="ghost"
+                onClick={handleOpenPluginStoreMain}
+                data-icon="inline-start"
+                data-testid="plugin-store-sidebar-open"
+                size="lg"
+                aria-pressed={pluginStoreActive}
+                className={cn(
+                  "w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground",
+                  pluginStoreActive && "bg-selected text-foreground",
+                )}
+              >
+                <Blocks className="size-4" />
+                {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
+              </Button>
+            )}
           </div>
 
           <div className="relative flex min-h-0 flex-1 flex-col">
