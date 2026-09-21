@@ -28,7 +28,6 @@ import {
 } from "./oauthProfileSchema.js";
 import { createOAuthProviderAdapters, type OAuthProviderAdapter } from "./providers/index.js";
 import { OAuthCredentialRepo } from "./repo/oauthCredentialRepo.js";
-import { createOAuthRuntimeConfig } from "./runtimeConfig.js";
 import {
   buildDesktopOAuthRedirectUriFromEnv,
   buildZCodeApiUrlFromEnv,
@@ -144,11 +143,8 @@ export class OAuthService implements IOAuthService {
     this.apiClient = dependencies.apiClient;
     this.env = dependencies.env ?? process.env;
 
-    const adapters =
-      dependencies.adapters ??
-      createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
-        apiClient: dependencies.apiClient,
-      });
+    // 本地化版本：外部登录服务已移除，adapters 恒为空数组。
+    const adapters = dependencies.adapters ?? createOAuthProviderAdapters();
 
     for (const adapter of adapters) {
       this.adapters.set(adapter.providerId, adapter);
@@ -1186,8 +1182,6 @@ export function createOAuthService(
 ): OAuthService {
   return new OAuthService(credentialService, {
     ...dependencies,
-    adapters: createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
-      apiClient: dependencies.apiClient,
-    }),
+    adapters: createOAuthProviderAdapters(),
   });
 }

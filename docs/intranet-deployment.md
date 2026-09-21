@@ -1,17 +1,40 @@
 # ZCode 内网部署指南
 
-面向把 ZCode 部署到隔离网络、只接入内网自建模型的场景。改造的完整外部网络行为清单见
+面向把 ZCode 部署到隔离网络、只接入自建本地模型的场景。改造的完整外部网络行为清单见
 [`INTRANET-NETWORK-AUDIT.md`](../INTRANET-NETWORK-AUDIT.md)。
+
+---
+
+## 0. 已移除的能力（本版本默认行为）
+
+**外部登录服务已整体移除**，应用不需要、也不提供任何账号登录。
+
+| 已移除 | 实现位置 | 说明 |
+| --- | --- | --- |
+| OAuth provider（zai / bigmodel） | `packages/services/src/oauth/providers/index.ts` | 工厂恒定返回空数组；`zaiProviderAdapter` / `bigmodelProviderAdapter` / 两个 providerConfig 及 `runtimeConfig` 已删除 |
+| OAuth 401 退出判定中的业务 token 分支 | `oauth/oauthUnauthorizedRequest.ts` | 只保留 ZCode 平台 JWT 判定 |
+| 启动时「无可用 Provider 就强制登录」门禁 | `packages/ui/src/lib/rootStartupGate.ts` | `shouldEnableProviderAvailabilityLoginEntryGuard()` 返回 `false`，冷启动直接进工作台 |
+| UI 登录入口 | `packages/ui/src/Root.tsx` | 不再传入 `onLogin`，登录按钮自动隐藏 |
+| 云端 Provider 与模板 | `config/provider/zcode-builtin.json` | 见 §3.3，内置目录已是纯本地版本 |
+
+**结果**：冷启动直接进入工作台；没有模型时用户到「设置 → 模型供应商 → 新增」自行添加
+本地模型即可，不会被任何登录页拦住。
+
+> 仍未删除（不可达，属后续清理项）：`WelcomeScreen.tsx`、`LoginApiKeyForm.tsx`、
+> `root/useRootOAuthEffects.ts` 等 OAuth 会话恢复钩子，以及 `onLogin` 属性的透传链路。
+> 它们已无任何可达路径，但删除涉及跨组件改动，未在本次一并处理。
 
 ---
 
 ## 1. 改造总览
 
 ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大部分内网适配是配置工作**，
-只有三处需要改代码（本分支已完成）。
+只有少数几处需要改代码（本分支已完成）。
 
 | 能力 | 状态 |
 | --- | --- |
+| **外部登录（OAuth）** | **已整体移除**，应用无需登录 |
+| **内置 Provider 目录** | **已收敛为纯本地**，只能新增自定义 Provider |
 | 产品后端地址 | 环境变量可整体重定向 |
 | 出站代理 / 自签 CA | 环境变量，覆盖 Electron、模型请求、MCP、子进程 |
 | 遥测 / ARMS RUM | **默认关闭**，端点为空即不上报 |
@@ -134,39 +157,27 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 - 同一个 `providerId` / `modelId` 不能同时出现在 `providerModelRules` 与
   `manualProviderModelRules` 中。
 
-### 3.3 只显示内网模型（可选）
+### 3.3 内置目录已是纯本地（默认行为）
 
-默认的内置 Provider 目录 `config/provider/zcode-builtin.json` 包含二十多个公网模型服务
-（OpenAI、Anthropic、DeepSeek、Moonshot、MiniMax、通义、小米、OpenRouter 等）。内网部署
-若希望设置页只出现自建模型，可指向裁剪版目录：
+`config/provider/zcode-builtin.json` 已改造为**只服务本地模型**的版本，无需额外配置：
 
-```bash
-ZCODE_BUILTIN_PROVIDER_CONFIG_FILE=/etc/zcode/provider-builtin.json
-```
+| 已清空 | 原因 |
+| --- | --- |
+| `providerConfigRules.providerRules`（8 条） | 全部是 `account:zai-*` / `account:bigmodel-*` 订阅套餐 Provider，依赖外部登录 |
+| `providerConfigRules.templateRules`（20 条） | zai / bigmodel / OpenAI / Anthropic / DeepSeek / Moonshot / MiniMax / 通义 / 小米 / OpenRouter / opencode 等云端服务模板 |
+| `modelConfigRules.builtinProviderModelRules`（26 条） | 引用已移除的 provider id |
+| `modelConfigRules.templateModelRules`（244 条） | 引用已移除的 template id |
 
-内容用 [`config/provider/zcode-builtin-intranet.example.json`](../config/provider/zcode-builtin-intranet.example.json)
-（一份空的 Provider 目录）：
+**刻意保留** `modelConfigRules` 中的 `modelRules`（84）/ `modelApiRules`（72）/
+`providerSiteRules`（52）：这些是按「模型名 / baseUrl」匹配的能力元数据，其中包含
+`modelMatch: ".*"` 的兜底规则（默认上下文窗口等）。清空它们会连兜底默认值一起丢掉，
+反而让本地模型的能力解析退化。保留的规则不会被云端服务触发，因为对应的 baseUrl 不会出现。
 
-```json
-{
-  "schemaVersion": 1,
-  "revision": 1,
-  "config": {
-    "providerConfigRules": { "templateRules": [], "providerRules": [] },
-    "modelConfigRules": {
-      "modelRules": [], "modelApiRules": [], "providerSiteRules": [],
-      "templateModelRules": [], "builtinProviderModelRules": []
-    }
-  }
-}
-```
+结果：设置页只能新增自定义 Provider，不再出现任何云端供应商。新增入口在
+「设置 → 模型供应商 → 新增」，填任意 `baseUrl` 与协议类型即可（见 3.2）。
 
-> ⚠️ 这是**可选且需自行验证**的步骤。清空内置目录会让所有依赖内置 Provider 的能力
-> （Coding Plan 套餐、Off-Peak、官方 MCP 额度等）一并不可用——这通常是内网部署的预期结果，
-> 但请先在测试环境确认设置页与模型选择入口表现正常。`revision` 是缓存失效用的整数，
-> 内容变更时请递增。
->
-> 内置目录文件受 `decodeZCodeBuiltinRelease` 校验（`scripts/builtin-provider-config.mjs`
+> `revision` 已随内容变更递增（30 → 31）。它是缓存失效计数器，后续修改该文件时必须继续递增。
+> 文件受 `decodeZCodeBuiltinRelease` 校验（`scripts/builtin-provider-config.mjs`
 > 在构建期复用同一校验），字段写错会在构建期直接失败。
 
 ---

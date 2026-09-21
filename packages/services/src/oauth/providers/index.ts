@@ -1,37 +1,16 @@
-import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type ApiClient } from "@zcode/shared";
-import type { OAuthRuntimeConfig } from "../runtimeConfig.js";
-import { BigModelProviderAdapter } from "./bigmodelProviderAdapter.js";
 import type { OAuthProviderAdapter } from "./providerAdapter.js";
-import { ZaiProviderAdapter } from "./zaiProviderAdapter.js";
 
-/** 根据运行时配置创建可用 provider adapter */
-export function createOAuthProviderAdapters(
-  config: OAuthRuntimeConfig,
-  options: { apiClient?: ApiClient } = {},
-): OAuthProviderAdapter[] {
-  const adapters: OAuthProviderAdapter[] = [];
-  const apiClient = options.apiClient;
-  if (!apiClient) {
-    throw new Error(
-      "ApiClient 注入缺失：OAuth provider adapters 必须通过 Providers 传入 apiClient",
-    );
-  }
-
-  for (const providerConfig of config.providers) {
-    switch (providerConfig.id) {
-      case BIGMODEL_PROVIDER_ID:
-        adapters.push(new BigModelProviderAdapter(providerConfig, apiClient));
-        break;
-      case ZAI_PROVIDER_ID:
-        adapters.push(new ZaiProviderAdapter(providerConfig, apiClient));
-        break;
-      default:
-        // 未知 provider 直接忽略，避免单个配置错误拖垮全部登录能力。
-        break;
-    }
-  }
-
-  return adapters;
+/**
+ * OAuth provider adapter 工厂。
+ *
+ * 本地化版本：**外部登录服务已整体移除**，这里恒定返回空数组。
+ *
+ * 不再接受 config / apiClient 参数：既然不存在任何 provider，就不该再要求调用方
+ * 注入凭据与 ApiClient —— 那种"必须传入但永远用不到"的参数会误导后续维护者。
+ * `oauthService` 会拿到 0 个 adapter，所有登录相关链路自然进入空转状态。
+ */
+export function createOAuthProviderAdapters(): OAuthProviderAdapter[] {
+  return [];
 }
 
 export type { OAuthProviderAdapter, OAuthProviderContext } from "./providerAdapter.js";
