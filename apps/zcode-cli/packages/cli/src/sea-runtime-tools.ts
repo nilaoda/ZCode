@@ -2,9 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared/runtime-tool-runtime";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 type CliEnv = Record<string, string | undefined>;
 

@@ -29,9 +29,7 @@ import type {
   AiSdkStreamTextResult,
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 // 生产环境 rollout 目录最多保留的 model-io 会话文件数。超出删最旧。
 const MAX_ROLLOUT_FILES = 3;

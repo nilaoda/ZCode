@@ -11,9 +11,7 @@ import type {
 } from "@zcode/contracts/telemetry";
 import type { ModelStatusSink } from "@zcode/contracts/model";
 import { NoopAgentExecutionTelemetry } from "./agent-trace-runtime.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 type EnvRecord = Record<string, string | undefined>;
 

@@ -20,9 +20,7 @@ import type {
 } from "@zcode/shared";
 import type { IMcpSyncService } from "./mcpSync.js";
 import { checkRemoteSyncDirectoryWriteAccess } from "../remote-sync/remoteSyncWriteAccess.js";
-import {
-  resolveAgentConfigBaseDir,
-} from "@zcode/shared/node";
+import { resolveAgentConfigBaseDir } from "@zcode/shared/node";
 
 type McpConfigKeyName = "mcp.servers" | "mcpServers";
 

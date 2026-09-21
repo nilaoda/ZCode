@@ -547,6 +547,9 @@ importers:
       '@zcode/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@zcode/shared':
+        specifier: workspace:*
+        version: link:../../../../packages/shared
     devDependencies:
       '@types/node':
         specifier: ^24.0.0

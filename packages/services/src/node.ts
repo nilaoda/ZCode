@@ -522,9 +522,7 @@ import {
   ZCODE_ENV,
   buildRuntimeZCodeApiUrl,
 } from "@zcode/shared";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @zcode/services/node 暴露，
 // 防止 browser-safe 根入口把 node:* 依赖带进 renderer。

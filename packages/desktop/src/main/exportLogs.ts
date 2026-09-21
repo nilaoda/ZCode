@@ -26,9 +26,7 @@ import {
 } from "@zcode/services/node";
 import { createAboutSnapshot, formatAboutDetail, readBuildMetadata } from "./about.js";
 import { logger } from "./logger.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 function getZCodeDataDir() {
   return getAppConfigDir();

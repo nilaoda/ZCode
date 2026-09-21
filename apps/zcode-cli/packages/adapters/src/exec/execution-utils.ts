@@ -1,8 +1,6 @@
 import { join } from "node:path";
 import type { ExecutionRequest } from "@zcode/contracts";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 export const DEFAULT_TIMEOUT_MS = 300_000;
 const MS_PER_SECOND = 1_000;

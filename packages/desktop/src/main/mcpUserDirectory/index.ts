@@ -17,9 +17,7 @@ import type {
 import type { McpConfigKeyName } from "./types.js";
 import { isRecord, readJsonObject, writeTextAtomic } from "./utils.js";
 import { migrateLegacyCommonMcp } from "./legacy.js";
-import {
-  resolveAgentConfigBaseDir,
-} from "@zcode/shared/node";
+import { resolveAgentConfigBaseDir } from "@zcode/shared/node";
 
 // 重新导出类型和函数
 export type { McpConfigKeyName, McpSourceDescriptor } from "./types.js";

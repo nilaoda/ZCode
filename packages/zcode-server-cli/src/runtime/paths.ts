@@ -1,9 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
-import {
-  resolveZCodeDataBaseDir,
-} from "@zcode/shared/node";
+import { resolveZCodeDataBaseDir } from "@zcode/shared/node";
 
 export interface ServerLayout {
   readonly dataBaseDir: string;

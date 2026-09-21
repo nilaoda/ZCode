@@ -1,9 +1,7 @@
 import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { getDataBaseDir } from "#src/paths.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 // 32 MiB 足以覆盖常规最近调用，同时避免 64/256 MiB 诊断文件造成 Host 内存峰值。
 const MAX_TRAJECTORY_READ_BYTES = 32 * 1024 * 1024;

@@ -36,9 +36,7 @@ export type {
   LogRetentionScheduleOptions,
   LogRetentionTimer,
 } from "./retention.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 export { DefaultLogRedactor } from "./serialize.js";
 export type { SerializableLogEntry, SerializedLogError } from "./serialize.js";
 

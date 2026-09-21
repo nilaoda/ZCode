@@ -5,7 +5,7 @@ name: Verify
 # 触发方式：**仅手动触发**（Actions 页面 Run workflow）。本仓库不配置任何自动触发器，
 # 不会因为 push 或 PR 自动消耗构建资源。
 #
-# 三个检查步骤都带 if: always()，任何一道失败都不会掩盖其余两道的结果。
+# 每个检查步骤都带 if: always()，任何一道失败都不会掩盖其余几道的结果。
 
 on:
   workflow_dispatch:
@@ -46,7 +46,17 @@ jobs:
         env:
           HUSKY: "0"
 
+      # 根 typecheck 是 `tsc -b <packages/* 列表>`，**不包含 apps/zcode-cli/**。
+      # 而 CLI 各包的 exports 指向 dist（不像 @zcode/shared 导出源码），
+      # 必须按依赖顺序先构建再检查，无法并入根 tsc -b。
+      # 缺少这一步时，"新增了 import 但没在 package.json 声明 workspace 依赖"
+      # 这类错误要到 desktop/cli 构建阶段才会暴露——曾经就漏过一次。
+      # turbo 的 typecheck 任务声明了 dependsOn: ["^build"]，会自动按序构建依赖。
+      - name: Typecheck CLI workspace
+        run: pnpm --dir apps/zcode-cli run typecheck
+
       - name: Typecheck
+        if: always()
         run: pnpm typecheck
 
       - name: Lint
@@ -56,3 +66,4 @@ jobs:
       - name: Architecture check
         if: always()
         run: pnpm architecture:check
+

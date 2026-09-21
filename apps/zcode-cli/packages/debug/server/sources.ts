@@ -13,9 +13,7 @@ import type {
   ObservationOptions,
   SourceLoadResult,
 } from "./types.js";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 export function defaultLogDir(): string {
   return join(resolveZCodeUserRootDir(), "cli", "log");

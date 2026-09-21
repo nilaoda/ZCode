@@ -17,9 +17,7 @@ import {
   WorkflowGraphRecordSchema,
   WorkflowRunSnapshotSchema,
 } from "@zcode/contracts";
-import {
-  resolveZCodeUserRootDir,
-} from "@zcode/shared/node";
+import { resolveZCodeUserRootDir } from "@zcode/shared/node";
 
 export interface NodeWorkflowStoreOptions {
   rootDir?: string;
