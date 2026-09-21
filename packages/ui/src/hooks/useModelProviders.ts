@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
-import type { ProviderSettingsView } from "@zcode/services";
+import type { ProviderModelsResult, ProviderSettingsView } from "@zcode/services";
 import { useServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
 import { useProviderSettingsServiceView } from "@/hooks/useProviderSettingsView.js";
@@ -211,8 +211,18 @@ export function useModelProviders(target: {
     ],
   );
 
-  return {
-    modelProviders: effectiveModelProviders,
+    /**
+     * 通过供应商的 `/models` 接口拉取可用模型列表（设置页「添加模型」用）。
+     * 由 Host 发起：渲染进程直接请求会被 CORS 拦住，且拿不到 API Key。
+     */
+    const listProviderModels = useCallback(
+      async (providerId: string): Promise<ProviderModelsResult> =>
+        providerSettingsService.listProviderModels({ providerId }),
+      [providerSettingsService],
+    );
+
+    return {
+      modelProviders: effectiveModelProviders,
     providerTemplates: providerSettingsView?.providerTemplates ?? [],
     displayOrder: providerOrdering.displayOrder,
     reorderableProviderIds: providerOrdering.reorderableProviderIds,
@@ -231,7 +241,8 @@ export function useModelProviders(target: {
     deleteProvider,
     reorderProviderModels,
     saveDisplayOrder,
-    testModelConnectivity,
-    providerSettingsView,
-  };
-}
+      testModelConnectivity,
+      listProviderModels,
+      providerSettingsView,
+    };
+  }

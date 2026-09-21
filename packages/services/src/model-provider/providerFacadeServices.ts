@@ -1,6 +1,7 @@
 import type { Event } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
 import {
+  isApiKeyAccess,
   type ModelConfigObject,
   type ModelId,
   type ModelSelection,
@@ -17,6 +18,7 @@ import {
   type SavePersonalModelDraftInput,
 } from "@zcode/provider";
 import { createServiceDescriptor } from "../descriptors.js";
+import { fetchProviderModels, type ProviderModelsResult } from "./providerModelListing.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 
@@ -68,6 +70,16 @@ export interface IProviderSettingsService {
   testModelConnectivity(
     input: ProviderSettingsConnectivityRequest,
   ): Promise<ModelConnectivityResult>;
+  /**
+   * 通过供应商的 `/models` 接口拉取其可用模型列表，供设置页「添加模型」时自动发现
+   * 模型 ID。只对 OpenAI / Anthropic 兼容格式有意义，且由 Host 发起 —— 渲染进程
+   * 直接请求会被 CORS 拦住，且需要拿到 API Key。
+   */
+  listProviderModels(input: ProviderSettingsModelsRequest): Promise<ProviderModelsResult>;
+}
+
+export interface ProviderSettingsModelsRequest {
+  readonly providerId: ProviderId;
 }
 
 export const IProviderSettingsService = createServiceDescriptor<IProviderSettingsService>(
@@ -199,15 +211,39 @@ export function createProviderSettingsService(
           },
         };
       }
-      return testConnectivity({
-        workspacePath: input.workspacePath,
-        ...(input.workspaceIdentity ? { workspaceIdentity: input.workspaceIdentity } : {}),
-        providerId: input.providerId,
-        modelId: input.modelId,
-      });
-    },
-  };
-}
+        return testConnectivity({
+          workspacePath: input.workspacePath,
+          ...(input.workspaceIdentity ? { workspaceIdentity: input.workspaceIdentity } : {}),
+          providerId: input.providerId,
+          modelId: input.modelId,
+        });
+      },
+      listProviderModels: async (input) => {
+        await ensureReady();
+        const provider = facade
+          .getView()
+          .providers.find((item) => item.providerId === input.providerId);
+        // 读 effectiveConfig 而不是 personalConfig：内置基线可能提供 baseUrl，
+        // 用户只覆盖了 API Key 或格式，只读 personal 会漏掉这类组合。
+        const api = provider?.effectiveConfig.api;
+        if (!api) {
+          return {
+            ok: false,
+            error: { message: "供应商未配置 API 信息", code: "missing-base-url" },
+          };
+        }
+        const access = provider?.effectiveConfig.access;
+        return fetchProviderModels({
+          apiFormat: api.type,
+          baseUrl: api.baseUrl ?? "",
+          ...(isApiKeyAccess(access) && access.apiKey?.trim()
+            ? { apiKey: access.apiKey.trim() }
+            : {}),
+          ...(api.headers ? { headers: api.headers } : {}),
+        });
+      },
+    };
+  }
 
 export function createModelSelectionService(
   facade: ModelSelectionFacade,

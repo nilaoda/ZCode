@@ -6,9 +6,11 @@ export {
   IProviderSettingsService,
   type ModelSelectionView,
   type ModelSelectionViewInput,
+  type ProviderSettingsModelsRequest,
   type ProviderSettingsProviderView,
   type ProviderSettingsView,
 } from "./model-provider/providerFacadeServices.js";
+export type { ProviderModelsResult } from "./model-provider/providerModelListing.js";
 export {
   createAccountRequestAuthService,
   type IAccountRequestAuthService,

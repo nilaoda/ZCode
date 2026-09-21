@@ -348,6 +348,7 @@ export function ProviderModelsSection({
   providerName,
   providerEnabled = true,
   providerAccess,
+  providerApiFormat,
   models,
   onTestModel,
   onModelCommit,
@@ -361,6 +362,11 @@ export function ProviderModelsSection({
   providerName?: string;
   providerEnabled?: boolean;
   providerAccess?: ProviderConfigObject["access"];
+  /**
+   * 供应商的 API 格式。三种格式都提供 `/models`（OpenAI 系共用 `<baseUrl>/models`，
+   * Anthropic 是 `GET <baseUrl>/models`），因此只要有格式就启用「获取模型」。
+   */
+  providerApiFormat?: ProviderApiType;
   models: ProviderSettingsFormModel[];
   onTestModel?: (model: string) => Promise<ModelConnectivityResult>;
   onModelCommit: (
@@ -572,6 +578,14 @@ export function ProviderModelsSection({
           saving={addSaving}
           modelConfigResolutionPending={editor.pending}
           modelDefaultsLoaded={editor.defaultsLoaded}
+          // 三种 API 格式都提供 /models，所以只要有格式就允许自动发现模型。
+          // 请求由 Host 发起（渲染进程直连会被 CORS 拦住，也拿不到 API Key）。
+          onListProviderModels={
+            providerApiFormat
+              ? () => providerSettingsService.listProviderModels({ providerId })
+              : undefined
+          }
+          existingModelIds={models.map((item) => item.modelId)}
           onModelIdBlur={() => {
             void editor.flush().catch(() => undefined);
           }}
