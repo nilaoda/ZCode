@@ -44,6 +44,19 @@ export const ZCODE_PRODUCT_FLAVOR = normalizeZCodeProductFlavor(
 export const ZCODE_APP_VERSION_ENV = "ZCODE_APP_VERSION" as const;
 
 /**
+ * 是否为「纯本地化发行版」构建（Local 产品身份）。
+ *
+ * 供 **renderer** 使用：渲染进程读不到 Host 进程的环境变量，但产品身份是编译期
+ * 经 `__ZCODE_PRODUCT_FLAVOR__` 注入到 renderer bundle 的，因此这是 UI 侧唯一
+ * 可靠的档位信号。
+ *
+ * 语义：隐藏所有「联网才能用」的入口 —— 插件市场、套餐升级（内嵌 webview）、
+ * 以及智谱相关的供应商配置入口。运行时的出网开关见
+ * `ZCODE_DISABLE_PRODUCT_ENDPOINT`。
+ */
+export const ZCODE_LOCAL_ONLY_BUILD: boolean = ZCODE_PRODUCT_FLAVOR === "local";
+
+/**
  * 禁用一切**指向产品 Endpoint 的自动请求**（纯内网 / 纯本地发行版用）。
  *
  * 默认安装后不应有任何主动出网行为。仅靠「把本地配置的 revision 钉高」或

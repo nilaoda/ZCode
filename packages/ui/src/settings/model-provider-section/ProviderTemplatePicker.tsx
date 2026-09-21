@@ -34,17 +34,15 @@ export function ProviderTemplatePicker({
   const { intl, locale } = useZCodeIntl();
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const customLabel = intl.formatMessage({ id: "settings.modelProvider.newProviderName" });
-  const zhipuIds = ["bigmodel-api", "zai-api", "bigmodel-standard-api", "zai-standard-api"];
+  // 本地化发行版只允许自定义供应商：内置模板目录已清空（config/provider/zcode-builtin.json
+  // 的 templateRules 为 []），且不再按智谱分组。
+  // 原实现把模板拆成 "zhipu" / "other" 两组，而渲染端不跳过空分组 —— 模板清空后
+  // 仍会渲染出一个空的「智谱」分组标题。这里只保留单一分组，自定义入口与该组内的
+  // 模板（若有）同区展示。
   const groups = [
     {
-      id: "zhipu",
-      templates: zhipuIds.flatMap((id) =>
-        templates.filter((template) => template.templateId === id),
-      ),
-    },
-    {
       id: "other",
-      templates: templates.filter((template) => !zhipuIds.includes(template.templateId)),
+      templates,
     },
   ] as const;
   const createWithFeedback = async (create: () => Promise<void>) => {

@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { TID_PLUGIN_STORE_BROWSE } from "@zcode/shared";
+import { TID_PLUGIN_STORE_BROWSE, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import type { ZCodePluginInfo, ZCodePluginScope, ZCodePluginUserConfigOption } from "@zcode/shared";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import {
@@ -807,7 +807,9 @@ function PluginList({
               </ControlHintTooltip>
             ) : null}
             <SettingsResourceHeaderActions onRefresh={() => void refreshAfterPluginChange()} />
-            {configScope === "user" ? (
+            {/* 本地化发行版：插件市场入口（浏览 + 添加市场）内容来自远端 marketplace，
+                整块不渲染。导航函数 requestPluginStoreOpen 另有同名拦截，两处都做。 */}
+            {configScope === "user" && !ZCODE_LOCAL_ONLY_BUILD ? (
               <>
                 <Button
                   type="button"

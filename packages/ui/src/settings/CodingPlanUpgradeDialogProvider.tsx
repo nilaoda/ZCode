@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import {
   CodingPlanUpgradeDialog,
   type CodingPlanUpgradeDialogTarget,
@@ -47,6 +48,10 @@ export function CodingPlanUpgradeDialogProvider({ children }: { children: ReactN
       nextTarget: CodingPlanUpgradeDialogTarget,
       observation?: { signal: AbortSignal; onResult: (opened: boolean) => void },
     ) => {
+      // 本地化发行版：升级弹窗是内嵌 webview（联网），在 Provider 层统一拒绝，
+      // 覆盖侧栏 / 用量页 / 会话面板 / composer / 供应商卡片等全部调用点。
+      // 用运行时判断而不是删空函数体，避免下方状态与回调变成不可达代码。
+      if (ZCODE_LOCAL_ONLY_BUILD) return false;
       // 所有入口统一守卫；查询完成后不自动重放之前被拦截的点击。
       const { status, entryPlanList } = inventoryRef.current;
       if (observation?.signal.aborted) return false;
