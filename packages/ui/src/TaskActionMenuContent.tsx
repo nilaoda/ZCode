@@ -1,4 +1,7 @@
-import { TID_V4_TASK_OPEN_IN_SPLIT } from "@zcode/shared";
+import {
+  TID_V4_TASK_OPEN_IN_SPLIT,
+  ZCODE_LOCAL_ONLY_BUILD,
+} from "@zcode/shared";
 
 interface TaskActionMenuItemProps {
   children: React.ReactNode;
@@ -196,16 +199,21 @@ export function TaskActionMenuContent({
           </Item>
         </>
       ) : null}
-      {onOpenTaskFeedback ? (
+      {/* 本地化发行版：反馈会上传到外部服务，入口整块隐藏。 */}
+      {ZCODE_LOCAL_ONLY_BUILD ? null : (
         <>
-          <Separator />
-          <Item disabled={taskTargetActionsDisabled} onSelect={onOpenTaskFeedback}>
-            {/* 任务菜单之前只有复制日志/路径，用户遇到任务问题时还要手动回到反馈中心。
-                “反馈问题”不是任务管理动作，单独放在菜单底部更符合兜底求助入口的层级。 */}
-            {intl.formatMessage({ id: "taskList.feedback" })}
-          </Item>
+        {onOpenTaskFeedback ? (
+          <>
+            <Separator />
+            <Item disabled={taskTargetActionsDisabled} onSelect={onOpenTaskFeedback}>
+              {/* 任务菜单之前只有复制日志/路径，用户遇到任务问题时还要手动回到反馈中心。
+                  “反馈问题”不是任务管理动作，单独放在菜单底部更符合兜底求助入口的层级。 */}
+              {intl.formatMessage({ id: "taskList.feedback" })}
+            </Item>
+          </>
+        ) : null}
         </>
-      ) : null}
+      )}
     </>
   );
 }

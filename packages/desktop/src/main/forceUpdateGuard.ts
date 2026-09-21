@@ -3,6 +3,7 @@ import {
   ZCODE_VERSION,
   buildZCodeEndpointUrls,
   getForceUpdateMinimalVersionFromConfig,
+  isProductEndpointDisabled,
   resolveForceUpdateRequirement,
   type ForceUpdateRequirement,
   type Locale,
@@ -75,6 +76,12 @@ async function fetchRemoteForceUpdateConfig(
   endpointOrigin?: string,
   fetchRemoteConfig?: () => Promise<unknown>,
 ): Promise<unknown> {
+  // 本地化 / 纯内网发行版：禁用一切指向产品 Endpoint 的请求。
+  // 这条走 Electron net，不经过 NodeApiClient（后者在客户端层已有兜底拦截），
+  // 因此必须在自己的入口单独拦。抛错会走既有的离线降级路径，不影响启动。
+  if (isProductEndpointDisabled()) {
+    throw new Error("已禁用指向 ZCode 产品 Endpoint 的请求（ZCODE_DISABLE_PRODUCT_ENDPOINT）");
+  }
   if (fetchRemoteConfig) {
     return fetchRemoteConfig();
   }

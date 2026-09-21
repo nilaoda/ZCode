@@ -1,6 +1,7 @@
 import {
   buildZCodeEndpointUrls,
   buildZCodeSourceHeadersFromContext,
+  isProductEndpointDisabled,
   ZCODE_ENV,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
 } from "@zcode/shared";
@@ -82,8 +83,16 @@ export function createElectronDesktopContextPromptConfigFetcher(options: {
   deviceMid: string;
   resolveEndpointOrigin: () => Promise<string>;
 }): (signal: AbortSignal) => Promise<unknown> {
-  return async (signal) => {
-    const { net } = await import("electron");
+    return async (signal) => {
+      // 本地化 / 纯内网发行版：禁用一切指向产品 Endpoint 的请求。
+      // 这条走 Electron net 而不是 NodeApiClient（后者在客户端层已有兜底拦截），
+      // 因此必须在自己的入口单独拦，否则会漏。
+      if (isProductEndpointDisabled()) {
+        throw new Error(
+          "已禁用指向 ZCode 产品 Endpoint 的请求（ZCODE_DISABLE_PRODUCT_ENDPOINT）",
+        );
+      }
+      const { net } = await import("electron");
     const endpointOrigin = await options.resolveEndpointOrigin();
     const url = new URL(`${buildZCodeEndpointUrls(endpointOrigin).origin}/api/v1/client/configs`);
     url.searchParams.set("app_version", options.appVersion);

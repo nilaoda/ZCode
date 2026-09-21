@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/context-menu.js";
 import { TaskGroupColorDot } from "@/workspace-grouped-tasks/colors.js";
 import type { TaskGroupMenuItem } from "@/workspace-grouped-tasks/types.js";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 
 export function GroupedTaskContextMenuContent({
   task,
@@ -173,10 +174,15 @@ export function GroupedTaskContextMenuContent({
       >
         {intl.formatMessage({ id: "appHeader.copySessionId" })}
       </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onSelect={onOpenTaskFeedback}>
-        {intl.formatMessage({ id: "taskList.feedback" })}
-      </ContextMenuItem>
+      {/* 本地化发行版：反馈会上传到外部服务，入口整块隐藏。 */}
+      {ZCODE_LOCAL_ONLY_BUILD ? null : (
+        <>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onOpenTaskFeedback}>
+          {intl.formatMessage({ id: "taskList.feedback" })}
+        </ContextMenuItem>
+        </>
+      )}
     </ContextMenuContent>
   );
 }

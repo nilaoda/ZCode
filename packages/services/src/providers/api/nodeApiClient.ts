@@ -1,6 +1,7 @@
 import {
   ApiError,
   DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+  isProductEndpointDisabled,
   normalizeZCodeEndpointOrigin,
   rewriteZCodeEndpointUrl,
   type ApiClient,
@@ -90,9 +91,18 @@ export class NodeApiClient implements ApiClient {
     const endpointOrigin = this.resolveZCodeEndpointOrigin
       ? await this.resolveZCodeEndpointOrigin()
       : undefined;
-    const activeEndpointOrigin = endpointOrigin ?? DEFAULT_ZCODE_ENDPOINT_ORIGIN;
-    const requestInput = rewriteZCodeEndpointUrl(input, activeEndpointOrigin);
-    const url = resolveUrl(requestInput);
+      const activeEndpointOrigin = endpointOrigin ?? DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+      const requestInput = rewriteZCodeEndpointUrl(input, activeEndpointOrigin);
+      // 兜底拦截：本地化 / 纯内网发行版禁用一切指向产品 Endpoint 的请求。
+      // 放在客户端这一层而不是各个调用方，是为了覆盖所有上传路径（反馈上报、会话分享、
+      // 计费、额度、团队组织等），避免漏掉某一条。模型请求走各自 Provider 的 baseUrl，
+      // 不经过这里，因此不受影响。
+      if (isProductEndpointDisabled() && isRequestForEndpoint(requestInput, activeEndpointOrigin)) {
+        throw new Error(
+          "已禁用指向 ZCode 产品 Endpoint 的请求（ZCODE_DISABLE_PRODUCT_ENDPOINT）",
+        );
+      }
+      const url = resolveUrl(requestInput);
     const method = resolveMethod(init);
     const timeoutMs = init?.timeoutMs;
     const controller = timeoutMs && timeoutMs > 0 ? new AbortController() : null;
