@@ -1,0 +1,139 @@
+name: Build Desktop
+
+# 构建 Windows / macOS 桌面安装包。
+#
+# 触发方式：
+#   1. 手动运行（Actions 页面 Run workflow），可选填 release_tag 直接把产物挂到 Release。
+#   2. 推送 v* tag 时自动构建并发布到同名 Release。
+#
+# 产物：
+#   - 每次运行都上传 Actions artifacts，保留 1 天。
+#   - 有 tag 时额外上传到 GitHub Release。
+#
+# 签名：默认产出**未签名**包。仓库的 electron-builder 配置要求显式
+# ZCODE_ENABLE_MAC_SIGN=1 且提供 APPLE_SIGNING_IDENTITY / CSC_NAME 才启用
+# macOS 签名，并已内置 notarize: false。需要签名时再补证书与 secrets。
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 发布到该 tag 的 GitHub Release（留空则只上传 artifacts）
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24.14.0"
+  PNPM_VERSION: "10.33.2"
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            os: mac
+            arch: arm64
+            # macOS arm64 runner。
+            runner: macos-latest
+            artifact_glob: |
+              packages/desktop/dist/*.dmg
+              packages/desktop/dist/*.zip
+              packages/desktop/dist/*.blockmap
+              packages/desktop/dist/*.yml
+          - label: macOS x64
+            os: mac
+            arch: x64
+            # Intel runner。若该镜像不可用，改成 macos-15-intel，
+            # 或删除本条目（arm64 包在 Apple Silicon 上仍可运行）。
+            runner: macos-13
+            artifact_glob: |
+              packages/desktop/dist/*.dmg
+              packages/desktop/dist/*.zip
+              packages/desktop/dist/*.blockmap
+              packages/desktop/dist/*.yml
+          - label: Windows x64
+            os: win
+            arch: x64
+            runner: windows-latest
+            artifact_glob: |
+              packages/desktop/dist/*.exe
+              packages/desktop/dist/*.blockmap
+              packages/desktop/dist/*.yml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # release 版本号与构建元数据需要完整 tag 历史。
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          # CI 不需要 git hooks。
+          HUSKY: "0"
+
+      - name: Bundle desktop (${{ matrix.os }}/${{ matrix.arch }})
+        # bundle.mjs 会依次执行 prepare:runtime-assets、pnpm build、
+        # electron-builder、运行时依赖校验与体积审计。
+        run: pnpm bundle:desktop -- --os ${{ matrix.os }} --arch ${{ matrix.arch }}
+        env:
+          # 桌面安装包不依赖 mock-cdn 远程资源；跳过可显著缩短构建时间。
+          ZCODE_SKIP_REMOTE_ASSETS: "1"
+          # 未签名构建：禁止 electron-builder 自动发现本机签名身份。
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-desktop-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          files=$(ls packages/desktop/dist/*.dmg packages/desktop/dist/*.zip \
+                     packages/desktop/dist/*.exe packages/desktop/dist/*.blockmap \
+                     packages/desktop/dist/*.yml 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "::error::未找到桌面安装包产物"
+            exit 1
+          fi
+          # 矩阵中多个 job 会并发进入；创建失败说明别的 job 已经建好，忽略即可。
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes || true
+          gh release upload "$TAG" $files --clobber
+          echo "已上传到 Release $TAG："
+          echo "$files"

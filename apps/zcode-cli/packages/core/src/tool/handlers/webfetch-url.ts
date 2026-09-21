@@ -6,6 +6,7 @@ import {
 import { MAX_WEBFETCH_URL_CHARS } from "./webfetch-constants.js";
 import { isWebFetchIpLiteral } from "./webfetch-egress-guard.js";
 import { webFetchError } from "./webfetch-errors.js";
+import { isWebFetchPrivateTargetAllowed } from "./webfetch-private-egress.js";
 
 export function normalizeWebFetchUrl(value: string): URL {
   if (value.length > MAX_WEBFETCH_URL_CHARS) {
@@ -36,7 +37,9 @@ export function normalizeWebFetchUrl(value: string): URL {
   }
 
   // provider-visible WebFetch 约定会把模型传入的 HTTP URL 升级成 HTTPS 后再出站请求。
-  if (url.protocol === "http:") {
+  // 内网服务通常只监听明文 HTTP，对被 ZCODE_WEBFETCH_ALLOW_PRIVATE_HOSTS 显式放行的
+  // 目标保留原协议，否则放行后仍会因强制升级而连不上。
+  if (url.protocol === "http:" && !isWebFetchPrivateTargetAllowed(url.hostname)) {
     url.protocol = "https:";
   }
 
@@ -106,6 +109,12 @@ function getBlockedHostReason(
   const hostname = normalizeHostname(url.hostname);
   if (hostname.length === 0) {
     return { hostname, message: "URL must include a hostname" };
+  }
+
+  // 显式放行的内网目标跳过全部私网形态过滤。未配置放行列表时恒为 false，
+  // 公网目标与默认部署行为不受影响。
+  if (isWebFetchPrivateTargetAllowed(hostname)) {
+    return undefined;
   }
 
   // URL 层只负责稳定的形态过滤；WebFetch 的本地字面量 IP egress

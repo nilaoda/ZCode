@@ -1,0 +1,155 @@
+name: Build CLI
+
+# 构建 Windows / macOS 命令行运行包（zcode）。
+#
+# 触发方式：
+#   1. 手动运行（Actions 页面 Run workflow），可选填 release_tag 直接把产物挂到 Release。
+#   2. 推送 v* tag 时自动构建并发布到同名 Release。
+#
+# 产物：
+#   - 每次运行都上传 Actions artifacts，保留 1 天。
+#   - 有 tag 时额外上传到 GitHub Release。
+#
+# 关于平台差异：
+#   scripts/build-zcode.mjs 按**宿主平台**打包（无 --os/--arch 参数），运行包内含
+#   TUI 原生库与 node-pty 等平台相关产物，因此必须在各目标平台的原生 runner 上分别构建。
+#   上游把运行包命名为 `zcode-<version>.tar.gz`（不带平台标识），多平台产物同名会在
+#   Release 里互相覆盖。这里在构建后重命名为 `zcode-<version>-<platform>.tar.gz`
+#   并重新生成对应的 sha256 文件；运行包内部的 install.sh / latest.json 仍保持原样，
+#   单平台自建镜像可直接使用。
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 发布到该 tag 的 GitHub Release（留空则只上传 artifacts）
+        required: false
+        type: string
+      dist_base_url:
+        description: install.sh 使用的下载根地址
+        required: false
+        default: ""
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24.14.0"
+  PNPM_VERSION: "10.33.2"
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            platform: macos-arm64
+            runner: macos-latest
+          - label: macOS x64
+            platform: macos-x64
+            # Intel runner。若该镜像不可用，改成 macos-15-intel 或删除本条目。
+            runner: macos-13
+          - label: Windows x64
+            platform: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: "0"
+
+      - name: Build CLI runtime package
+        shell: bash
+        env:
+          # build-zcode.mjs 要求 --base-url 或 ZCODE_DIST_BASE_URL，二者必居其一。
+          ZCODE_DIST_BASE_URL: ${{ inputs.dist_base_url || format('https://github.com/{0}/releases/latest/download/', github.repository) }}
+        run: |
+          set -euo pipefail
+          node scripts/build-zcode.mjs \
+            --base-url "$ZCODE_DIST_BASE_URL" \
+            --out-dir "dist/zcode-${{ matrix.platform }}"
+
+      - name: Rename tarball for this platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+          import { createHash } from "node:crypto";
+          import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
+          import { basename, join } from "node:path";
+
+          const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const platform = process.argv[1];
+          const releaseDir = join("dist", `zcode-${platform}`, "releases", version);
+          const original = join(releaseDir, `zcode-${version}.tar.gz`);
+          if (!existsSync(original)) {
+            console.error(`未找到运行包: ${original}`);
+            process.exit(1);
+          }
+          const renamed = join(releaseDir, `zcode-${version}-${platform}.tar.gz`);
+          renameSync(original, renamed);
+          const hash = createHash("sha256").update(readFileSync(renamed)).digest("hex");
+          writeFileSync(
+            join(releaseDir, `sha256-${platform}.txt`),
+            `${hash}  ${basename(renamed)}\n`,
+          );
+          console.log(`[cli] ${basename(renamed)}`);
+          console.log(`[cli] sha256 ${hash}`);
+          ' "${{ matrix.platform }}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-cli-${{ matrix.platform }}
+          path: dist/zcode-${{ matrix.platform }}/**
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          release_dir="dist/zcode-${{ matrix.platform }}/releases/${version}"
+          files=$(ls "$release_dir"/*.tar.gz "$release_dir"/sha256-*.txt 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "::error::未找到 CLI 运行包产物"
+            exit 1
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes || true
+          gh release upload "$TAG" $files --clobber
+          echo "已上传到 Release $TAG："
+          echo "$files"

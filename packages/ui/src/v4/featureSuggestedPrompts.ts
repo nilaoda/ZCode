@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- 推荐语料按表格逐条维护，集中放置便于对照审核。 */
+import { buildOfficialPluginAssetsBaseUrl } from "@zcode/shared";
 import finderIcon from "@/onboarding/assets/finder.png";
 import terminalIcon from "@/onboarding/assets/terminal.png";
 import feishuIcon from "@/onboarding/assets/feishu.png";
@@ -8,7 +9,9 @@ import presentationsIcon from "@/assets/plugin-icons/presentations.png";
 import spreadsheetsIcon from "@/assets/plugin-icons/spreadsheets.png";
 import type { DraftSuggestedPromptItem } from "@/v4/draftSuggestedPromptItems.js";
 
-const ASSETS = "https://cdn-zcode.z.ai/zcode/official-plugin/assets";
+// 插件展示资源基址由 ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL 派生；未配置时为线上 CDN，
+// 内网部署指向自建镜像。加载失败时图标按既有逻辑降级。
+const ASSETS = buildOfficialPluginAssetsBaseUrl();
 
 type FeatureRecommendedPrompt = DraftSuggestedPromptItem & {
   mode: "office" | "coding";

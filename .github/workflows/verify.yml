@@ -1,0 +1,62 @@
+name: Verify
+
+# 类型检查、Lint 与架构检查。
+#
+# 这是本仓库唯一的自动化校验入口：本地开发环境不保证能跑完整的
+# typecheck / lint，因此把仓库约定的三道门禁放到 CI 上执行。
+#
+# 三个检查步骤都带 if: always()，任何一道失败都不会掩盖其余两道的结果。
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24.14.0"
+  PNPM_VERSION: "10.33.2"
+
+jobs:
+  verify:
+    name: typecheck / lint / architecture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: "0"
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        if: always()
+        run: pnpm lint
+
+      - name: Architecture check
+        if: always()
+        run: pnpm architecture:check

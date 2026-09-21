@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "config": {
+    "providerOrder": ["intranet-vllm", "intranet-ollama"],
+    "providerConfigRules": [
+      {
+        "providerId": "intranet-vllm",
+        "providerName": "intranet-vllm",
+        "enabled": true,
+        "config": {
+          "group": "standard-personal",
+          "access": {
+            "type": "api-key",
+            "apiKey": "REPLACE_WITH_LOCAL_TOKEN"
+          },
+          "api": {
+            "type": "openai-chat-completions",
+            "baseUrl": "http://10.0.0.5:8000/v1"
+          },
+          "personalModelIds": ["qwen3-coder-30b"],
+          "modelOrder": ["qwen3-coder-30b"]
+        }
+      },
+      {
+        "providerId": "intranet-ollama",
+        "providerName": "intranet-ollama",
+        "enabled": true,
+        "config": {
+          "group": "standard-personal",
+          "access": {
+            "type": "api-key",
+            "apiKey": "ollama"
+          },
+          "api": {
+            "type": "openai-chat-completions",
+            "baseUrl": "http://10.0.0.6:11434/v1"
+          },
+          "personalModelIds": ["qwen3-coder:30b"],
+          "modelOrder": ["qwen3-coder:30b"]
+        }
+      }
+    ],
+    "modelConfigRules": {
+      "providerModelRules": [
+        {
+          "providerId": "intranet-vllm",
+          "modelId": "qwen3-coder-30b",
+          "config": {
+            "enabled": true
+          }
+        },
+        {
+          "providerId": "intranet-ollama",
+          "modelId": "qwen3-coder:30b",
+          "config": {
+            "enabled": true
+          }
+        }
+      ],
+      "manualProviderModelRules": []
+    }
+  }
+}

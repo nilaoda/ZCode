@@ -1,5 +1,6 @@
 import ipaddr from "ipaddr.js";
 import { webFetchError } from "./webfetch-errors.js";
+import { isWebFetchPrivateTargetAllowed } from "./webfetch-private-egress.js";
 
 const IPV4_BENCHMARK_NETWORK = ipaddr.parseCIDR("198.18.0.0/15") as [ipaddr.IPv4, number];
 const SPECIAL_USE_IPV6_NETWORKS: Array<[ipaddr.IPv6, number]> = [
@@ -13,6 +14,10 @@ const DNS64_WELL_KNOWN_PREFIX = [0x00, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0]
 
 export function assertWebFetchLiteralEgress(url: URL): void {
   const hostname = normalizeHostname(url.hostname);
+
+  // 内网部署可通过 ZCODE_WEBFETCH_ALLOW_PRIVATE_HOSTS 显式放行可信目标。
+  // 未配置时该判定恒为 false，行为与改造前完全一致。
+  if (isWebFetchPrivateTargetAllowed(hostname)) return;
 
   if (isLocalHostname(hostname)) {
     throw webFetchError("EgressBlocked", "WebFetch cannot access private or local hostnames", {

@@ -19,6 +19,9 @@ export function pickProductEndpointEnv(
     "ZAI_BUSINESS_BASE_URL",
     "ZAI_OAUTH_CLIENT_ID",
     "ZAI_OAUTH_APP_ID",
+    // 官方插件 CDN 基址同样是「构建期注入的公开链接」，并入同一条注入通道，
+    // 使 renderer 与 Node 两侧拿到同一份取值，无需各自新增构建配置。
+    "ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL",
   ];
   return Object.fromEntries(
     keys.flatMap((key) => (env[key]?.trim() ? [[key, env[key]!.trim()]] : [])),
