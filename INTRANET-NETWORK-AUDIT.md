@@ -3,6 +3,11 @@
 > 排查范围：全仓 `packages/`、`apps/zcode-cli/`、`scripts/`、`config/`（排除 `node_modules`、`dist`）。
 > 目标：识别所有出网行为，评估改造为「纯内网 + 本地模型」所需改动。
 
+> **改造进度**：本报告第 9 节列出的 P1 项与 P0 中的配置类改动已落地，
+> 操作步骤见 [`docs/intranet-deployment.md`](docs/intranet-deployment.md)。
+> 尚未解决的只有 P0 的插件资产 vendoring（需要从官方发行包提取，仓库内无法完成）。
+> 本报告保留为**排查时的原始记录**，文中的事实性错误已在对应位置就地更正。
+
 ---
 
 ## 0. 结论摘要
@@ -221,11 +226,21 @@ export function assertWebFetchLiteralEgress(url: URL): void {
 缺失  packages/node-repl-host              缺失  packages/plugin-creator-plugin
 ```
 
-实际只存在 `apps/zcode-cli/packages/browser-use-plugin` 和 `.../superpowers-plugin`。
+实际存在的插件目录只有三个：`apps/zcode-cli/packages/browser-use-plugin` 与
+`apps/zcode-cli/packages/node-repl-host`（两者都有 `.zcode-plugin/plugin.json`，可被 seed），
+以及 `apps/zcode-cli/packages/superpowers-plugin`（只有 LICENSE，且不在官方定义清单内）。
+其余 `packages/*-plugin` 全部不存在。
 
 而 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 默认启用：`browser-use`、`image-search`、`documents`、`pdf`、`presentations`、`spreadsheets`、`node-repl-host`、`skill-creator`、`plugin-creator`、`zcode-guide`。
 
-缺失时的行为（`bundled-plugins.ts:113`）：打一条 `ZCODE_PLUGIN_SEED_INCOMPLETE` 警告后**静默降级**，插件不会被 seed。
+**缺失时的实际行为（本报告初版此处有误，已更正）**：`resolveFilesystemSeedSource()`
+（`bundled-plugins.ts:294`）用 `flatMap` 加 `if (!rootPath) return []` 把找不到 seed 根的
+插件**静默跳过** —— 既不 seed，也**不产生任何告警**。`ZCODE_PLUGIN_SEED_INCOMPLETE`
+（`bundled-plugins.ts:113`）只在**根目录存在但缺 `requiredSeedPaths` 所列文件**时才触发，
+即"插件包在、但内容残缺"的场景。
+
+所以真正的问题不是启动噪音，而是：这些定义仍会被 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`
+与商店 listing 回退当成「存在且默认启用」，在设置页留下永远无法加载的条目。
 
 → **内网部署必须解决**：这些插件既不在仓库里，又拿不到官方 CDN，商店会是空的。可选方案：
 1. 从官方发行包（DMG / zcode tar.gz）中提取插件资产，vendored 进内网仓库；
