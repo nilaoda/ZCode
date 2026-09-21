@@ -176,7 +176,24 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 结果：设置页只能新增自定义 Provider，不再出现任何云端供应商。新增入口在
 「设置 → 模型供应商 → 新增」，填任意 `baseUrl` 与协议类型即可（见 3.2）。
 
-> `revision` 已随内容变更递增（30 → 31）。它是缓存失效计数器，后续修改该文件时必须继续递增。
+> ⚠️ **`revision` 被刻意钉在 `999999`，不要改小。**
+>
+> 内置目录不是静态的：应用运行时会从产品 Endpoint 拉取官方内置配置并按
+> **revision 高者胜**的规则覆盖本地（`selectReleaseCandidate` 取较高 revision；
+> `applyRemoteRelease` 在 `release.revision < current.revision` 时判为 `stale` 并跳过）。
+> 若本地 revision 只比官方大一点（例如官方 30、本地 31），官方下次发布就会
+> **把清空后的纯本地目录覆盖回完整的云端供应商列表**——即使机器能上外网，
+> 你的"纯本地"也会在一小时内失效。
+>
+> 钉到远高于官方发布序列的值后，远端永远被判为 `stale`，本地目录稳定生效。
+>
+> 相关代码：`packages/provider-node/src/zcode-builtin-provider-config-source.ts`
+> （`selectReleaseCandidate` / `applyRemoteRelease`）、
+> `packages/provider-node/src/zcode-builtin-remote-synchronizer.ts`（默认 1 小时一次）。
+> 这条刷新在桌面端是**活跃的**（`EndpointScopedZCodeBuiltinSource` 内部会创建同步器）。
+
+> `revision` 是缓存失效计数器，后续修改该文件时**必须保持 999999**；
+> 若确实需要本地更新，改成更大的值即可，但不要降到官方量级。
 > 文件受 `decodeZCodeBuiltinRelease` 校验（`scripts/builtin-provider-config.mjs`
 > 在构建期复用同一校验），字段写错会在构建期直接失败。
 
@@ -422,3 +439,41 @@ sh install.sh
 - [ ] 代理环境下 MCP server 与 Bash 工具能正常出网
 - [ ] 与官方版共存时：两版可同时启动，且业务数据互不覆盖（见 8.1）
 - [ ] 确认本版本数据落在 `~/.zcode-local-home/.zcode`，而非官方版的 `~/.zcode`
+
+---
+
+## 10. 运行时残留出网清单（终审）
+
+改造完成后再全仓扫一遍，**运行时仍会主动发起**的出网只剩下面两条。二者都指向
+「产品 Endpoint」（默认 `https://zcode.z.ai`），都可被 `ZCODE_BASE_URL` /
+`ZCODE_ENDPOINT_ORIGIN` 重定向到内网地址。
+
+| # | 行为 | 触发时机 | 端点 | 可否配置 | 失败行为 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 拉取动态工作流客户端配置 | **应用启动**（每次会话一次，1 小时缓存） | `<端点>/api/v1/client/configs` | ✅ `ZCODE_BASE_URL` | fail-closed，功能按禁用处理，不报错 |
+| 2 | 刷新内置 Provider 目录 | 后台，最多 1 小时一次（失败按指数退避，上限 1 小时） | `<端点>/…`（内置 release） | ✅ `ZCODE_BASE_URL` | 保留本地 bundled 目录 |
+
+触发点：`packages/ui/src/Root.tsx:187`（`useDynamicWorkflowAvailabilityLoader`）、
+`packages/provider-node/src/endpoint-scoped-zcode-builtin-source.ts:94`。
+
+**其余曾经的出网路径都已失效或改为按需：**
+
+| 行为 | 现状 |
+| --- | --- |
+| OAuth 授权 / token 交换与刷新 | 已整体移除（见第 0 节），无可达路径 |
+| 遥测 / ARMS RUM / OTLP | 端点默认空且**不内嵌进产物**，解析器无端点即返回 `undefined`，不启动 exporter |
+| 自动更新 | Local 身份不启用（`enabled: flavor === "production"`） |
+| 登录态相关的计费 / 团队 / 额度 / 反馈 | 需要账号，无登录即不可达 |
+| Off-Peak 客户端配置 | 仅打开「设置 → 自动化」页面时触发，非启动路径 |
+| 插件商店目录与资源 | 仅打开商店时按需加载，基址可用 `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL` 指向内网镜像 |
+| WebSearch | 走模型原生能力，无独立端点 |
+| Node 运行时下载 | 构建期行为，`ZCODE_NODE_DIST_MIRROR` 可换源 |
+
+**已确认无出网但仍需留意的一处硬编码**：
+`packages/ui/src/components/ai-elements/persona.tsx` 里 6 个 `.riv` 动画写死了
+`https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/...`。该组件**当前没有任何地方引用**
+（全仓 64 处 `ai-elements/*` 引用中不含 `persona`），所以不会加载。但若将来接上这个组件，
+在无外网环境会加载失败。届时需要把 `.riv` 资源本地化。
+
+**结论**：把 `ZCODE_BASE_URL` 指向内网地址（或直接指向一个不可达地址）后，
+运行时不再有任何主动外网连接。
