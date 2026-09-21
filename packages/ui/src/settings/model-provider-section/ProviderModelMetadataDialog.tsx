@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Loader2Icon, Pencil, RefreshCwIcon } from "lucide-react";
+import { Loader2Icon, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -12,13 +12,16 @@ import {
 import { Input } from "@/components/ui/input.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { ModelConfigObject } from "@zcode/provider";
-import type { ProviderModelsResult } from "@zcode/services";
 import type {
   ProviderModelDraftValues,
   ProviderModelDraftCommitResult,
 } from "@/settings/model-provider-section/ProviderModelMetadata.js";
 import { ProviderModelInputModalityOptions } from "@/settings/model-provider-section/ProviderModelModalityOptions.js";
 import { BooleanModelOption } from "@/settings/model-provider-section/ProviderModelMetadataFields.js";
+import {
+  ProviderModelIdField,
+  type ListProviderModels,
+} from "@/settings/model-provider-section/ProviderModelIdField.js";
 import {
   ModelSettingsGroup,
   ProviderModelReasoningSettings,
@@ -32,7 +35,6 @@ import {
   ModelConfigRestoreButton,
 } from "@/settings/model-provider-section/ProviderModelMetadataDialogActions.js";
 import { modelEditorControlStyle } from "@/settings/model-provider-section/modelEditorControlStyle.js";
-import { cn } from "@/components/lib/utils.js";
 import {
   ModelConfigHelp,
   ModelConfigInputLabel,
@@ -85,7 +87,7 @@ export function ProviderModelMetadataDialog({
    * 传 undefined 表示不提供该能力（由调用方按 API 格式判断）—— 弹窗本身不感知
    * 格式，避免把「哪些格式支持 /models」的知识散到 UI 层。
    */
-  onListProviderModels?: () => Promise<ProviderModelsResult>;
+  onListProviderModels?: ListProviderModels;
   /** 已添加的模型 ID，用于从候选列表里排除，避免重复添加。 */
   existingModelIds?: readonly string[];
   saving?: boolean;
@@ -111,46 +113,6 @@ export function ProviderModelMetadataDialog({
   // 编辑态仍保留上下文窗口自动聚焦和选中，方便直接修改已有模型配置。
   const shouldFocusModelIdInput = mode === "add";
   const shouldFocusContextWindowInput = mode === "edit";
-
-  // ---- 模型 ID 自动发现 ----
-  // 只在调用方提供了 onListProviderModels 时可用（调用方按 API 格式决定）。
-  // 弹窗本身不感知格式，避免把「哪些格式支持 /models」的知识散到 UI 层。
-  const [discoveredModels, setDiscoveredModels] = useState<string[]>([]);
-  const [modelListState, setModelListState] = useState<"idle" | "loading" | "error">("idle");
-  const [modelListError, setModelListError] = useState<string | undefined>(undefined);
-  const [modelListNotice, setModelListNotice] = useState<string | undefined>(undefined);
-  const canDiscoverModels = Boolean(onListProviderModels) && !modelIdReadOnly;
-  const handleDiscoverModels = async () => {
-    if (!onListProviderModels || modelListState === "loading") return;
-    setModelListState("loading");
-    setModelListError(undefined);
-    setModelListNotice(undefined);
-    try {
-      const result = await onListProviderModels();
-      if (!result.ok) {
-        setDiscoveredModels([]);
-        setModelListState("error");
-        setModelListError(result.error.message);
-        return;
-      }
-      // 排除已添加的与当前已填写的，避免用户重复添加同一个 ID。
-      const taken = new Set(existingModelIds ?? []);
-      const current = draft.idValue.trim();
-      const candidates = result.models.filter((id) => !taken.has(id) && id !== current);
-      setDiscoveredModels(candidates);
-      setModelListState("idle");
-      // 接口返回了模型但全被过滤掉时，给一句说明，否则点按钮像没反应。
-      if (candidates.length === 0) {
-        setModelListNotice(
-          intl.formatMessage({ id: "settings.modelProvider.fetchModelsAllAdded" }),
-        );
-      }
-    } catch (error) {
-      setDiscoveredModels([]);
-      setModelListState("error");
-      setModelListError(error instanceof Error ? error.message : String(error));
-    }
-  };
 
   const addModelConfigResolutionPending = smart && modelConfigResolutionPending;
   const compositionActiveRef = useRef(false);
@@ -227,85 +189,19 @@ export function ProviderModelMetadataDialog({
         >
           <ModelSettingsGroup group="basic">
             <div data-model-identity-row="true" className="flex flex-col gap-4">
-              <div className="min-w-0 flex-1">
-                <label className="mb-1 block text-ui-base text-foreground-subtle">
-                  {intl.formatMessage({ id: "settings.modelProvider.modelId" })}
-                </label>
-                <div className="relative">
-                  <Input
-                    {...TECHNICAL_INPUT_ATTRIBUTES}
-                    type="text"
-                    autoFocus={shouldFocusModelIdInput}
-                    size="lg"
-                    className={cn(
-                      "font-mono",
-                      canDiscoverModels && "pr-10",
-                      modelEditorControlStyle(false),
-                    )}
-                    readOnly={modelIdReadOnly}
-                    value={draft.idValue}
-                    placeholder={intl.formatMessage({
-                      id: "settings.modelProvider.modelId",
-                    })}
-                    onChange={(event) => {
-                      onDraftChange({ idValue: event.target.value });
-                    }}
-                    onBlur={onModelIdBlur}
-                    onCompositionStart={handleCompositionStart}
-                    onCompositionEnd={handleCompositionEnd}
-                    onKeyDown={handleTechnicalInputKeyDown}
-                  />
-                  {/* 只在调用方提供了 onListProviderModels 时出现（按 API 格式决定）。
-                      按钮同时承担「拉取」与「刷新」；输入框始终可手输，列表只是候选。 */}
-                  {canDiscoverModels ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2"
-                      aria-label={intl.formatMessage({
-                        id: "settings.modelProvider.fetchModels",
-                      })}
-                      title={intl.formatMessage({
-                        id: "settings.modelProvider.fetchModels",
-                      })}
-                      disabled={modelListState === "loading" || saving}
-                      onClick={() => void handleDiscoverModels()}
-                    >
-                      {modelListState === "loading" ? (
-                        <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <RefreshCwIcon className="size-3.5" aria-hidden="true" />
-                      )}
-                    </Button>
-                  ) : null}
-                </div>
-                {discoveredModels.length > 0 ? (
-                  <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border bg-surface-raised p-1">
-                    {discoveredModels.map((id) => (
-                      <li key={id}>
-                        <button
-                          type="button"
-                          className="w-full truncate rounded px-2 py-1 text-left font-mono text-ui-base text-foreground hover:bg-hover"
-                          onClick={() => {
-                            onDraftChange({ idValue: id });
-                            setDiscoveredModels([]);
-                            setModelListNotice(undefined);
-                          }}
-                        >
-                          {id}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {modelListError ? (
-                  <p className="mt-1 text-ui-base text-destructive">{modelListError}</p>
-                ) : null}
-                {modelListNotice ? (
-                  <p className="mt-1 text-ui-base text-foreground-subtle">{modelListNotice}</p>
-                ) : null}
-              </div>
+              <ProviderModelIdField
+                value={draft.idValue}
+                readOnly={modelIdReadOnly}
+                autoFocus={shouldFocusModelIdInput}
+                saving={saving}
+                existingModelIds={existingModelIds}
+                onListProviderModels={onListProviderModels}
+                onChange={(idValue) => onDraftChange({ idValue })}
+                onBlur={onModelIdBlur}
+                onKeyDown={handleTechnicalInputKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+              />
             </div>
           </ModelSettingsGroup>
           <ModelSettingsGroup group="tokens">

@@ -232,9 +232,17 @@ export function createProviderSettingsService(
             error: { message: "供应商未配置 API 信息", code: "missing-base-url" },
           };
         }
+        // 格式决定鉴权头（Bearer vs x-api-key），缺失时不能猜 —— 猜错会变成静默的 401。
+        const apiFormat = api.type;
+        if (!apiFormat) {
+          return {
+            ok: false,
+            error: { message: "供应商未配置 API 格式", code: "unsupported-format" },
+          };
+        }
         const access = provider?.effectiveConfig.access;
         return fetchProviderModels({
-          apiFormat: api.type,
+          apiFormat,
           baseUrl: api.baseUrl ?? "",
           ...(isApiKeyAccess(access) && access.apiKey?.trim()
             ? { apiKey: access.apiKey.trim() }
