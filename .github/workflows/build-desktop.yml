@@ -54,8 +54,6 @@ jobs:
             artifact_glob: |
               packages/desktop/dist/*.dmg
               packages/desktop/dist/*.zip
-              packages/desktop/dist/*.blockmap
-              packages/desktop/dist/*.yml
           - label: macOS x64
             os: mac
             arch: x64
@@ -65,8 +63,6 @@ jobs:
             artifact_glob: |
               packages/desktop/dist/*.dmg
               packages/desktop/dist/*.zip
-              packages/desktop/dist/*.blockmap
-              packages/desktop/dist/*.yml
           - label: Windows x64
             os: win
             arch: x64
@@ -84,8 +80,6 @@ jobs:
             runner: windows-2022
             artifact_glob: |
               packages/desktop/dist/*.exe
-              packages/desktop/dist/*.blockmap
-              packages/desktop/dist/*.yml
 
     steps:
       - name: Checkout
@@ -155,12 +149,17 @@ jobs:
           # 文件名从空格处拆开，得到一堆不存在的路径（zsh 报 no matches found，
           # bash 则把 "dist/ZCode" 和 "Local-..." 当两个文件传给 gh）。
           # 这里用 NUL 分隔读入数组，逐项加引号展开。
+          # 刻意不发布 *.blockmap 与 *.yml：
+          # blockmap 是 electron-builder 的差分更新索引，*.yml 是配套更新元数据，
+          # 二者只服务自动更新。而 Local 身份不启用自动更新
+          # （index.ts 的 initAutoUpdater 只在 flavor === "production" 时启用），
+          # 所以对本发行版它们是纯废重量。
+          # 只发布 dmg（安装包）、zip（macOS 便携版）、exe（NSIS 安装程序）。
           files=()
           while IFS= read -r -d '' path; do
             files+=("$path")
           done < <(find packages/desktop/dist -maxdepth 1 -type f \
-            \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' \
-               -o -name '*.blockmap' -o -name '*.yml' \) -print0)
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' \) -print0)
 
           if [ "${#files[@]}" -eq 0 ]; then
             echo "::error::未找到桌面安装包产物"
