@@ -458,8 +458,28 @@ sh install.sh
 
 `ZCODE_DISABLE_PRODUCT_ENDPOINT` 是本次改造新增的开关
 （`packages/shared/src/env.ts`），语义是「禁用一切指向产品 Endpoint 的自动请求」。
-它**不影响**用户主动触发的动作（反馈提交、会话分享、MCP OAuth 等），
-也不影响模型请求（模型走各自 Provider 的 `baseUrl`）。
+
+**它不影响模型请求** —— 模型走各自 Provider 的 `baseUrl`，不经过产品 Endpoint。
+**它会连同用户主动触发的上传一起拦下**（反馈上报、会话分享等）—— 这些数据本来
+就要传到 z.ai / bigmodel，屏蔽它们正是本开关的目的；对应的 UI 入口也已在
+Local 档位隐藏，避免用户点了才失败。
+
+### 10.1b 客户端层兜底拦截
+
+除上面两条外，还有一条**覆盖全部上传路径**的兜底：`NodeApiClient.request`
+（`packages/services/src/providers/api/nodeApiClient.ts`）在请求目标等于产品端点
+origin 时直接抛错。反馈上报、会话分享、计费、额度、团队组织等全部走这个客户端，
+因此在客户端层拦一次即可全覆盖，不会漏掉某条调用链。
+
+排查时发现**两处绕过该客户端**的独立请求，已各自单独拦：
+
+| 位置 | 用途 |
+| --- | --- |
+| `packages/desktop/src/main/desktopContextPromptRollout.ts` | 用 Electron `net.request` 拉 `/api/v1/client/configs` |
+| `packages/desktop/src/main/forceUpdateGuard.ts` | 用 Electron `net.request` 拉强更配置（抛错走既有离线降级，不影响启动） |
+
+新增此类直连请求时，记得同步加门禁 —— 客户端层的拦截盖不到它们。
+
 
 **为什么必须真正关掉请求、而不是只让结果失效**：内置目录的优先级规则是
 「revision 高者胜」（`selectReleaseCandidate`）。把本地 revision 钉到 999999
