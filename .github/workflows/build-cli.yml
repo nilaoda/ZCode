@@ -88,6 +88,9 @@ jobs:
       - name: Build CLI runtime package
         shell: bash
         env:
+          # 必须显式指定生产环境。运行包内含 web 产物（packages/web 由 vite 构建），
+          # 其 ZCODE_ENV 未设置时回退为 test，会把测试后端与测试 endpoint 打进发行包。
+          ZCODE_ENV: "production"
           # build-zcode.mjs 要求 --base-url 或 ZCODE_DIST_BASE_URL，二者必居其一。
           ZCODE_DIST_BASE_URL: ${{ inputs.dist_base_url || format('https://github.com/{0}/releases/latest/download/', github.repository) }}
         run: |

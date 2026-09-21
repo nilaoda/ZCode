@@ -101,6 +101,13 @@ jobs:
         # electron-builder、运行时依赖校验与体积审计。
         run: pnpm bundle:desktop -- --os ${{ matrix.os }} --arch ${{ matrix.arch }}
         env:
+          # 必须显式指定生产环境。未设置时 ZCODE_ENV 回退为 test，会导致：
+          #   1. 产品身份变成 Preview（productName "ZCode Preview"、appId 加 .preview）
+          #   2. 产物文件名被加上 _TEST 后缀
+          #   3. 包内指向测试后端
+          # electron-builder.config.js 用 builtinProviderConfig.environment 覆盖 ZCODE_ENV，
+          # 而后者默认也是 test，所以不注入就拿不到正式包。
+          ZCODE_ENV: "production"
           # 桌面安装包不依赖 mock-cdn 远程资源；跳过可显著缩短构建时间。
           ZCODE_SKIP_REMOTE_ASSETS: "1"
           # 未签名构建：禁止 electron-builder 自动发现本机签名身份。
