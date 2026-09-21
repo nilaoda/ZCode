@@ -1,0 +1,14 @@
+name: Placeholder
+
+# 占位工作流：仅用于让 Actions 页面出现 "Run workflow" 按钮。
+# 真实的构建与发布流水线见 build-desktop.yml / build-cli.yml。
+on:
+  workflow_dispatch:
+
+jobs:
+  placeholder:
+    name: Placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "ZCode Actions is alive."
