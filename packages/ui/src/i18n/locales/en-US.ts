@@ -3352,6 +3352,9 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.presetDescription":
     "Built-in Z.ai and BigModel providers with OAuth-assisted configuration.",
   "settings.modelProvider.presetEmpty": "Not synced yet. Complete OAuth login first.",
+  "settings.modelProvider.noProviders": "No providers yet",
+  "settings.modelProvider.noProvidersHint":
+    "Use Add provider in the top-right to create a custom provider.",
   "settings.modelProvider.customTitle": "Custom providers",
   "settings.modelProvider.refresh": "Refresh",
   "settings.modelProvider.reorderProvider": "Drag to reorder provider",

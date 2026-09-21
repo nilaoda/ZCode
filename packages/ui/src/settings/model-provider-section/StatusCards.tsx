@@ -114,6 +114,33 @@ export function ModelProviderLoadingCard({ loadingLabel }: { loadingLabel: strin
   );
 }
 
+/**
+ * 「还没有任何供应商」的空态。
+ *
+ * 与 loading 卡片区分开：未选中不等于加载中 —— 本地化发行版没有预设分组，
+ * 用户尚未添加自定义供应商时左侧栏没有任何可选项，此处若渲染 loading 会一直转圈。
+ */
+export function ModelProviderEmptyCard({
+  titleId,
+  messageId,
+}: {
+  titleId: string;
+  messageId: string;
+}) {
+  const { intl } = useZCodeIntl();
+
+  return (
+    <div className="bg-background/50 rounded-2xl p-3">
+      <div className="text-ui-lg font-semibold text-foreground">
+        {intl.formatMessage({ id: titleId })}
+      </div>
+      <div className="mt-1 text-ui-base text-foreground-subtle">
+        {intl.formatMessage({ id: messageId })}
+      </div>
+    </div>
+  );
+}
+
 export function PresetProviderPlaceholderCard({
   displayName,
   messageId = "settings.modelProvider.presetEmpty",

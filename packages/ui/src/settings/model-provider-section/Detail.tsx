@@ -27,6 +27,7 @@ import {
 } from "./constants.js";
 import { InlineEditableProviderCard } from "./InlineEditableProviderCard.js";
 import {
+  ModelProviderEmptyCard,
   ModelProviderLoadingCard,
   PresetProviderPlaceholderCard,
   CodingPlanStatusPanel,
@@ -391,7 +392,18 @@ export function ModelProviderSectionDetail({
   }, [selectedItemKey]);
 
   if (!selectedNavItem) {
-    return <ModelProviderLoadingCard loadingLabel={loadingLabel} />;
+    // 「未选中」不等于「加载中」：本地化发行版去掉了预设分组，用户尚未添加自定义供应商时
+    // 左侧栏没有任何可选项。此前这里无条件渲染 loading 卡片，页面会一直转圈。
+    if (presetLoading) {
+      return <ModelProviderLoadingCard loadingLabel={loadingLabel} />;
+    }
+
+    return (
+      <ModelProviderEmptyCard
+        titleId="settings.modelProvider.noProviders"
+        messageId="settings.modelProvider.noProvidersHint"
+      />
+    );
   }
 
   if (selectedNavItem.type === "preset") {

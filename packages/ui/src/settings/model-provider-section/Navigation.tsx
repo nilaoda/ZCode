@@ -25,6 +25,7 @@ import {
   isStartPlanModelProviderId,
   TID_MODEL_PROVIDER_NAV_ITEM,
   testId,
+  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 import { useCallback, useMemo, type KeyboardEvent } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
@@ -387,7 +388,9 @@ export function ModelProviderSectionNavigation({
     <aside className="px-1.5 py-3 md:py-2 md:px-2">
       <div className="flex min-h-0 flex-col gap-3 max-md:gap-1">
         {navigationGroups
-          .filter((group) => group.id !== "custom" || group.items.length > 0)
+          // 本地化发行版没有预设分组；此时若再隐藏空的「自定义供应商」分组，左栏会整列空白，
+          // 用户不知道供应商会出现在哪里。故本地档位始终保留该分组标题。
+          .filter((group) => ZCODE_LOCAL_ONLY_BUILD || group.id !== "custom" || group.items.length > 0)
           .map((group) => (
             <div key={group.id} className="flex flex-col gap-2 max-md:gap-1">
               <div className="flex h-7 items-center justify-between px-2 py-1 max-md:hidden">
