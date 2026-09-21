@@ -150,15 +150,25 @@ jobs:
           TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
-          files=$(ls packages/desktop/dist/*.dmg packages/desktop/dist/*.zip \
-                     packages/desktop/dist/*.exe packages/desktop/dist/*.blockmap \
-                     packages/desktop/dist/*.yml 2>/dev/null || true)
-          if [ -z "$files" ]; then
+          # 产物名含空格（"ZCode Local-3.14.0-mac-arm64.dmg"）。不能用
+          # `files=$(ls ...)` 再展开不带引号的 $files —— word splitting 会把
+          # 文件名从空格处拆开，得到一堆不存在的路径（zsh 报 no matches found，
+          # bash 则把 "dist/ZCode" 和 "Local-..." 当两个文件传给 gh）。
+          # 这里用 NUL 分隔读入数组，逐项加引号展开。
+          files=()
+          while IFS= read -r -d '' path; do
+            files+=("$path")
+          done < <(find packages/desktop/dist -maxdepth 1 -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' \
+               -o -name '*.blockmap' -o -name '*.yml' \) -print0)
+
+          if [ "${#files[@]}" -eq 0 ]; then
             echo "::error::未找到桌面安装包产物"
             exit 1
           fi
+
           # 矩阵中多个 job 会并发进入；创建失败说明别的 job 已经建好，忽略即可。
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes || true
-          gh release upload "$TAG" $files --clobber
-          echo "已上传到 Release $TAG："
-          echo "$files"
+          gh release upload "$TAG" "${files[@]}" --clobber
+          printf '已上传到 Release %s：\n' "$TAG"
+          printf '  %s\n' "${files[@]}"

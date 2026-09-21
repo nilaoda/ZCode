@@ -148,12 +148,20 @@ jobs:
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
           release_dir="dist/zcode-${{ matrix.platform }}/releases/${version}"
-          files=$(ls "$release_dir"/*.tar.gz "$release_dir"/sha256-*.txt 2>/dev/null || true)
-          if [ -z "$files" ]; then
+          # 与 build-desktop 同样的处理：用 NUL 分隔读入数组，避免文件名含空格时
+          # 被 word splitting 拆开（当前 CLI 产物名无空格，但这里是同一类隐患）。
+          files=()
+          while IFS= read -r -d '' path; do
+            files+=("$path")
+          done < <(find "$release_dir" -maxdepth 1 -type f \
+            \( -name '*.tar.gz' -o -name 'sha256-*.txt' \) -print0)
+
+          if [ "${#files[@]}" -eq 0 ]; then
             echo "::error::未找到 CLI 运行包产物"
             exit 1
           fi
+
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes || true
-          gh release upload "$TAG" $files --clobber
-          echo "已上传到 Release $TAG："
-          echo "$files"
+          gh release upload "$TAG" "${files[@]}" --clobber
+          printf '已上传到 Release %s：\n' "$TAG"
+          printf '  %s\n' "${files[@]}"
