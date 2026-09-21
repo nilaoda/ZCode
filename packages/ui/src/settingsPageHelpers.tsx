@@ -8,7 +8,6 @@ import type {
 import {
   TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH,
   TID_SETTINGS_NATIVE_SEARCH_SWITCH,
-  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 import { useState, useCallback, useEffect } from "react";
 import type { IPlatformService } from "@zcode/shared";
@@ -55,8 +54,6 @@ export function GeneralSectionContent({
   closeToTrayOnWindows,
   keepAwakeWhileRunning = false,
   desktopChromiumHardwareAccelerationEnabled = true,
-  receivePreviewUpdates,
-  autoDownloadAndInstallUpdates,
   dataBaseDir,
   terminalInheritSystemProfile = true,
   terminalFontFamily = "",
@@ -97,8 +94,6 @@ export function GeneralSectionContent({
   onCloseToTrayOnWindowsChange,
   onKeepAwakeWhileRunningChange = async () => {},
   onDesktopChromiumHardwareAccelerationChange = async () => {},
-  onReceivePreviewUpdatesChange,
-  onAutoDownloadAndInstallUpdatesChange,
   onMessageStreamShowReasoningChange,
   onMessageStreamShowTodosChange,
   onToolGroupingExploreEnabledChange,
@@ -117,8 +112,6 @@ export function GeneralSectionContent({
   closeToTrayOnWindows: boolean;
   keepAwakeWhileRunning?: boolean;
   desktopChromiumHardwareAccelerationEnabled?: boolean;
-  receivePreviewUpdates: boolean;
-  autoDownloadAndInstallUpdates: boolean;
   dataBaseDir: string;
   terminalInheritSystemProfile: boolean;
   terminalFontFamily: string;
@@ -160,8 +153,6 @@ export function GeneralSectionContent({
   onCloseToTrayOnWindowsChange: (enabled: boolean) => Promise<void>;
   onKeepAwakeWhileRunningChange?: (enabled: boolean) => Promise<void>;
   onDesktopChromiumHardwareAccelerationChange?: (enabled: boolean) => Promise<void>;
-  onReceivePreviewUpdatesChange: (enabled: boolean) => Promise<void>;
-  onAutoDownloadAndInstallUpdatesChange: (enabled: boolean) => Promise<void>;
   onMessageStreamShowReasoningChange: (enabled: boolean) => Promise<void>;
   onMessageStreamShowTodosChange: (enabled: boolean) => Promise<void>;
   onToolGroupingExploreEnabledChange: (enabled: boolean) => Promise<void>;
@@ -575,46 +566,6 @@ export function GeneralSectionContent({
                 />
               }
             />
-            {/* 本地化发行版不启用自动更新（initAutoUpdater 只在 production 档位开启），
-                这两个开关点了不会有效果，整块隐藏。 */}
-            {ZCODE_LOCAL_ONLY_BUILD ? null : (
-              <>
-                <SettingsRow
-                  label={intl.formatMessage({ id: "settings.receivePreviewUpdates" })}
-                  description={intl.formatMessage({
-                    id: "settings.receivePreviewUpdatesDescription",
-                  })}
-                  control={
-                    <Switch
-                      aria-label={intl.formatMessage({ id: "settings.receivePreviewUpdates" })}
-                      checked={receivePreviewUpdates}
-                      onCheckedChange={(checked) => {
-                        void onReceivePreviewUpdatesChange(checked);
-                      }}
-                    />
-                  }
-                />
-                <SettingsRow
-                  label={intl.formatMessage({
-                    id: "settings.autoDownloadAndInstallUpdates",
-                  })}
-                  description={intl.formatMessage({
-                    id: "settings.autoDownloadAndInstallUpdatesDescription",
-                  })}
-                  control={
-                    <Switch
-                      aria-label={intl.formatMessage({
-                        id: "settings.autoDownloadAndInstallUpdates",
-                      })}
-                      checked={autoDownloadAndInstallUpdates}
-                      onCheckedChange={(checked) => {
-                        void onAutoDownloadAndInstallUpdatesChange(checked);
-                      }}
-                    />
-                  }
-                />
-              </>
-            )}
           </>
         ) : null}
         <SettingsRow

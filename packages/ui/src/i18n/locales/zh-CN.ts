@@ -1773,12 +1773,6 @@ const zhCN: Record<string, string> = {
     "关闭后可规避部分显卡或驱动导致的白屏、闪退、渲染异常。修改后需重启应用生效。",
   "settings.desktopChromiumHardwareAccelerationSavedHint":
     "Chrome 硬件加速设置已保存，重启应用后生效",
-  "settings.receivePreviewUpdates": "接受提前收到预览版更新",
-  "settings.receivePreviewUpdatesDescription":
-    "开启后将最快、提前体验新功能和改进版本，关闭后将随着版本发布节奏获得版本推送更新。",
-  "settings.autoDownloadAndInstallUpdates": "自动下载并安装更新",
-  "settings.autoDownloadAndInstallUpdatesDescription":
-    "开启后检测到更新会自动开始下载；下载完成后，如有任务正在运行，重启更新前仍会要求确认。",
   "settings.notification": "任务通知",
   "settings.notificationDescription": "任务完成、失败或需要确认时发送桌面通知。",
   "settings.notificationSound": "通知声音",
