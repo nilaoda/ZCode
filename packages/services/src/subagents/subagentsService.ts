@@ -390,7 +390,12 @@ async function discoverPluginAgents(params: {
 
 async function readPluginConfig(options?: SubagentStorageOptions): Promise<PluginConfigSummary> {
   try {
-    const configPath = join(resolveZCodeUserRootDir(), "cli", "config.json");
+    // 保留 SubagentStorageOptions.homeDir 注入缝：显式指定时压过环境变量。
+    const configPath = join(
+      resolveZCodeUserRootDir(process.env, options?.homeDir),
+      "cli",
+      "config.json",
+    );
     const raw = await readFile(configPath, "utf-8");
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed)) return { enabledPlugins: {}, suppressedBuiltins: [] };

@@ -29,6 +29,16 @@ export const ZCODE_DATA_BASE_DIR_ENV = "ZCODE_DATA_BASE_DIR";
 
 type EnvLike = Record<string, string | undefined>;
 
+/**
+ * 桌面实例自己的 home 覆盖。
+ *
+ * 独立桌面实例（e2e / 多开调试）会设置它，让 `app.setPath("home")` 指向临时目录。
+ * `settingService` 原先单独支持它，其它 `.zcode` 路径却不支持，导致同一实例的
+ * 设置与其它数据落在两处。这里统一收口，使该实例的所有 `.zcode` 路径保持一致。
+ * 未设置时对生产行为零影响。
+ */
+export const ZCODE_DESKTOP_HOME_DIR_ENV = "ZCODE_DESKTOP_HOME_DIR";
+
 /** ZCode 自己的配置目录名。只有它跟随数据基目录；`.claude` / `.agents` / `.codex` 不跟随。 */
 export const ZCODE_CONFIG_DIR_NAME = ".zcode";
 
@@ -38,9 +48,24 @@ export function resolveUserHomeDir(env: EnvLike = process.env): string {
   return envHome && envHome.length > 0 ? envHome : homedir();
 }
 
-/** 解析数据基目录（`<基目录>/.zcode` 中的「基目录」）。 */
-export function resolveZCodeDataBaseDir(env: EnvLike = process.env): string {
-  return env[ZCODE_DATA_BASE_DIR_ENV]?.trim() || resolveUserHomeDir(env);
+/**
+ * 解析数据基目录（`<基目录>/.zcode` 中的「基目录」）。
+ *
+ * 优先级：显式 `homeDirOverride` > `ZCODE_DATA_BASE_DIR` > `ZCODE_DESKTOP_HOME_DIR` > 家目录。
+ *
+ * `homeDirOverride` 放最前是为了保留 `resolveUserHomeDir(options)` 原有的注入语义
+ * —— 调用方显式指定时应当压过环境变量。生产路径不会传它。
+ */
+export function resolveZCodeDataBaseDir(
+  env: EnvLike = process.env,
+  homeDirOverride?: string,
+): string {
+  return (
+    homeDirOverride?.trim() ||
+    env[ZCODE_DATA_BASE_DIR_ENV]?.trim() ||
+    env[ZCODE_DESKTOP_HOME_DIR_ENV]?.trim() ||
+    resolveUserHomeDir(env)
+  );
 }
 
 /**
@@ -48,8 +73,11 @@ export function resolveZCodeDataBaseDir(env: EnvLike = process.env): string {
  *
  * 未设置自定义数据基目录时结果就是 `~/.zcode`，与改造前完全一致。
  */
-export function resolveZCodeUserRootDir(env: EnvLike = process.env): string {
-  return join(resolveZCodeDataBaseDir(env), ZCODE_CONFIG_DIR_NAME);
+export function resolveZCodeUserRootDir(
+  env: EnvLike = process.env,
+  homeDirOverride?: string,
+): string {
+  return join(resolveZCodeDataBaseDir(env, homeDirOverride), ZCODE_CONFIG_DIR_NAME);
 }
 
 /**

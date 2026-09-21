@@ -53,7 +53,8 @@ async function readUserCliConfig(
 ): Promise<Record<string, unknown>> {
   try {
     const raw = await readFile(
-      join(resolveZCodeUserRootDir(), "cli", "config.json"),
+      // 保留 SubagentStorageOptions.homeDir 注入缝：显式指定时压过环境变量。
+      join(resolveZCodeUserRootDir(process.env, options?.homeDir), "cli", "config.json"),
       "utf8",
     );
     const parsed = JSON.parse(raw) as unknown;

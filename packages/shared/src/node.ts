@@ -8,6 +8,7 @@ export { scanOfficialPluginCacheRoots } from "./node/officialPluginCache.js";
 export {
   ZCODE_CONFIG_DIR_NAME,
   ZCODE_DATA_BASE_DIR_ENV,
+  ZCODE_DESKTOP_HOME_DIR_ENV,
   resolveAgentConfigBaseDir,
   resolveUserHomeDir,
   resolveZCodeDataBaseDir,
