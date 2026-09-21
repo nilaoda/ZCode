@@ -23,18 +23,54 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 
 ## 2. 快速开始
 
-1. 复制配置模板：
+### 2.1 先确认配置从哪里生效
 
-   ```bash
-   cp .env.intranet.example .env
-   ```
+这决定了配置该写在哪里。**安装后的桌面 App 不读 `.env` 文件**，这点很容易踩坑。
 
-2. 按内网环境修改 `.env`，重点是 `ZCODE_BASE_URL`、代理/CA、`ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL`。
+| 运行形态 | `.env` 是否生效 | 说明 |
+| --- | --- | --- |
+| CLI / TUI（`zcode`） | ✅ 生效 | 从当前工作目录**向上逐级**查找 `.env`；已有 `process.env` 优先于文件（`dotenv` 以 `override: false` 加载） |
+| 桌面 App — 开发态（`pnpm dev:desktop`） | ✅ 生效 | 读仓库根与 `packages/desktop` 下的 `.env` / `.env.local` |
+| 桌面 App — **安装包** | ❌ **不生效** | `loadHostProcessEnvFromLocalFiles()` 在打包模式下直接 return，只保留一个打包标记 |
+| Web 开发服务器 | 构建期读取 | Vite `loadEnv` |
 
+依据：`packages/desktop/src/main/desktopRuntimeEnv.ts:154`（打包模式提前返回）与
+`apps/zcode-cli/packages/cli/src/env.ts:74`（CLI 向上查找 `.env`）。
+
+打包后的桌面 App 有三条配置途径：
+
+1. **构建期注入** —— 推荐用于分发。构建时把 `.env` 放在仓库根，Vite 会通过
+   `__ZCODE_ENDPOINT_ENV__` 把 `pickProductEndpointEnv` 白名单里的公开链接编进产物。
+   覆盖范围：`ZCODE_BASE_URL` / `ZCODE_ENDPOINT_ORIGIN`、`BIGMODEL_API_BASE_URL`、
+   `ZAI_OAUTH_ORIGIN`、`ZAI_BUSINESS_BASE_URL`、`ZAI_OAUTH_CLIENT_ID`、
+   `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL`。这样发出去的安装包已经指向内网，终端用户无需配置。
+
+2. **操作系统级环境变量** —— 覆盖构建期未注入的部分（代理、CA、Provider 路径等）。
+   - macOS：`launchctl setenv ZCODE_HTTP_PROXY http://proxy.intranet.example.com:8080`
+     （对 GUI 启动的 App 生效，需重启 App；注销后失效）
+   - Windows：用户级或系统级环境变量（`setx` 或「系统属性 → 环境变量」）
+   - Linux：`~/.config/environment.d/*.conf`，或 desktop entry 里写 `Exec=env VAR=... zcode`
+
+3. **Provider 配置** —— 安装包内固定读 `<resources>/config/provider/zcode-builtin.json`。
+   要用外部文件，必须通过 `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` 指向（依赖途径 2）。
+
+> ⚠️ 上面「安装包」这条路径**未经端到端验证**——当前环境无法构建安装包。
+> 首次部署请按第 8 节清单逐项确认。
+
+### 2.2 操作步骤
+
+**CLI / TUI 或开发态：**
+
+1. `cp .env.intranet.example .env`
+2. 按内网环境修改，重点是 `ZCODE_BASE_URL`、代理 / CA、`ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL`
 3. 准备两个 Provider 配置文件，路径写进 `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` 与
-   `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`（**必须同时提供**，只给一个会在启动时抛错）。
+   `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`（**必须同时提供**，只给一个会在启动时抛错）
+4. 启动并按第 8 节验证
 
-4. 启动并验证。
+**分发安装包：**
+
+1. 在构建机上把 `.env` 放在仓库根，再构建桌面安装包（构建期注入端点与插件 CDN）
+2. 其余运行时变量用 OS 级环境变量下发（见 2.1 途径 2）
 
 ---
 
@@ -240,6 +276,7 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 
 内网部署完成后建议逐项确认：
 
+- [ ] 确认配置确实生效：CLI 用 `.env`；**安装包用 OS 级环境变量或构建期注入**（见 2.1）
 - [ ] 应用启动无 `ZCODE_PLUGIN_SEED_INCOMPLETE` 类告警
 - [ ] 设置页模型选择器只出现内网 Provider
 - [ ] 向本地模型发起一次对话，确认无出网
