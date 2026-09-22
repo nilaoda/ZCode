@@ -1,3 +1,23 @@
+> **This repository is a localized (intranet-only) distribution branch of [zai-org/ZCode](https://github.com/zai-org/ZCode).**
+>
+> It targets deployments without access to the public internet, removing external dependencies
+> while keeping the full feature set:
+>
+> - **Zero egress**: product endpoints are disabled at the client layer (the Local flavor has the
+>   kill switch injected by the main process) and telemetry endpoints are unset by default. Every
+>   network-dependent entry point — plan upgrades, the plugin marketplace, feedback reporting, and
+>   auto-update — is removed.
+> - **Local models only**: model settings expose custom providers exclusively, supporting
+>   OpenAI- and Anthropic-compatible APIs, with a one-click model list fetched from `/models`.
+> - **Separate product identity**: the app is named **ZCode Local** and installs side by side with
+>   the official build; user config, logs, and the session store live under an isolated data root.
+> - **Manual-only release pipeline**: GitHub Actions builds the Windows / macOS CLI and desktop
+>   packages with no automatic triggers, so pushes and tags consume no build resources.
+>
+> See below for the upstream documentation.
+
+---
+
 # ZCode
 
 <div align="center">
