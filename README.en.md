@@ -1,7 +1,9 @@
 > **This repository is a localized (intranet-only) distribution branch of [zai-org/ZCode](https://github.com/zai-org/ZCode).**
 >
-> It targets deployments without access to the public internet, removing external dependencies
-> while keeping the full feature set:
+> It targets deployments without access to the public internet. Two kinds of changes relative to
+> upstream:
+>
+> **Removed external dependencies**
 >
 > - **Zero egress**: product endpoints are disabled at the client layer (the Local flavor has the
 >   kill switch injected by the main process) and telemetry endpoints are unset by default. Every
@@ -13,6 +15,12 @@
 >   the official build; user config, logs, and the session store live under an isolated data root.
 > - **Manual-only release pipeline**: GitHub Actions builds the Windows / macOS CLI and desktop
 >   packages with no automatic triggers, so pushes and tags consume no build resources.
+>
+> **Added on top of upstream**
+>
+> - **Generation speed readout**: the context popover reports the exact tok/s over the last few
+>   model requests, and the thinking indicator shows a live estimate (prefixed with `≈`) so you can
+>   tell how fast a local model is running right now.
 >
 > See below for the upstream documentation.
 
