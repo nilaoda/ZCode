@@ -4070,6 +4070,7 @@ const zhCN: Record<string, string> = {
   "chat.preparing": "准备中...",
   "chat.remoteGenerating": "另一台设备正在发送消息...",
   "chat.reasoning.thinking": "正在思考",
+  "chat.reasoning.liveTokensPerSecond": "（≈{tps} tok/s）",
   "chat.reasoning.thought": "思考",
   "chat.reasoning.durationFewSeconds": "持续了几秒",
   "chat.reasoning.durationSeconds": "持续了 {seconds} 秒",

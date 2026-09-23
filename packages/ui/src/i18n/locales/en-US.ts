@@ -4343,6 +4343,7 @@ const enUS: Record<string, string> = {
   "chat.preparing": "Preparing...",
   "chat.remoteGenerating": "Another device is sending a message...",
   "chat.reasoning.thinking": "Thinking",
+  "chat.reasoning.liveTokensPerSecond": "(≈{tps} tok/s)",
   "chat.reasoning.thought": "Thought",
   "chat.reasoning.durationFewSeconds": "a few seconds",
   "chat.reasoning.durationSeconds": "{seconds} seconds",
