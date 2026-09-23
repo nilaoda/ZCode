@@ -214,6 +214,10 @@ export const sessionUsageStateSchema = z.object({
    * 速度被系统性高估。
    *
    * 尚无可用样本时为 null，与「速度为 0」区分。
+   *
+   * `optional` 是刻意的：这是**传输帧 schema**，旧版本对端发来的快照没有这个键。
+   * 若写成必填（哪怕可空），`undefined` 会让整帧校验失败 —— 版本偏斜时整个快照都会被丢弃。
+   * 同文件里后加的 `contextWindow.cache` / `.breakdown` 也是 `optional()`，沿用同一约定。
    */
   decodeWindow: z
     .object({
@@ -224,7 +228,8 @@ export const sessionUsageStateSchema = z.object({
       /** 窗口内 output tokens 之和。 */
       tokens: z.number().nonnegative(),
     })
-    .nullable(),
+    .nullable()
+    .optional(),
 });
 export type SessionUsageState = z.infer<typeof sessionUsageStateSchema>;
 
