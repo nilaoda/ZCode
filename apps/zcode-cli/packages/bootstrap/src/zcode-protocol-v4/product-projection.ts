@@ -407,6 +407,30 @@ type TurnModelBaseline =
   | { kind: "sourceLess" }
   | { kind: "known"; provider: string; model: string; thought: string };
 
+type ModelRequestCompletedPayload = Extract<
+  ModelNetworkStatusPayload,
+  { type: "model_request_completed" }
+>;
+
+/**
+ * 解码速度窗口保留的样本数。
+ *
+ * 太少会随单次波动乱跳；太多会把「正在变慢」抹平 —— 而后者正是引入这个读数要解决的问题。
+ */
+const DECODE_WINDOW_SAMPLES = 3;
+
+/** 窗口内单个样本：一次主轮请求的解码耗时与输出 token。 */
+interface DecodeSample {
+  requestId: string;
+  ms: number;
+  tokens: number;
+}
+
+/** 有限非负数的窄化。provider 上报的数值属不可信输入，NaN/负数一律视为未提供。 */
+function finiteNonNegative(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
 export class ProductProjection {
   private snapshot: ConversationSnapshot;
   // reducer 内部的 rowId 查找必须与 rows.window 同步；冷恢复过去每次 find 都扫描全表，
@@ -443,6 +467,10 @@ export class ProductProjection {
   // 仍需能命中同一 row，供 compact coverage、rewind 和整轮文件事实恢复使用。
   private outputContinuationRowIdByMessageId = new Map<string, number>();
   private entityIdByRowId = new Map<number, string>();
+  // 解码速度窗口的样本环形缓冲（只保留最近 DECODE_WINDOW_SAMPLES 次主轮请求）。
+  // 见 snapshot.ts 的 usage.decodeWindow 注释：为什么不用会话累计、为什么分子分母必须配对。
+  // 属派生事实，不进持久化 schema；replay 时由 model_request_completed 重新累加。
+  private decodeSamples: DecodeSample[] = [];
   // canonical command target 只按稳定实体身份寻址；rowId 仅是本次 materialization 的
   // transient lookup，刷新/replay 后变化也不会改变 target identity。
   private editTargetByEntityId = new Map<string, ConversationEditTarget>();
@@ -673,6 +701,8 @@ export class ProductProjection {
               }
             : null,
           cumulative,
+          // 速度窗口是投影自身按事件累加的派生事实，hydration seed 不携带，原样保留。
+          decodeWindow: current.decodeWindow,
         },
       };
       return;
@@ -695,6 +725,8 @@ export class ProductProjection {
             ? null
             : { ...seededContextWindow, maxTokens: seededContextWindow.maxTokens },
         cumulative,
+        // 同上：速度窗口不来自 seed。
+        decodeWindow: current.decodeWindow,
       },
     };
   }
@@ -1123,6 +1155,9 @@ export class ProductProjection {
     clone.configModeTouchedByEvent = this.configModeTouchedByEvent;
     clone.droppedContentStreamEventCount = this.droppedContentStreamEventCount;
     clone.normalizationDiagnostics = [...this.normalizationDiagnostics];
+    // Object.create 不执行类字段初始化器：新增的可变字段必须逐个搬，
+    // 漏掉会让 clone 上该字段为 undefined，实时原子发布路径随即抛错。
+    clone.decodeSamples = [...this.decodeSamples];
     return clone;
   }
 
@@ -1166,6 +1201,7 @@ export class ProductProjection {
     this.configModeTouchedByEvent = candidate.configModeTouchedByEvent;
     this.droppedContentStreamEventCount = candidate.droppedContentStreamEventCount;
     this.normalizationDiagnostics = candidate.normalizationDiagnostics;
+    this.decodeSamples = candidate.decodeSamples;
   }
 
   /**
@@ -2360,7 +2396,7 @@ export class ProductProjection {
         // 保持当前状态，等首个有效 text/reasoning/tool 进展再清理，避免标签闪退。
         return positiveInteger(payload.attempt, 1) <= 1 ? this.setApiRetry(null) : [];
       case "model_request_completed":
-        return this.setApiRetry(null);
+        return [...this.setApiRetry(null), ...this.recordDecodeSample(payload)];
       case "model_request_failed":
         return payload.retryable ? [] : this.setApiRetry(null);
       case "model_stream_stalled":
@@ -2373,6 +2409,52 @@ export class ProductProjection {
       case "model_request_admitted":
         return [];
     }
+  }
+
+  /**
+   * 记录一次主轮模型请求的解码速度样本，并把窗口读数写回 `usage.decodeWindow`。
+   *
+   * 只接受**同时**具备解码耗时与 outputTokens 的请求 —— 两者成对才能参与比值。
+   * 缺一个就让整个请求掉出窗口，而不是用 0 补齐：补 0 会把读数拉偏。
+   *
+   * 解码耗时 = `durationMs − timeToFirstContentMs`（首内容 → 请求结束）。不能用请求总耗时
+   * 替代，否则把 TTFT 也算进生成时间。口径与 session-debug 的 `calculateOutputTps` 一致。
+   */
+  private recordDecodeSample(payload: ModelRequestCompletedPayload): ConversationDelta[] {
+    // 子代理请求不是主会话水位，与 session-debug 的 main_turn 过滤保持一致。
+    if (payload.querySource !== "main_turn") return [];
+    const durationMs = finiteNonNegative(payload.durationMs);
+    const firstContentMs = finiteNonNegative(payload.timeToFirstContentMs);
+    const outputTokens = finiteNonNegative(payload.usage?.outputTokens);
+    if (durationMs === undefined || firstContentMs === undefined || outputTokens === undefined) {
+      return [];
+    }
+    // 首内容不早于请求结束才有解码区间；0 token 的样本不携带速度信息，只会拖低窗口读数。
+    const decodeMs = durationMs - firstContentMs;
+    if (decodeMs <= 0 || outputTokens <= 0) return [];
+    // 恢复/重放可能重复投递同一 requestId。样本自带 requestId，去重集合天然有界于窗口。
+    if (this.decodeSamples.some((sample) => sample.requestId === payload.requestId)) return [];
+
+    this.decodeSamples = [
+      ...this.decodeSamples,
+      { requestId: payload.requestId, ms: decodeMs, tokens: outputTokens },
+    ].slice(-DECODE_WINDOW_SAMPLES);
+
+    const ms = this.decodeSamples.reduce((total, sample) => total + sample.ms, 0);
+    const tokens = this.decodeSamples.reduce((total, sample) => total + sample.tokens, 0);
+    return [
+      {
+        op: "state.updated",
+        patch: {
+          // usage 在 StatePatch 里是整体替换（非 partial），必须带上完整对象。
+          // usage 不在 REVISION_BEARING_PATCH_KEYS 内，因此不会抖动 conversation revision。
+          usage: {
+            ...this.snapshot.usage,
+            decodeWindow: { samples: this.decodeSamples.length, ms, tokens },
+          },
+        },
+      },
+    ];
   }
 
   private onStreamRecoveryStarted(event: SessionEvent): ConversationDelta[] {
@@ -4532,6 +4614,9 @@ export class ProductProjection {
             cacheReadTokens: cumulative.cacheReadTokens + (usage.cacheReadTokens ?? 0),
             cacheWriteTokens: cumulative.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
           },
+          // 速度窗口由 model_request_completed 单独累加；这里原样带出，
+          // 否则本 delta 的 usage 整体替换会把窗口清空。
+          decodeWindow: this.snapshot.usage.decodeWindow,
         },
       },
     });

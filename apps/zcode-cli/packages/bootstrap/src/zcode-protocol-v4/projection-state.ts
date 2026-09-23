@@ -80,6 +80,8 @@ export function createInitialConversationSnapshot(
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
       },
+      // 尚无模型请求完成，速度窗口为空。
+      decodeWindow: null,
     },
     queue: { items: [], autoDrain: true },
     pendingInteractions: [],

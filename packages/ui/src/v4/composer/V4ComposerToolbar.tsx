@@ -1013,6 +1013,7 @@ function V4ComposerModelControlsImpl({
       <ChatContextUsage
         codingPlanUsageRemaining={codingPlanUsageRemaining}
         taskUsage={taskUsage}
+        decodeWindow={usage?.decodeWindow}
         startPlanBalance={contextStartPlanBalance}
         selectedProvider={displayProvider}
         intl={intl}

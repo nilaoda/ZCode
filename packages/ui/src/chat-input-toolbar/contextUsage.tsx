@@ -236,6 +236,7 @@ export function ChatContextUsage({
   codingPlanUsageRemaining,
   startPlanBalance,
   taskUsage,
+  decodeWindow,
   selectedProvider: _selectedProvider,
   intl,
   locale,
@@ -248,6 +249,14 @@ export function ChatContextUsage({
     cache?: { hitRate: number | null };
     breakdown?: ZCodeContextUsageBreakdownItem[];
   } | null;
+  /**
+   * 最近若干次主轮请求的解码速度窗口（`Σtokens / Σms`），由 composer 从
+   * `usage.decodeWindow` 透传。为 null 表示还没有可用样本，此时不渲染该行。
+   *
+   * 与 `taskUsage` 相互独立：没有上下文用量（如新会话）时也应有速度读数，
+   * 因此这一行**不能**跟着上下文区块的门禁一起隐藏。
+   */
+  decodeWindow?: { samples: number; ms: number; tokens: number } | null;
   selectedProvider: ZCodeProvider;
   intl: ReturnType<typeof useZCodeIntl>["intl"];
   locale: string;
@@ -798,6 +807,26 @@ export function ChatContextUsage({
       showBelowThreshold: import.meta.env.DEV,
     });
   }, [locale, renderableTaskUsage]);
+  /**
+   * 生成速度读数：窗口内 `Σtokens / Σms`。
+   *
+   * 数值格式刻意区分量级：≥10 取整、<10 保留一位小数 —— 高速时小数位没有信息量，
+   * 低速时整数位又会把 3.1 和 3.9 抹成同一个 3。
+   */
+  const decodeSpeedLabel = useMemo(() => {
+    if (!decodeWindow || decodeWindow.samples <= 0 || decodeWindow.ms <= 0) {
+      return null;
+    }
+    const tokensPerSecond = decodeWindow.tokens / (decodeWindow.ms / 1_000);
+    if (!Number.isFinite(tokensPerSecond) || tokensPerSecond <= 0) {
+      return null;
+    }
+    const tps =
+      tokensPerSecond >= 10
+        ? String(Math.round(tokensPerSecond))
+        : String(Math.round(tokensPerSecond * 10) / 10);
+    return intl.formatMessage({ id: "chat.contextUsage.tokensPerSecond" }, { tps });
+  }, [decodeWindow, intl]);
   const breakdownSegments = useMemo(
     () => buildContextUsageBreakdownSegments(renderableTaskUsage?.breakdown),
     [renderableTaskUsage?.breakdown],
@@ -983,6 +1012,29 @@ export function ChatContextUsage({
                 </div>
               ) : null}
             </>
+          ) : null}
+          {/* 生成速度与上下文用量是两个独立事实：新会话还没有上下文用量时也该有速度读数，
+              因此这一行不能并进上面的 renderableTaskUsage 门禁里。 */}
+          {decodeSpeedLabel ? (
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3 text-ui-sm",
+                renderableTaskUsage &&
+                  (breakdownSegments.length > 0 || cacheHitRateLabel) &&
+                  "border-t border-border pt-3",
+              )}
+            >
+              <span
+                className="text-foreground-subtle"
+                title={intl.formatMessage(
+                  { id: "chat.contextUsage.generationSpeedDescription" },
+                  { count: decodeWindow?.samples ?? 0 },
+                )}
+              >
+                {intl.formatMessage({ id: "chat.contextUsage.generationSpeed" })}
+              </span>
+              <span className="font-mono text-ui-sm text-foreground">{decodeSpeedLabel}</span>
+            </div>
           ) : null}
           {codingPlanUsageRemainingWithClose && hasCodingPlanUsageRemaining ? (
             <ChatCodingPlanUsageRemainingPanel

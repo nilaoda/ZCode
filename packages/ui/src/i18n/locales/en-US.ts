@@ -4351,6 +4351,10 @@ const enUS: Record<string, string> = {
   "chat.contextUsageDescription":
     "Prompt text, tool calls, and responses all share this context window.",
   "chat.contextUsage.cacheHitRate": "Average cache hit rate",
+  "chat.contextUsage.generationSpeed": "Generation speed",
+  "chat.contextUsage.tokensPerSecond": "{tps} tok/s",
+  "chat.contextUsage.generationSpeedDescription":
+    "Decode speed over the last {count} model requests (after the first token). Local models vary a lot, so this reads a recent window rather than the session average.",
   "chat.contextUsage.breakdown": "Context sources",
   "chat.contextUsage.breakdown.messages": "Messages",
   "chat.contextUsage.breakdown.systemPrompt": "System prompt",

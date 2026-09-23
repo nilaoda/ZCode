@@ -202,6 +202,29 @@ export const sessionUsageStateSchema = z.object({
     cacheReadTokens: z.number(),
     cacheWriteTokens: z.number(),
   }),
+  /**
+   * 最近若干次主轮模型请求的解码速度窗口（`ΣoutputTokens / ΣdecodeMs`）。
+   *
+   * 为什么不是会话累计：本地模型速度波动大（GPU 负载、上下文长度、prompt 处理都会影响），
+   * 累计平均会把「正在变慢」抹平，反而失去读数的意义。
+   * 为什么不是只看最近一次：单次波动太大，数字会乱跳；取窗口既响应变化又不抖。
+   *
+   * 只统计**同时具备解码耗时与 outputTokens**的请求 —— 分子分母必须配对。
+   * 若用会话累计的 outputTokens 当分子，缺耗时的请求会让分母偏小而分子偏大，
+   * 速度被系统性高估。
+   *
+   * 尚无可用样本时为 null，与「速度为 0」区分。
+   */
+  decodeWindow: z
+    .object({
+      /** 窗口内样本数（同时具备解码耗时与 outputTokens 的主轮请求）。 */
+      samples: z.number().int().nonnegative(),
+      /** 窗口内解码耗时之和，毫秒。 */
+      ms: z.number().nonnegative(),
+      /** 窗口内 output tokens 之和。 */
+      tokens: z.number().nonnegative(),
+    })
+    .nullable(),
 });
 export type SessionUsageState = z.infer<typeof sessionUsageStateSchema>;
 

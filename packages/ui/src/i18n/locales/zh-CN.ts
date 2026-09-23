@@ -4077,6 +4077,10 @@ const zhCN: Record<string, string> = {
   "chat.contextUsage.title": "上下文容量",
   "chat.contextUsageDescription": "提示词、工具调用和回复都会共享上下文窗口。",
   "chat.contextUsage.cacheHitRate": "平均缓存命中率",
+  "chat.contextUsage.generationSpeed": "生成速度",
+  "chat.contextUsage.tokensPerSecond": "{tps} tok/s",
+  "chat.contextUsage.generationSpeedDescription":
+    "最近 {count} 次模型请求的解码速度（首 token 之后到请求结束）。本地模型速度波动大，因此取最近若干次而不是会话平均。",
   "chat.contextUsage.breakdown": "上下文来源",
   "chat.contextUsage.breakdown.messages": "消息",
   "chat.contextUsage.breakdown.systemPrompt": "系统提示词",
