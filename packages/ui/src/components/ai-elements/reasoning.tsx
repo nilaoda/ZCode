@@ -287,6 +287,15 @@ export function getReasoningSummaryMaskStyle(isOverflowing: boolean): CSSPropert
 }
 
 /**
+ * 实时速度的刷新间隔。
+ *
+ * 刻意比 `Reasoning` 展开态的耗时秒表（1s）慢：这个读数是「从开始思考到现在」的**累计平均**，
+ * 本身随时间收敛、两次刷新之间变化很小，刷新太快只是白白重渲染。
+ * 想更灵敏就调小，想更稳就调大 —— 只影响观感，不影响读数本身。
+ */
+const LIVE_SPEED_REFRESH_MS = 3000;
+
+/**
  * 流式思考中的实时速度估算，渲染成「（≈38 tok/s）」跟在「正在思考」后面。
  *
  * 为什么独立成叶子组件：收起态的 reasoning 刻意不跑每秒定时器（见 `Reasoning` 里
@@ -318,7 +327,7 @@ const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: st
     if (startedAt === null) {
       return;
     }
-    const timer = window.setInterval(() => setNow(Date.now()), MS_IN_S);
+    const timer = window.setInterval(() => setNow(Date.now()), LIVE_SPEED_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [startedAt]);
 
@@ -329,7 +338,7 @@ const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: st
       return null;
     }
     const elapsedMs = now - startedAt;
-    // 不足一秒的读数会剧烈跳动，等第一个整秒再显示。
+    // 这是**测量窗口**下限（样本不足一秒算出来的速度没有意义），与上面的刷新间隔无关。
     if (elapsedMs < MS_IN_S) {
       return null;
     }
