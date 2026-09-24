@@ -3,6 +3,7 @@ import type { Locale, UserInfo } from "@zcode/shared";
 import { memo, useCallback, useEffect, useState } from "react";
 import {
   DesktopCommandIds,
+  ZCODE_LOCAL_ONLY_BUILD,
   ZCODE_PRODUCT_NAME,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_TRIGGER,
@@ -346,7 +347,10 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               onUsageClick={usageButtonClick}
               onUpgradeClick={onUpgradeClick}
             />
-            {onLogin && !user ? (
+            {/* 本地化发行版：外部登录服务已移除（OAuth adapters 恒为空数组，
+                没有可选的 provider；API Key 那条只针对 z.ai / BigModel，也已随模型预设
+                分组一起收敛）。登录永远无法完成，因此隐藏入口，避免留下点了必然失败的按钮。 */}
+            {!ZCODE_LOCAL_ONLY_BUILD && onLogin && !user ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={onLogin} data-testid={TID_LOGIN_MENU_ITEM}>
