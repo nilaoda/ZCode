@@ -45,6 +45,7 @@ import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
+import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 import {
   WorkspaceSidebarFooterPlanBadge,
   WorkspaceSidebarFooterUsageSummaryContent,
@@ -367,6 +368,13 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-1.5">
+          {isDesktop && workspacePath ? (
+            <WorkspaceWebRemoteControlTrigger
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+              compact
+            />
+          ) : null}
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"
