@@ -308,7 +308,20 @@ const LIVE_SPEED_REFRESH_MS = 3000;
  */
 const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: string }) {
   const { intl } = useZCodeIntl();
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  /**
+   * 观测起点：开始测速那一刻已有的文本量，作为基线。
+   *
+   * **必须扣掉基线**：切换会话会让本组件卸载再挂载，而那时 `text` 里已经累积了
+   * 整段思考内容。若把它当成"刚产生的 token"，就会拿「大 token 数 ÷ 极小耗时」
+   * 算出几千 tok/s —— 这正是切走再回来时的现象。
+   *
+   * 扣掉之后语义也更准确：只对**观测期间新增**的文本测速，而不是假装整段都是
+   * 在这几毫秒里生成的。
+   */
+  const [observation, setObservation] = useState<{
+    startedAt: number;
+    baselineTokens: number;
+  } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const textRef = useRef(text);
   useEffect(() => {
@@ -317,32 +330,33 @@ const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: st
 
   // 首个非空文本到达时才开始计时：把 TTFT 算进生成时间会低估速度。
   useEffect(() => {
-    if (startedAt === null && text.length > 0) {
-      setStartedAt(Date.now());
+    if (observation === null && text.length > 0) {
+      setObservation({ startedAt: Date.now(), baselineTokens: estimateTokens(text) });
       setNow(Date.now());
     }
-  }, [startedAt, text.length]);
+  }, [observation, text]);
 
   useEffect(() => {
-    if (startedAt === null) {
+    if (observation === null) {
       return;
     }
     const timer = window.setInterval(() => setNow(Date.now()), LIVE_SPEED_REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, [startedAt]);
+  }, [observation]);
 
-  // 依赖里刻意不含 text：文本每个 delta 都变，但读数每秒才需要刷新一次。
+  // 依赖里刻意不含 text：文本每个 delta 都变，但读数按 LIVE_SPEED_REFRESH_MS 才刷新一次。
   // 否则长思考文本会在每次 delta 上重复做全串正则扫描。
   const label = useMemo(() => {
-    if (startedAt === null) {
+    if (observation === null) {
       return null;
     }
-    const elapsedMs = now - startedAt;
+    const elapsedMs = now - observation.startedAt;
     // 这是**测量窗口**下限（样本不足一秒算出来的速度没有意义），与上面的刷新间隔无关。
     if (elapsedMs < MS_IN_S) {
       return null;
     }
-    const tokens = estimateTokens(textRef.current);
+    // 只统计观测开始之后新增的文本；基线之前的部分不属于这段时长。
+    const tokens = estimateTokens(textRef.current) - observation.baselineTokens;
     if (tokens <= 0) {
       return null;
     }
@@ -355,7 +369,7 @@ const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: st
         ? String(Math.round(tokensPerSecond))
         : String(Math.round(tokensPerSecond * 10) / 10);
     return intl.formatMessage({ id: "chat.reasoning.liveTokensPerSecond" }, { tps });
-  }, [intl, now, startedAt]);
+  }, [intl, now, observation]);
 
   if (label === null) {
     return null;
