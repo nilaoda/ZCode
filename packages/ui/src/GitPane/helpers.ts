@@ -113,6 +113,76 @@ function countLogicalLines(content: string | null): number {
   return lineCount;
 }
 
+/** 交叉校验的保守门槛：低于这个行数不判定，避免小文件噪声。 */
+const PAIR_CONTRADICTION_MIN_LINES = 20;
+/** 内容对隐含的改动量要超过 patch 改动量这么多倍，才判定两者不可比。 */
+const PAIR_CONTRADICTION_PATCH_FACTOR = 5;
+
+/**
+ * 两侧内容与 git patch 是否严重矛盾。
+ *
+ * 兜的是「视图说整文件都变了、git 的计数却说只改了 4 行」这类错位（已证实的成因是
+ * 行尾归一化不一致，两侧读取已在服务端统一，这里是消费端的安全网）。与其渲染一个
+ * 吓人的假 diff，不如退回 git 的权威结果。
+ *
+ * 判据刻意保守：用「before 里有、after 里没有」的行数（**集合差**，不是真正的 diff）
+ * 作为内容对隐含改动量的**下界**，只有它同时满足
+ * 1. 至少占 before 的一半行，且
+ * 2. 超过 patch 改动行数的 PAIR_CONTRADICTION_PATCH_FACTOR 倍
+ * 才判定不可比。集合差只会低估改动量，所以正常 diff 几乎不可能误触发。
+ */
+function contentPairContradictsPatch(diff: GitDiffResult): boolean {
+  const before = diff.beforeContent;
+  const after = diff.afterContent;
+  if (before === null || after === null || !diff.patch) {
+    return false;
+  }
+
+  const beforeLines = before.split("\n");
+  if (beforeLines.length < PAIR_CONTRADICTION_MIN_LINES) {
+    return false;
+  }
+
+  const afterLines = new Set(after.split("\n"));
+  let missing = 0;
+  for (const line of beforeLines) {
+    if (!afterLines.has(line)) {
+      missing += 1;
+    }
+  }
+
+  if (missing * 2 < beforeLines.length) {
+    return false;
+  }
+
+  return missing > countPatchChangedLines(diff.patch) * PAIR_CONTRADICTION_PATCH_FACTOR;
+}
+
+/**
+ * patch 里真正的增删行数。
+ *
+ * 只在第一个 `@@` 之后统计：`---` / `+++` 文件头只出现在它之前，而 hunk 里被删除的
+ * 行完全可能以 `--` 开头（如 Markdown 分隔线），按前缀跳过会漏计。
+ */
+function countPatchChangedLines(patch: string): number {
+  let changed = 0;
+  let inHunks = false;
+  for (const line of patch.split(/\r?\n/)) {
+    if (line.startsWith("@@")) {
+      inHunks = true;
+      continue;
+    }
+    if (!inHunks) {
+      continue;
+    }
+    if (line.startsWith("+") || line.startsWith("-")) {
+      changed += 1;
+    }
+  }
+
+  return changed;
+}
+
 function shouldRenderPatchOnlyGitDiffPreview(diff: GitDiffResult): boolean {
   if (diff.availability !== "patch" || !diff.patch) {
     return false;
@@ -121,6 +191,12 @@ function shouldRenderPatchOnlyGitDiffPreview(diff: GitDiffResult): boolean {
   // Repo 全文读取失败时 patch 仍然有效，但缺失的一侧不能再补成空文件交给
   // MultiFileDiff。把“不完整内容对”并入既有 patch 安全预检，避免整文件误判为增删。
   if (diff.beforeContent === null || diff.afterContent === null) {
+    return true;
+  }
+
+  // 交叉校验：内容对隐含的改动量远大于 git patch 的改动量时，两侧内容不可比，
+  // 改走 patch —— git 的结果总是权威的。见 contentPairContradictsPatch。
+  if (contentPairContradictsPatch(diff)) {
     return true;
   }
 

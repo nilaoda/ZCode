@@ -42,6 +42,7 @@ import {
   isMissingWorkingDirectoryResult,
   isNotRepositoryResult,
   normalizeInputPath,
+  normalizePreviewLineEndings,
   parseGitBranchMutationIssues,
   parseGitConfigValue,
   parseNumstat,
@@ -176,7 +177,9 @@ async function readWorkingTreePreviewContent(absolutePath: string): Promise<stri
     }
 
     const content = await readFile(absolutePath, "utf-8");
-    return isPreviewableText(content) ? content : null;
+    // 归一化行尾：两侧口径必须一致，否则工作区 CRLF / blob LF 会让逐行比较
+    // 认为整文件都变了，而 git 的计数只报真实改动。见 normalizePreviewLineEndings。
+    return isPreviewableText(content) ? normalizePreviewLineEndings(content) : null;
   } catch {
     // 文件删除和原子保存窗口都会让 stat/readFile 失败；这里不能猜成合法空文件。
     return null;
@@ -210,7 +213,8 @@ async function readGitBlobPreviewContent({
     return null;
   }
 
-  return result.stdout;
+  // 与 readWorkingTreePreviewContent 同口径：blob 侧也要归一化行尾。
+  return normalizePreviewLineEndings(result.stdout);
 }
 
 async function readBranchDiffContents({

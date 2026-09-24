@@ -519,6 +519,24 @@ function splitUntrackedText(content: string): {
   };
 }
 
+/**
+ * 预览内容统一成 LF。
+ *
+ * 全文预览的两侧来自不同来源：before 是 `git show <ref>:path` 的 blob 原样，
+ * after 是工作区文件原样。而 git 自己的计数（`--numstat`）会按 `.gitattributes`
+ * 与 `core.autocrlf` 归一化行尾 —— 两侧不归一化就会错位：
+ *
+ * 工作区被写成 CRLF、而 blob 存 LF 时（`.gitattributes` 声明 `text eol=lf` 的文件
+ * 必然如此），git 只报真实改动（如 +4），而逐行字符串比较会认为**每一行都变了**，
+ * UI 于是把整个文件渲染成「全删除 + 全新增」。
+ *
+ * 归一化后客户端比较与 git 口径一致。代价：纯粹的换行风格转换在富预览里不再可见 ——
+ * 但那种情况下 git 的计数同样会归一化掉它，两者仍然一致。
+ */
+export function normalizePreviewLineEndings(content: string): string {
+  return content.includes("\r") ? content.replace(/\r\n?/g, "\n") : content;
+}
+
 export async function buildUntrackedTextDiffResult(
   absolutePath: string,
   repoRelativePath: string,
@@ -554,7 +572,9 @@ export async function buildUntrackedTextDiffResult(
     }
 
     const normalizedPath = normalizeGitPath(repoRelativePath);
-    const { lines, hasTrailingNewline } = splitUntrackedText(content.toString("utf-8"));
+    // 先归一化再切行：否则 CRLF 会在每行尾部留一个 \r，patch 里也跟着带上。
+    const text = normalizePreviewLineEndings(content.toString("utf-8"));
+    const { lines, hasTrailingNewline } = splitUntrackedText(text);
     const patchLines = ["--- /dev/null", `+++ b/${normalizedPath}`];
 
     if (lines.length > 0) {
@@ -570,7 +590,7 @@ export async function buildUntrackedTextDiffResult(
       availability: "patch",
       patch: `${patchLines.join("\n")}\n`,
       beforeContent: "",
-      afterContent: content.toString("utf-8"),
+      afterContent: text,
       summary: null,
     };
   } catch {
