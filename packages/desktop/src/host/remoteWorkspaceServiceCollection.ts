@@ -14,7 +14,6 @@ import {
   IZCodeAgentService,
   IZCodeSessionService,
   IConversationShareService,
-  IBotsService,
   IFileWatcherService,
   IOAuthService,
   IModelSelectionService,
@@ -325,8 +324,7 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(IZCodeSessionService, remoteZCodeSessionService)
     .register(IConversationShareService, conversationShareService)
     .register(
-      IBotsService,
-      createBotsService({
+          createBotsService({
         credentialService: localCredentialService,
         zcodeTaskService: remoteZCodeTaskService,
         broadcastService: localBroadcastService,

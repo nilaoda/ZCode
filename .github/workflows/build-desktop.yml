@@ -20,11 +20,6 @@ on:
         description: 发布到该 tag 的 GitHub Release（留空则只上传 artifacts）
         required: false
         type: string
-      local_identity:
-        description: 使用 Local 身份构建（可与官方版并存，且业务数据默认隔离）
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: write
@@ -124,7 +119,8 @@ jobs:
           # appId（dev.zcode.app.local）、Electron 数据目录，并且**业务数据根默认切到
           # ~/.zcode-local-home**，因此安装后无需任何环境变量即可与官方版完全隔离。
           # 该变量只接受 "1" / "0" / 空，其他取值会直接抛错。
-          ZCODE_LOCAL_IDENTITY: ${{ inputs.local_identity && '1' || '0' }}
+          # 本分支只产出 Local 身份，不再提供开关 —— 固定为 "1"。
+          ZCODE_LOCAL_IDENTITY: "1"
           # 未签名构建：禁止 electron-builder 自动发现本机签名身份。
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
