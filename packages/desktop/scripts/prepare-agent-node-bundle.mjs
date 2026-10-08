@@ -11,13 +11,17 @@
 //
 // 远端（SSH/WSL/Docker）没有 Electron，仍走 prepare:remote-assets 的原生二进制，互不影响。
 
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { access, cp, mkdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
+import {
+  officialPluginPackages,
+  stageOfficialPluginAssets,
+} from "../../../scripts/official-plugin-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
@@ -71,48 +75,7 @@ const arch = normalizeArch(process.env.ZCODE_TARGET_ARCH || "") || process.arch;
 const platformKey = `${platform}-${arch}`;
 
 const glmDir = resolve(desktopRoot, "bundled-agents", platformKey, "glm");
-// zcode.cjs / .node-bundle-meta.json 的落点由 stage-agent-bundle.mjs 自己解析（同源）。
-// node_repl 宿主抽成独立包
-// @zcode/node-repl-host 之后，browser-use 不再产出 dist/mcp/server.js，CUA 资产
-// （docs/computer-use.md、scripts/computer-use-client.mjs）也已归 @zcode/zcode-cua-plugin。
-// 这份清单当时漏改，打包准备阶段照旧去 browser-use 要那三个文件，直接 missing runtime 挂掉。
-// dev 链路走的是 scripts/build-desktop-agent-cli.mjs 的 requiredDevPluginRuntimeBuilds（那份改对了），
-// 两份平行清单各自维护，所以 dev 测不出来 —— 权威归属见 bootstrap/official-plugin-definitions.ts。
-const browserUseRequiredRuntimePaths = [
-  "scripts/browser-client.mjs",
-  "docs/api.json",
-  "docs/documents.json",
-  "docs/overview.md",
-  // documents.json 已暴露 recording lookup，桌面安装包不能复用缺少正文的 runtime。
-  "docs/recording.md",
-  "docs/workflow.md",
-  "skills/control-browser/SKILL.md",
-  "skills/web-gui-tester/SKILL.md",
-];
-const officialPluginPackages = [
-  {
-    // browser-use 只携带自己的 client script 与 skill/docs；node_repl MCP runtime 归
-    // @zcode/node-repl-host（见上方常量注释）。
-    packageName: "@zcode/browser-use-plugin",
-    relativePath: "apps/zcode-cli/packages/browser-use-plugin",
-    requiresRuntime: true,
-    requiredRuntimePaths: browserUseRequiredRuntimePaths,
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/browser-use-plugin",
-  },
-
-  {
-    // node_repl 宿主：Browser Use 与 Computer Use 共用的 MCP runtime，本轮抽成独立包。
-    // 它没有 listing（不进插件市场展示面），但生产包首启 seed 必须拿到它的 dist runtime，
-    // 否则 bua/cua 任一开启时都会连不上 node_repl。
-    packageName: "@zcode/node-repl-host",
-    relativePath: "apps/zcode-cli/packages/node-repl-host",
-    requiresRuntime: true,
-    requiredRuntimePaths: ["dist/mcp/server.js"],
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/node-repl-host",
-  },
-];
+// 官方插件资源清单与 SEA、远程预构建共享，内容插件无需 runtime 构建。
 // 随 CLI 内置的技能包（不是插件）：bootstrap 的 resolveBundledSkillRoots 沿官方插件同款候选目录
 // 在 zcode.cjs 旁找 packages/bundled-skills 并原地读取。漏 stage 它，桌面包的 /workflow 会展开成
 // 「先加载 dynamic-workflows 技能」而技能文件不存在，因此必须随 Agent 一起打包。
@@ -126,22 +89,6 @@ const bundledSkillPack = {
   stagedPath: "packages/bundled-skills",
   topLevelPaths: ["skills"],
 };
-const includedOfficialPluginTopLevelPaths = new Set([
-  ".mcp.json",
-  ".zcode-plugin",
-  "README.md",
-  // Electron 生产资源复制有独立白名单，遗漏 agents 会让首启 filesystem seed 永久缺少子代理。
-  "agents",
-  "commands",
-  "dist",
-  "docs",
-  "hooks",
-  "output-styles",
-  "package.json",
-  "scripts",
-  "skills",
-  "templates",
-]);
 const excludedOfficialPluginAssetNames = new Set([
   ".DS_Store",
   ".venv",
@@ -234,36 +181,6 @@ function stageBundle() {
   stageAgentBundle({ repoRoot, platformKey });
 }
 
-function stageOfficialPlugins() {
-  for (const plugin of officialPluginPackages) {
-    const sourceRoot = resolve(repoRoot, plugin.relativePath);
-    const manifestPath = resolve(sourceRoot, ".zcode-plugin", "plugin.json");
-    if (!existsSync(manifestPath)) {
-      throw new Error(`[prepare:agent-bundle] missing official plugin manifest: ${manifestPath}`);
-    }
-
-    const targetRoot = resolve(glmDir, plugin.stagedPath);
-    mkdirSync(targetRoot, { recursive: true });
-    for (const entryName of includedOfficialPluginTopLevelPaths) {
-      const sourcePath = resolve(sourceRoot, entryName);
-      if (!existsSync(sourcePath)) continue;
-      cpSync(sourcePath, resolve(targetRoot, entryName), {
-        recursive: true,
-        filter: shouldCopyOfficialPluginAsset,
-      });
-    }
-    for (const relativePath of plugin.requiredSeedPaths ?? []) {
-      const stagedAssetPath = resolve(targetRoot, ...relativePath.split("/"));
-      if (!existsSync(stagedAssetPath)) {
-        throw new Error(
-          `[prepare:agent-bundle] missing staged official plugin seed asset: ${stagedAssetPath}`,
-        );
-      }
-    }
-    console.log(`[prepare:agent-bundle] staged official plugin ${plugin.stagedPath}`);
-  }
-}
-
 async function stageBundledSkillPack() {
   const sourceRoot = resolve(repoRoot, bundledSkillPack.relativePath);
   const targetRoot = resolve(glmDir, bundledSkillPack.stagedPath);
@@ -291,5 +208,5 @@ async function stageBundledSkillPack() {
 buildCliBundle();
 buildOfficialPluginRuntimes();
 stageBundle();
-stageOfficialPlugins();
+await stageOfficialPluginAssets({ repoRoot, targetRoot: glmDir });
 await stageBundledSkillPack();

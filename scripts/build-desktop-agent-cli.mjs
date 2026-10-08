@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stageAgentBundle } from "../packages/desktop/scripts/stage-agent-bundle.mjs";
 import { runCommand } from "./spawn-command.mjs";
+import { stageOfficialPluginAssets } from "./official-plugin-assets.mjs";
 
 // adapters tsc 在内存受限机器上会 OOM（exit 134），给整条构建链路提高堆上限。
 process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ? process.env.NODE_OPTIONS + " " : ""}--max-old-space-size=8192`;
@@ -91,10 +92,14 @@ async function verifyRequiredDevPluginRuntimeArtifacts() {
  *
  * dev 只跑宿主平台，所以 platformKey 直接取 process；打包链的跨平台 target 由它自己解析。
  */
-function stageDevAgentBundle() {
-  stageAgentBundle({
+async function stageDevAgentBundle() {
+  const platformKey = `${process.platform}-${process.arch}`;
+  stageAgentBundle({ repoRoot, platformKey });
+  await stageOfficialPluginAssets({
     repoRoot,
-    platformKey: `${process.platform}-${process.arch}`,
+    targetRoot: resolve(repoRoot, "packages/desktop/bundled-agents", platformKey, "glm"),
+    // bootstrap 的调用方随后编译 runtime 并严格重新 staging；内容型 Agent 始终校验。
+    requireRuntime: !useBootstrapWithRemoteBuild,
   });
 }
 
@@ -138,7 +143,7 @@ async function runBootstrapWithRemoteBuild() {
 
 if (useBootstrapWithRemoteBuild) {
   await runBootstrapWithRemoteBuild();
-  stageDevAgentBundle();
+  await stageDevAgentBundle();
   process.exit(0);
 }
 
@@ -159,7 +164,7 @@ if (!useTurboBuild) {
     env: pnpmRunEnv,
     stdio: "inherit",
   });
-  stageDevAgentBundle();
+  await stageDevAgentBundle();
   process.exit(0);
 }
 
@@ -180,4 +185,4 @@ runCommand(
     stdio: "inherit",
   },
 );
-stageDevAgentBundle();
+await stageDevAgentBundle();

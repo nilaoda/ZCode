@@ -33,6 +33,11 @@ import {
 } from "./deterministic-tar-archive.mjs";
 import { runCommand } from "./spawn-command.mjs";
 import { resolveIntranetDepsBaseUrl } from "./intranetDefaults.mjs";
+import {
+  officialPluginPackages as remoteOfficialPluginPackages,
+  officialPluginRequiredPaths as remoteOfficialPluginRequiredPaths,
+  stageOfficialPluginAssets,
+} from "./official-plugin-assets.mjs";
 
 export { computeComponentSourceSha256, packComponentSourceAsArchive };
 
@@ -74,50 +79,7 @@ export function nodeDistBase(env = process.env) {
   return (mirror || DEFAULT_NODE_DIST_BASE).replace(/\/+$/u, "");
 }
 const BROWSER_USE_PLUGIN_PACKAGE_NAME = "@zcode/browser-use-plugin";
-// node_repl 宿主抽成独立包 @zcode/node-repl-host 之后，browser-use
-// 不再产出 dist/mcp/server.js，CUA 资产也已归 @zcode/zcode-cua-plugin。这是**第三份**平行清单
-// （另两份：packages/desktop/scripts/prepare-agent-node-bundle.mjs 的生产打包、
-// scripts/build-desktop-agent-cli.mjs 的 dev 构建），当时只改了 dev 那份，于是先后在
-// build:macos:arm64 与 build:remote:assets 上以 "missing runtime" 挂掉两次。
-// 权威归属见 bootstrap/official-plugin-definitions.ts。
-const browserUseRequiredRuntimePaths = [
-  "scripts/browser-client.mjs",
-  "docs/api.json",
-  "docs/documents.json",
-  "docs/overview.md",
-  // remote prebuild 必须和桌面 seed 使用同一录屏文档完整性合同。
-  "docs/recording.md",
-  "docs/workflow.md",
-  "skills/control-browser/SKILL.md",
-  "skills/web-gui-tester/SKILL.md",
-];
-const remoteOfficialPluginPackages = [
-  // 44b25ed46c「remove bundled plugins except browser use and cua」删掉了其余
-  // 内置插件源码，但漏改这份清单，bootstrap:with-remote 在 staging 第一个 manifest 就抛
-  // missing。此处与 packages/desktop/scripts/prepare-agent-node-bundle.mjs 的桌面 seed
-  // 清单、packages/server/src/remote/zcodeAgentOfficialPluginAssets.ts 的远端合同保持一致。
-  {
-    // 远端 shared-host 必须部署 node_repl runtime，否则只剩 skill 而没有 mcp__node_repl__js ——
-    // 该 runtime 现由 @zcode/node-repl-host 提供（见下一个条目），browser-use 只带自己的
-    // client script 与 skill/docs。
-    packageName: "@zcode/browser-use-plugin",
-    relativePath: "apps/zcode-cli/packages/browser-use-plugin",
-    requiresRuntime: true,
-    requiredRuntimePaths: browserUseRequiredRuntimePaths,
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/browser-use-plugin",
-  },
-  {
-    // node_repl 宿主：Browser Use 与 Computer Use 共用的 MCP runtime。远端 shared-host 缺它
-    // 就没有 mcp__node_repl__js，bua/cua 两边都会连不上。
-    packageName: "@zcode/node-repl-host",
-    relativePath: "apps/zcode-cli/packages/node-repl-host",
-    requiresRuntime: true,
-    requiredRuntimePaths: ["dist/mcp/server.js"],
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/node-repl-host",
-  },
-];
+// 官方插件内容从 SEA 的公开构建清单派生，避免远程包遗漏新增内置插件。
 // 随 CLI 内置的技能包（不是插件）：远端 agent 的 bootstrap 沿官方插件同款候选目录在 zcode.cjs 旁
 // 找 packages/bundled-skills 并原地读取；与 packages/desktop/scripts/prepare-agent-node-bundle.mjs 同一份清单。
 const remoteBundledSkillPack = {
@@ -130,22 +92,6 @@ const remoteBundledSkillPack = {
   stagedPath: "packages/bundled-skills",
   topLevelPaths: ["skills"],
 };
-const remoteOfficialPluginTopLevelPaths = new Set([
-  ".mcp.json",
-  ".zcode-plugin",
-  "README.md",
-  // 生产远程预构建有独立顶层白名单，遗漏 agents 会在上传前永久裁掉子代理。
-  "agents",
-  "commands",
-  "dist",
-  "docs",
-  "hooks",
-  "output-styles",
-  "package.json",
-  "scripts",
-  "skills",
-  "templates",
-]);
 const excludedOfficialPluginAssetNames = new Set([
   ".DS_Store",
   ".venv",
@@ -157,11 +103,6 @@ function shouldCopyOfficialPluginAsset(sourcePath) {
   const name = basename(sourcePath);
   return !excludedOfficialPluginAssetNames.has(name) && !name.endsWith(".pyc");
 }
-const remoteOfficialPluginRequiredPaths = [
-  "packages/browser-use-plugin/.zcode-plugin/plugin.json",
-  "packages/node-repl-host/.zcode-plugin/plugin.json",
-];
-
 function readZCodeAgentRuntimeVersion() {
   const runtimeSourcePath = join(rootDir, "packages/shared/src/zcode-agent-runtime.ts");
   const runtimeSource = readFileSync(runtimeSourcePath, "utf8");
@@ -465,39 +406,6 @@ function assertRemoteOfficialPluginRuntime(plugin) {
   }
 }
 
-function stageRemoteOfficialPlugins(glmDir) {
-  for (const plugin of remoteOfficialPluginPackages) {
-    const sourceRoot = join(rootDir, plugin.relativePath);
-    const manifestPath = join(sourceRoot, ".zcode-plugin", "plugin.json");
-    if (!existsSync(manifestPath)) {
-      throw new Error(
-        `[prepare-prebuilds] missing remote official plugin manifest: ${manifestPath}`,
-      );
-    }
-
-    const targetRoot = join(glmDir, ...plugin.stagedPath.split("/"));
-    mkdirSync(targetRoot, { recursive: true });
-    for (const entryName of remoteOfficialPluginTopLevelPaths) {
-      const sourcePath = join(sourceRoot, entryName);
-      if (!existsSync(sourcePath)) continue;
-      cpSync(sourcePath, join(targetRoot, entryName), {
-        recursive: true,
-        filter: shouldCopyOfficialPluginAsset,
-      });
-    }
-    for (const relativePath of remoteOfficialPluginRequiredPaths) {
-      if (!relativePath.startsWith(`${plugin.stagedPath}/`)) continue;
-      const stagedAssetPath = join(glmDir, ...relativePath.split("/"));
-      if (!existsSync(stagedAssetPath)) {
-        throw new Error(
-          `[prepare-prebuilds] missing staged remote official plugin seed asset: ${stagedAssetPath}`,
-        );
-      }
-    }
-    console.log(`  [ok] mock-cdn glm official plugin ${plugin.stagedPath}`);
-  }
-}
-
 async function stageRemoteBundledSkillPack(glmDir) {
   const sourceRoot = join(rootDir, remoteBundledSkillPack.relativePath);
   const targetRoot = join(glmDir, ...remoteBundledSkillPack.stagedPath.split("/"));
@@ -542,7 +450,7 @@ async function stageRemoteAgentBundles() {
     rmSync(glmDir, { recursive: true, force: true });
     mkdirSync(glmDir, { recursive: true });
     copyFileSync(cliBundlePath, join(glmDir, "zcode.cjs"));
-    stageRemoteOfficialPlugins(glmDir);
+    await stageOfficialPluginAssets({ repoRoot: rootDir, targetRoot: glmDir });
     await stageRemoteBundledSkillPack(glmDir);
     console.log(`  [ok] mock-cdn glm/${platformKey}/zcode.cjs`);
   }

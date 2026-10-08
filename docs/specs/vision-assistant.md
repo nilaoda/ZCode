@@ -7,6 +7,9 @@
 - 设置页中的视觉模型是备用模型，配置它不会覆盖主模型的原生视觉。
 - 图片附件可以选择本次识图模型；这个选择不改变主会话模型，不影响后续新图片。
 - 视觉助手作为随应用离线分发的内置插件，可在模型设置和已安装插件中启停。
+- Desktop 安装包、Desktop Dev 的 filesystem 资源和远程 Agent 资源必须携带视觉助手的 manifest 与 agents/vision-reader.md，启动后由既有 seed 流程生成缓存并发布本地内置目录，不依赖 CDN。
+- SEA、Desktop 与远程预构建使用同一公开构建资源清单；复制操作复用异步 staging helper。内容插件不参与 runtime 编译，但缺少必需 Agent 资产必须让打包失败，不能产生只有旧插件的“成功”安装包。
+- 远程资源复用校验包含视觉助手 manifest 与 Agent 正文，旧缓存缺失这些文件时必须重新部署。开发态、生产态和 bootstrap 的资源构建顺序必须兼容；运行时插件构建完成前不校验其生成文件，生产 staging 在构建完成后严格校验。
 - 备用模型复用插件视觉子代理的模型配置，不另存第二份模型选择或凭据。
 - 模型设置中的视觉助手属于本机用户级全局配置，与 Provider 配置读取同一 Local Host；没有打开项目、当前仅打开远程项目或远程断连时，仍可读取和修改，不依赖模型连通性测试的 cwd。
 - 用户级插件读取与启停允许不传工作区；Host 复用已有插件管理进程及内部 cwd 补全协议载体，强制 user scope，不新建会话或伪造 UI 工作区。workspace scope 仍要求真实工作区，并保留远程 identity 路由。
@@ -91,6 +94,7 @@ Desktop 使用 desktop-continuous 的实时事件，手机使用 web-remote-repl
 12. 原始路径经冷恢复仍指向同一图片选择；Read 对未修改文件保留选择，对已修改文件明确失败；工具图片引用经持久化和恢复保持稳定。
 13. 无项目和仅有远程项目时，模型设置可启停视觉助手并保存备用模型；切换项目不改变本机全局配置，不调用远端 Host。读取失败可见且可手动重试，未安装显示真实原因。
 14. 新增视觉模型立即出现在候选；删除或停用后立即移除。最后一个候选被移除时，关闭设置页也会持久化关闭助手；重新添加模型不会自动开启。初始化错误、旧 revision 和 Host 销毁不能触发错误关闭。
+15. 干净打包目录同时包含三个内置插件：视觉助手 manifest 和 Agent 正文与源码一致；漏 Agent 时打包失败；桌面与远程入口复用同一 staging helper，旧远程资源缺少视觉助手时不允许复用。
 
 ```mermaid
 sequenceDiagram
@@ -123,6 +127,8 @@ sequenceDiagram
 
 ## 本次验证结果
 
+- 打包遗漏修复：3 个资源回归测试通过，覆盖桌面/远程 staging 的真实视觉 Agent、缺失 Agent 拒绝打包和远端资源复用合同。实际运行 Desktop 的 `prepare-agent-node-bundle.mjs` 成功，检查最终 `bundled-agents/darwin-arm64/glm` 中三个插件及全部必需文件，视觉 Agent 正文与源码一致。
+- 本轮根 `pnpm typecheck`、`pnpm lint`（69 个既有 warnings、0 errors）、改动格式、`git diff --check` 与架构检查（0 baseline、0 new）通过；未生成完整 Electron 安装包或执行真实 SSH 部署。
 - 全局入口及实时候选修复：8 个 Service 测试与 1 个系统 Chrome E2E 通过，覆盖无项目配置、远端 ServiceProvider 下使用本机全局服务、错误重试、插件缺失、实时新增删除、零候选关闭、重新添加不自动启用、过期 revision、Host 销毁和启用 RPC 中删除模型。
 - 本轮根 `pnpm typecheck`、`pnpm lint`（0 errors、69 个既有 warnings）、改动格式与架构检查（0 baseline、0 new）通过。没有真实供应商调用或完整 Electron 启动验证。
 - 修复后 15 个运行时、冷恢复、插件装配及真实持久化测试通过；1 个系统 Chrome 浏览器 E2E 通过，覆盖真实设置组件、附件 owner、模型过滤、逐图选择、发送撤回及手机宽度。
