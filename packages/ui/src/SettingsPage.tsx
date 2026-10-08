@@ -798,7 +798,8 @@ export function SettingsPage({
     localHostServices.systemService
       .info()
       .then((info) => {
-        setDefaultHomeDir(info.homedir);
+        // Local 身份与自定义数据根可能不同于真实 HOME，展示 Host 实际生效的目录。
+        setDefaultHomeDir(info.dataBaseDir ?? info.homedir);
         setHostPlatform(info.platform);
         if (info.platform !== "win32") {
           setIntegratedTerminalShellOptions([]);

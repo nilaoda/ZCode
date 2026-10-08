@@ -69,6 +69,8 @@ export interface WorkspaceFileEntry {
 export interface SystemInfo {
   homedir: string;
   platform: string;
+  /** 当前 Host 生效的数据基目录；旧 Host 可省略。 */
+  dataBaseDir?: string;
 }
 
 /** 支持的语言 */

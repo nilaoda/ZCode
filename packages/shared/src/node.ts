@@ -4,6 +4,12 @@
  * This subpath must not be imported by renderer/browser bundles.
  */
 export { acquireFileLock } from "./node/atomicFileLock.js";
+export {
+  resolveProjectMemoryCliStorageRoot,
+  getLegacyProjectMemoryCliStorageRoot,
+  migrateProjectMemories,
+  copyProjectMemoryStorage,
+} from "./node/projectMemoryStorage.js";
 export { scanOfficialPluginCacheRoots } from "./node/officialPluginCache.js";
 export {
   ZCODE_CONFIG_DIR_NAME,

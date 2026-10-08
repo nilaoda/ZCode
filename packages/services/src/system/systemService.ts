@@ -14,6 +14,7 @@ import type {
 } from "@zcode/shared";
 import type { ISystemService } from "./system.js";
 import { listIntegratedTerminalShellOptions } from "./integratedTerminalShells.js";
+import { getDataBaseDir } from "../paths.js";
 
 const DEFAULT_PROBE_TIMEOUT_MS = 800;
 const DEFAULT_PROBE_ATTEMPTS = 2;
@@ -350,7 +351,7 @@ export function createSystemService(options: CreateSystemServiceOptions = {}): I
 
   return {
     async info(): Promise<SystemInfo> {
-      return { homedir: homedir(), platform: process.platform };
+      return { homedir: homedir(), platform: process.platform, dataBaseDir: getDataBaseDir() };
     },
 
     async listIntegratedTerminalShells(): Promise<IntegratedTerminalShellOption[]> {

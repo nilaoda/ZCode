@@ -2,6 +2,7 @@ import type { ConfigResult } from "@zcode/adapters/config";
 import { resolveInitialModelSelection, type ModelSelectionOptions } from "@zcode/provider";
 import { resolveBashTimeoutPolicy, type AgentProfile, type AgentRuntimeConfig } from "@zcode/core";
 import { type BuiltInSubagentModelSelectionOverrides } from "@zcode/shared";
+import { resolveProjectMemoryCliStorageRoot } from "@zcode/shared/node";
 import {
   type CollaborationMode,
   type HookConfigSource,
@@ -174,7 +175,7 @@ export function resolveAppRuntimeConfig(input: {
       profiles: [...(options.runtimeConfig?.subagents?.profiles ?? []), ...subagentProfiles],
     },
     memory: {
-      cliStorageRoot,
+      cliStorageRoot: resolveProjectMemoryCliStorageRoot(cliStorageRoot, options.env),
       enabled: options.runtimeConfig?.memory?.enabled ?? configResult.config.features.memory,
       ...(options.runtimeConfig?.memory?.extractionEnabled === undefined
         ? {}

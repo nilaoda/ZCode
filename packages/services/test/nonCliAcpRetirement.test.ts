@@ -48,7 +48,7 @@ test("current Project Memory catalog and files remain readable", async () => {
     await mkdir(memoryRoot, { recursive: true });
     await writeFile(join(memoryRoot, "MEMORY.md"), "# Project memory\n");
     await writeFile(join(memoryRoot, "workflow.md"), "Use the current project workflow.\n");
-    const service = createMemoryService();
+    const service = createMemoryService({ legacyCliStorageRoots: [] });
     const catalog = await service.listProjectMemories();
     assert.equal(catalog.length, 1);
     assert.equal(catalog[0]?.id, workspaceId);

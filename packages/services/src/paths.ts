@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { basename, join, win32 } from "node:path";
 import { homedir } from "node:os";
 import { DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE } from "@zcode/shared";
+import { copyProjectMemoryStorage } from "@zcode/shared/node";
 
 let _dataBaseDir: string | null = null;
 export const ZCODE_WINDOWS_APP_INSTALL_DIR_ENV = "ZCODE_WINDOWS_APP_INSTALL_DIR";
@@ -224,7 +225,7 @@ export function getLegacyDeletedTaskSessionSnapshotPath(
 }
 
 /**
- * Copy the .zcode/v2 data directory from one base dir to another.
+ * Copy .zcode/v2 and CLI project memories from one base dir to another.
  * Excludes setting.json and its transient atomic-write siblings — bootstrap
  * state must only live at the default homedir location.
  */
@@ -252,4 +253,8 @@ export async function copyDataDirectory(oldBaseDir: string, newBaseDir: string):
       return true;
     },
   });
+  // 记忆位于 cli 下，原先仅复制 v2 会让切换数据目录后的记忆查看页再次变空。
+  const oldCli = join(oldBaseDir, ".zcode", "cli");
+  const newCli = join(newBaseDir, ".zcode", "cli");
+  await copyProjectMemoryStorage(oldCli, newCli);
 }

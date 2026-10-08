@@ -36,6 +36,11 @@ import {
 } from "@zcode/contracts";
 import { isRemoteWorkspaceIdentity, resolveZCodeRuntimeEnv } from "@zcode/shared";
 import {
+  getLegacyProjectMemoryCliStorageRoot,
+  migrateProjectMemories,
+  resolveProjectMemoryCliStorageRoot,
+} from "@zcode/shared/node";
+import {
   ZCODE_ATTACHMENT_FAULT_CODES,
   ZCodeAttachmentFaultError,
 } from "@zcode/shared/zcode-protocol-v4";
@@ -199,6 +204,13 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
   try {
     const storageRoot = resolvePath(configResult.config.storage.dir);
     const cliStorageRoot = getCliStorageRoot(storageRoot);
+    // 迁移失败应在打开 Session DB 前退出，避免失败重试泄漏已打开的数据库句柄。
+    if (options.runtimeConfig?.memory?.enabled ?? configResult.config.features.memory) {
+      await migrateProjectMemories(
+        resolveProjectMemoryCliStorageRoot(cliStorageRoot, options.env),
+        [cliStorageRoot, getLegacyProjectMemoryCliStorageRoot(options.env)],
+      );
+    }
     const modelIoDir = getModelIoDir(
       cliStorageRoot,
       resolveZCodeRuntimeEnv(options.env ?? process.env) === "development",

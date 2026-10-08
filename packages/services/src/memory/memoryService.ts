@@ -7,6 +7,7 @@ import { lstat, readdir, realpath } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { readProjectMemoryFileFromStableHandle } from "#src/memory/projectMemoryStableRead.js";
 import { getZCodeDataRootDir } from "#src/paths.js";
+import { getLegacyProjectMemoryCliStorageRoot, migrateProjectMemories } from "@zcode/shared/node";
 
 const PROJECT_MEMORY_INDEX_FILE_NAME = "MEMORY.md";
 const PROJECT_MEMORY_DIRECTORY_NAME = "memory";
@@ -109,8 +110,15 @@ function compareProjectMemoryFiles(
   return left.name.localeCompare(right.name, "en");
 }
 
-export function createMemoryService(): IMemoryService {
+export function createMemoryService(
+  options: { legacyCliStorageRoots?: readonly string[] } = {},
+): IMemoryService {
   async function listProjectMemories(): Promise<ProjectMemoryWorkspaceSummary[]> {
+    // 来源不存在由迁移接口处理；迁移途中的 IO 故障不能被 catalog 当成“没有记忆”。
+    await migrateProjectMemories(
+      join(getZCodeDataRootDir(), "cli"),
+      options.legacyCliStorageRoots ?? [getLegacyProjectMemoryCliStorageRoot()],
+    );
     let projectsRoot: string;
     let projectEntries;
     try {

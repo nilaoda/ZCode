@@ -30,10 +30,9 @@ export function DataBaseDirControl({
   const [errorMessageId, setErrorMessageId] = useState("settings.dataBaseDirCopyFailed");
 
   useEffect(() => {
-    if (saveState !== "saved") {
-      setLocalDataBaseDir(effectiveDir);
-    }
-  }, [effectiveDir, saveState]);
+    // 保存状态变化不是目录变化；否则再次浏览目录时 idle 会把刚选中的草稿覆盖回旧值。
+    setLocalDataBaseDir(effectiveDir);
+  }, [effectiveDir]);
 
   const isDirty = localDataBaseDir.trim() !== effectiveDir;
   const isSaving = saveState === "saving";
@@ -60,10 +59,10 @@ export function DataBaseDirControl({
 
   const handleSave = useCallback(async () => {
     const trimmed = localDataBaseDir.trim();
-    const newValue = trimmed === defaultHomeDir ? "" : trimmed;
     setSaveState("saving");
     try {
-      await onDataBaseDirChange(newValue);
+      // 生效目录未必是真实 HOME；保存选择值，避免空值在服务端被解析回另一目录。
+      await onDataBaseDirChange(trimmed);
       setSaveState("saved");
     } catch (error) {
       setErrorMessageId(
@@ -73,7 +72,7 @@ export function DataBaseDirControl({
       );
       setSaveState("error");
     }
-  }, [defaultHomeDir, localDataBaseDir, onDataBaseDirChange]);
+  }, [localDataBaseDir, onDataBaseDirChange]);
 
   return (
     <div className="flex w-[320px] min-w-0 flex-col gap-2">
