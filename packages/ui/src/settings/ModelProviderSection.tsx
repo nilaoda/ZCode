@@ -1053,16 +1053,7 @@ export function ModelProviderSection({
 
   return (
     <ModelProviderSectionLayout
-      leadingContent={
-        <VisionAssistantSettings
-          localOnly
-          workspacePath={
-            connectivityWorkspaceRequired
-              ? (connectivityWorkspacePath ?? "")
-              : connectivityWorkspacePath || workspacePath
-          }
-        />
-      }
+      leadingContent={<VisionAssistantSettings localOnly />}
       description={intl.formatMessage({ id: "settings.modelProviderDescription" })}
       refreshLabel={intl.formatMessage({ id: "settings.modelProvider.refresh" })}
       loadingLabel={intl.formatMessage({ id: "common.loading" })}

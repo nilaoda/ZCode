@@ -1,4 +1,5 @@
 import { requestPluginReferenceCatalog } from "#src/zcode-agent/pluginReferenceCatalogRequest.js";
+import { resolvePluginManagementTarget } from "./pluginManagementTarget.js";
 import {
   localTtftFactsSchema,
   sessionDebugSnapshotSchema,
@@ -3869,6 +3870,7 @@ export function createZCodeAgentService(
     },
 
     async listPlugins(params: ZCodeAgentPluginViewParams) {
+      const target = resolvePluginManagementTarget(params, ensurePluginManagementWorkspacePath);
       const requestPluginsList = async () => {
         const client = await getPluginManagementClient();
         // plugins/list 只读取本地 plugin metadata，与 mcp/list 一样走默认协议超时，
@@ -3876,7 +3878,7 @@ export function createZCodeAgentService(
         return client.request(
           zcodeProtocolMethods.pluginsList,
           {
-            workspace: buildWorkspaceRef(params),
+            workspace: buildWorkspaceRef(target),
             ...(params.configScope ? { configScope: params.configScope } : {}),
           },
           zcodePluginsListResultSchema,
@@ -3889,8 +3891,8 @@ export function createZCodeAgentService(
           throw error;
         }
         logger.warn(undefined, "插件列表请求超时，重启无响应 agent 后重试一次", {
-          workspaceKey: resolveWorkspaceKey(params),
-          workspacePath: params.workspacePath,
+          workspaceKey: resolveWorkspaceKey(target),
+          workspacePath: target.workspacePath,
           message: error instanceof Error ? error.message : String(error),
         });
         // 插件列表只读取 CLI plugin metadata。若旧 agent 进程还活着但协议不回包，
@@ -4043,11 +4045,12 @@ export function createZCodeAgentService(
     },
 
     async getPluginsOverview(params: ZCodeAgentPluginViewParams) {
+      const target = resolvePluginManagementTarget(params, ensurePluginManagementWorkspacePath);
       const client = await getPluginManagementClient();
       return client.request(
         zcodeProtocolMethods.pluginsOverview,
         {
-          workspace: buildWorkspaceRef(params),
+          workspace: buildWorkspaceRef(target),
           ...(params.configScope ? { configScope: params.configScope } : {}),
         },
         zcodePluginsOverviewResultSchema,
@@ -4228,11 +4231,12 @@ export function createZCodeAgentService(
     },
 
     async setPluginEnabled(params: ZCodeAgentSetPluginEnabledParams) {
+      const target = resolvePluginManagementTarget(params, ensurePluginManagementWorkspacePath);
       const client = await getPluginManagementClient();
       return client.request(
         zcodeProtocolMethods.pluginsSetEnabled,
         {
-          workspace: buildWorkspaceRef(params),
+          workspace: buildWorkspaceRef(target),
           pluginId: params.pluginId,
           enabled: params.enabled,
           ...(params.operationId ? { operationId: params.operationId } : {}),

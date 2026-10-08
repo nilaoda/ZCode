@@ -769,7 +769,7 @@ export function WorkspaceHeaderTitleSection({
               skillsService: services.skillsService,
               workspaceIdentity,
               workspacePath: workspaceAbsPath,
-              zcodeAgentService: services.zcodeAgentService,
+              pluginManagementService: services.pluginManagementService,
               zcodeSessionService: services.zcodeSessionService,
             });
           }}

@@ -30,6 +30,15 @@ test("视觉设置共享配置、过滤模型、逐图提交及撤回恢复，�
     await page.getByRole("option", { name: "vision-a · Example", exact: true }).waitFor();
     assert.equal(await page.getByRole("option", { name: /text-model/ }).count(), 0);
     await page.getByRole("option", { name: "vision-a · Example", exact: true }).click();
+    assert.equal(await page.getByText(/请先打开一个工作区/).count(), 0);
+    await page.getByRole("button", { name: "Remote project" }).click();
+    await backup.getByText("vision-a · Example", { exact: true }).waitFor();
+    await toggle.click();
+    await page.waitForFunction(
+      () => document.querySelector('[role="switch"]')?.getAttribute("aria-checked") === "false",
+    );
+    await toggle.click();
+    await page.getByRole("button", { name: "Model settings" }).click();
     await page.getByRole("button", { name: "Plugin details" }).click();
     await backup.getByText("vision-a · Example", { exact: true }).waitFor();
     await toggle.click();
@@ -70,6 +79,53 @@ test("视觉设置共享配置、过滤模型、逐图提交及撤回恢复，�
     );
     const auto = JSON.parse((await page.getByTestId("sent-attachments").textContent())!);
     assert.equal(auto[0].visionModel, undefined);
+    const globalCalls = JSON.parse(
+      (await page.getByTestId("configuration-calls").textContent())!,
+    ).filter((input) => !input.workspacePath);
+    assert.ok(globalCalls.some((input) => input.configScope === "user"));
+    assert.ok(globalCalls.some((input) => input.scope === "user" && input.enabled === false));
+    assert.ok(globalCalls.every((input) => !input.workspaceIdentity && !input.remoteSessionId));
+
+    await page.getByRole("button", { name: "Add vision model", exact: true }).click();
+    await backup.click();
+    await page.getByRole("option", { name: "vision-c · Example", exact: true }).waitFor();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Delete vision model", exact: true }).click();
+    await backup.click();
+    assert.equal(
+      await page.getByRole("option", { name: "vision-c · Example", exact: true }).count(),
+      0,
+    );
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Delete all vision models", exact: true }).click();
+    await page
+      .getByText("没有可用的视觉模型，助手已关闭。请先添加并启用支持图片的模型。", { exact: true })
+      .waitFor();
+    assert.equal(await toggle.getAttribute("aria-checked"), "false");
+    assert.equal(await toggle.isDisabled(), true);
+    await page.getByRole("button", { name: "Add vision model", exact: true }).click();
+    await page.waitForFunction(
+      () => !document.querySelector('[role="switch"]')?.hasAttribute("disabled"),
+    );
+    assert.equal(await toggle.getAttribute("aria-checked"), "false");
+    await page.getByRole("button", { name: "Plugin details" }).click();
+    await page.waitForFunction(
+      () => !document.querySelector('[role="switch"]')?.hasAttribute("disabled"),
+    );
+    assert.equal(await toggle.getAttribute("aria-checked"), "false");
+
+    await page.goto(`${server.resolvedUrls!.local[0]}?scenario=error`);
+    await page.getByRole("alert").getByText("Fixture plugin read failed").waitFor();
+    assert.equal(await page.getByText(/请先打开一个工作区/).count(), 0);
+    await page.getByRole("button", { name: "重试", exact: true }).click();
+    await page.waitForFunction(
+      () => !document.querySelector('[role="switch"]')?.hasAttribute("disabled"),
+    );
+    await page.goto(`${server.resolvedUrls!.local[0]}?scenario=missing`);
+    await page
+      .getByText("视觉助手插件未安装，请在插件管理中恢复内置插件。", { exact: true })
+      .waitFor();
+    assert.equal(await page.getByRole("switch").isDisabled(), true);
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

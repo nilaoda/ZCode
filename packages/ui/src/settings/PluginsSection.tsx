@@ -318,6 +318,13 @@ function PluginList({
       pluginService: pluginManagementService,
     });
   }, [initialize, pluginManagementService, configScope, target, targetServiceResolution.rpcReady]);
+  useEffect(() => {
+    if (!targetServiceResolution.rpcReady) return;
+    const subscription = pluginManagementService.onDidChange(() => {
+      void refreshAfterPluginChange();
+    });
+    return () => subscription.dispose();
+  }, [pluginManagementService, refreshAfterPluginChange, targetServiceResolution.rpcReady]);
   const handleSetEnabled = useCallback(
     async (pluginId: string, enabled: boolean) => {
       const plugin = plugins.find((candidate) => candidate.id === pluginId);

@@ -11,7 +11,15 @@ const enUS: Record<string, string> = {
   "vision.automatic": "Automatic",
   "vision.thisImage": "Model for this image",
   "vision.unavailable": "Unavailable",
-  "vision.loading": "Open a workspace to load the vision assistant configuration.",
+  "vision.loading": "Loading vision assistant configuration…",
+  "vision.remoteWaiting":
+    "Waiting for the remote connection to load this environment’s vision assistant configuration.",
+  "vision.workspaceRequired":
+    "Select a workspace for workspace plugin settings. Global vision assistance is available in model settings.",
+  "vision.notInstalled":
+    "The vision assistant plugin is not installed. Restore the built-in plugin in plugin management.",
+  "vision.noModels":
+    "No vision models are available; the assistant is off. Add and enable a model that supports images.",
 
   "startPlan.recommendation.subagentDescription":
     "Your Start Plan has quota available for {model}. Switch this subagent’s model to the Start Plan?",

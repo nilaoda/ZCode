@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Event } from "@zcode/rpc";
+import { Emitter, Event } from "@zcode/rpc";
 import { createPluginAgentStateId, VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
 import { ServiceProvider } from "../../src/hooks/useServices.js";
 import { PlatformProvider } from "../../src/hooks/usePlatform.js";
 import { TabStoreProvider } from "../../src/store/TabStoreProvider.js";
 import { ZCodeIntlProvider } from "../../src/i18n/IntlProvider.js";
+import { useRemoteWorkspaceSessionStore } from "../../src/store/remoteWorkspaceSessionStore.js";
 import { VisionAssistantSettings } from "../../src/settings/VisionAssistantSettings.js";
 import { ImageVisionModelSelect } from "../../src/v4/composer/ImageVisionModelSelect.js";
 import { useComposerAttachments } from "../../src/v4/composer/useComposerAttachments.js";
 import "../../src/styles.css";
 
-const view = {
+let view = {
   revision: 1,
   providers: [
     {
@@ -45,7 +46,13 @@ const view = {
   ],
 };
 let enabled = true;
+const visionTemplate = view.providers[0].models[1];
+const modelChanges = new Emitter<typeof view>();
+const pluginChanges = new Emitter<void>();
 let backup;
+const calls: unknown[] = [];
+let failed = false;
+const scenario = new URLSearchParams(location.search).get("scenario");
 const plugin = () => ({
   id: VISION_ASSISTANT_PLUGIN_ID,
   name: "vision-assistant",
@@ -55,7 +62,7 @@ const plugin = () => ({
   components: [],
 });
 const services = {
-  modelSelectionService: { getView: async () => view, onDidChange: Event.None },
+  modelSelectionService: { getView: async () => view, onDidChange: modelChanges.event },
   subagentsService: {
     getPluginAgentModelOverride: async () => ({ modelSelection: backup }),
     list: async () => ({
@@ -73,7 +80,15 @@ const services = {
     },
   },
   pluginManagementService: {
-    listPlugins: async () => ({ plugins: [plugin()], diagnostics: [] }),
+    onDidChange: pluginChanges.event,
+    listPlugins: async (input) => {
+      calls.push(input);
+      if (scenario === "error" && !failed) {
+        failed = true;
+        throw new Error("Fixture plugin read failed");
+      }
+      return { plugins: scenario === "missing" ? [] : [plugin()], diagnostics: [] };
+    },
     getPluginsOverview: async () => ({
       marketplaces: [],
       availablePlugins: [],
@@ -82,11 +97,31 @@ const services = {
       diagnostics: [],
     }),
     setPluginEnabled: async (input) => {
+      calls.push(input);
       enabled = input.enabled;
+      pluginChanges.fire();
       return { enabled, plugin: plugin() };
     },
   },
   promptAttachmentTransferService: {},
+};
+// 模拟远端项目外层 ServiceProvider：全局配置只能使用已注册的 Local Host。
+useRemoteWorkspaceSessionStore.setState({ baseServices: services });
+const failRemoteRead = async () => {
+  throw new Error("Global settings must not read the remote Host");
+};
+const remoteServices = {
+  ...services,
+  modelSelectionService: { getView: failRemoteRead, onDidChange: Event.None },
+  pluginManagementService: {
+    onDidChange: Event.None,
+    listPlugins: failRemoteRead,
+    setPluginEnabled: failRemoteRead,
+  },
+  subagentsService: {
+    getPluginAgentModelOverride: failRemoteRead,
+    setPluginAgentModelOverride: failRemoteRead,
+  },
 };
 const imageRefs = ["a", "b"].map((name) => ({
   ref: `zcode-artifact://test/${name}`,
@@ -113,11 +148,62 @@ function App() {
       <button onClick={() => setPage(page === "models" ? "plugin" : "models")}>
         {page === "models" ? "Plugin details" : "Model settings"}
       </button>
-      <VisionAssistantSettings
-        key={page}
-        localOnly={page === "models"}
-        workspacePath="/workspace"
-      />
+      <button onClick={() => setPage("remote")}>Remote project</button>
+      <button
+        onClick={() => {
+          view = {
+            ...view,
+            revision: view.revision + 1,
+            providers: view.providers.map((provider) => ({
+              ...provider,
+              models: [...provider.models, { ...visionTemplate, modelId: "vision-c" }],
+            })),
+          };
+          modelChanges.fire(view);
+        }}
+      >
+        Add vision model
+      </button>
+      <button
+        onClick={() => {
+          view = {
+            ...view,
+            revision: view.revision + 1,
+            providers: view.providers.map((provider) => ({
+              ...provider,
+              models: provider.models.filter((model) => model.modelId !== "vision-c"),
+            })),
+          };
+          modelChanges.fire(view);
+        }}
+      >
+        Delete vision model
+      </button>
+      <button
+        onClick={() => {
+          view = {
+            ...view,
+            revision: view.revision + 1,
+            providers: view.providers.map((provider) => ({
+              ...provider,
+              models: provider.models.filter((model) => model.modelId === "text-model"),
+            })),
+          };
+          modelChanges.fire(view);
+          // 模拟 Host 的自动关闭广播；持久化和并发规则由真实 Service 单测覆盖。
+          enabled = false;
+          pluginChanges.fire();
+        }}
+      >
+        Delete all vision models
+      </button>
+      <ServiceProvider services={page === "remote" ? remoteServices : services}>
+        <VisionAssistantSettings
+          key={page}
+          localOnly={page !== "plugin"}
+          workspacePath={page === "plugin" ? "/workspace" : undefined}
+        />
+      </ServiceProvider>
       <button onClick={() => attachments.restoreSessionOwnedAttachments(imageRefs)}>
         Add images
       </button>
@@ -148,6 +234,7 @@ function App() {
       <output data-testid="sent-attachments" className="block break-all text-ui-sm">
         {JSON.stringify(sent)}
       </output>
+      <output data-testid="configuration-calls">{JSON.stringify(calls)}</output>
     </main>
   );
 }

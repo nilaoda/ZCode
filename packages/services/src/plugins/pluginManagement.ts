@@ -45,6 +45,9 @@ import type {
 } from "../zcode-agent/zcodeAgentPluginParams.js";
 
 export interface IPluginManagementService {
+  /** 配置写入后的失效信号；消费方按当前目标重新读取，不复用其他 scope 的投影。 */
+  readonly onDidChange: Event<void>;
+  /** configScope=user 时可省略项目，读取当前 Host 的用户全局插件配置。 */
   listPlugins(params: ZCodeAgentPluginViewParams): Promise<ZCodePluginsListResult>;
   /**
    * Plugin 对话引用 catalog：
@@ -85,6 +88,7 @@ export interface IPluginManagementService {
   ): Promise<ZCodePluginsConfigureResult>;
   validatePlugin(params: ZCodeAgentValidatePluginParams): Promise<ZCodePluginsValidateResult>;
   describePlugin(params: ZCodeAgentDescribePluginParams): Promise<ZCodePluginsDescribeResult>;
+  /** scope=user 时可省略项目；workspace scope 保持明确目标。 */
   setPluginEnabled(params: ZCodeAgentSetPluginEnabledParams): Promise<ZCodePluginsSetEnabledResult>;
 }
 

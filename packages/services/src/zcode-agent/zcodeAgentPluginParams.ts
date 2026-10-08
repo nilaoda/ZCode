@@ -12,9 +12,15 @@ export interface ZCodeAgentWorkspaceTarget {
   remoteSessionId?: string;
 }
 
-export interface ZCodeAgentPluginViewParams extends ZCodeAgentWorkspaceTarget {
-  configScope?: "user" | "workspace";
-}
+/** 用户级控制面不寄居项目；workspace/effective 视图仍须明确目标。 */
+export type ZCodeAgentPluginViewParams =
+  | (ZCodeAgentWorkspaceTarget & { configScope?: "user" | "workspace" })
+  | {
+      configScope: "user";
+      workspacePath?: never;
+      workspaceIdentity?: never;
+      remoteSessionId?: never;
+    };
 
 export interface ZCodeAgentListMcpServerStatusesParams extends ZCodeAgentWorkspaceTarget {
   mcpServers?: ZCodeAgentMcpServer[];
@@ -88,12 +94,14 @@ export interface ZCodeAgentDescribePluginParams extends ZCodeAgentWorkspaceTarge
   pluginName: string;
 }
 
-export interface ZCodeAgentSetPluginEnabledParams extends ZCodeAgentWorkspaceTarget {
+export type ZCodeAgentSetPluginEnabledParams = {
   enabled: boolean;
   operationId?: string;
   pluginId: string;
-  scope?: "user" | "workspace";
-}
+} & (
+  | (ZCodeAgentWorkspaceTarget & { scope?: "user" | "workspace" })
+  | { scope: "user"; workspacePath?: never; workspaceIdentity?: never; remoteSessionId?: never }
+);
 
 // Plugin 对话引用 catalog：
 // 带 sessionId → session-owned 冻结 catalog（必须路由到持有该 session 的 workspace client）；

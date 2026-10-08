@@ -10,7 +10,11 @@ const zhCN: Record<string, string> = {
   "vision.automatic": "自动识图",
   "vision.thisImage": "本次识图模型",
   "vision.unavailable": "不可用",
-  "vision.loading": "请先打开一个工作区，以读取视觉助手配置。",
+  "vision.loading": "正在加载视觉助手配置…",
+  "vision.remoteWaiting": "正在等待远程连接，以读取该环境的视觉助手配置。",
+  "vision.workspaceRequired": "工作区插件配置需要选择目标工作区。全局视觉助手可在模型设置中配置。",
+  "vision.notInstalled": "视觉助手插件未安装，请在插件管理中恢复内置插件。",
+  "vision.noModels": "没有可用的视觉模型，助手已关闭。请先添加并启用支持图片的模型。",
 
   "startPlan.recommendation.subagentDescription":
     "你的体验套餐中，{model} 仍有可用额度，是否将此子智能体的模型切换到体验套餐？",

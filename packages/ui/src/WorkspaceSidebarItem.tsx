@@ -1191,7 +1191,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
             skillsService: services.skillsService,
             workspaceIdentity: tab.workspaceIdentity,
             workspacePath: tab.workspacePath,
-            zcodeAgentService: services.zcodeAgentService,
+            pluginManagementService: services.pluginManagementService,
             zcodeSessionService: services.zcodeSessionService,
           });
         }}

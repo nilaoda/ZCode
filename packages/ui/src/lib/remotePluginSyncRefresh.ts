@@ -2,7 +2,7 @@ import type {
   ICommandsService,
   IMcpSyncService,
   ISkillsService,
-  IZCodeAgentService,
+  IPluginManagementService,
   IZCodeSessionService,
 } from "@zcode/services";
 import { logger } from "@/logger.js";
@@ -90,7 +90,7 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
   skillsService: ISkillsService;
   workspaceIdentity?: string | null;
   workspacePath?: string | null;
-  zcodeAgentService: IZCodeAgentService;
+  pluginManagementService: IPluginManagementService;
   zcodeSessionService: Pick<IZCodeSessionService, "closeSession">;
 }): Promise<void> {
   const workspacePath = params.workspacePath;
@@ -105,7 +105,8 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
     pluginStore.workspacePath === workspacePath &&
     pluginStore.workspaceIdentity === workspaceIdentity
   ) {
-    await pluginStore.refresh(params.zcodeAgentService);
+    // 插件管理新增变化事件后不能再靠 Agent 的同名方法结构性冒充管理服务。
+    await pluginStore.refresh(params.pluginManagementService);
   }
 
   await invalidateDeferredDraftSessionForSkillChange({

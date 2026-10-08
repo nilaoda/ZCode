@@ -1,4 +1,5 @@
 import { Switch } from "@/components/ui/switch.js";
+import { Button } from "@/components/ui/button.js";
 import { VisionModelSelect } from "@/components/VisionModelSelect.js";
 import { useVisionAssistant, type VisionAssistantTarget } from "@/hooks/useVisionAssistant.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -7,6 +8,17 @@ import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js"
 export function VisionAssistantSettings(target: VisionAssistantTarget) {
   const { intl } = useZCodeIntl();
   const vision = useVisionAssistant(target);
+  const status = vision.loading
+    ? "vision.loading"
+    : vision.unavailableReason === "remote-waiting"
+      ? "vision.remoteWaiting"
+      : vision.unavailableReason === "missing-target"
+        ? "vision.workspaceRequired"
+        : !vision.plugin
+          ? "vision.notInstalled"
+          : vision.models.state.status === "ready" && !vision.hasCandidates
+            ? "vision.noModels"
+            : undefined;
   return (
     <section className="space-y-3" data-testid="vision-assistant-settings">
       <h3 className="text-ui-base font-medium">{intl.formatMessage({ id: "vision.title" })}</h3>
@@ -17,8 +29,8 @@ export function VisionAssistantSettings(target: VisionAssistantTarget) {
           control={
             <Switch
               aria-label={intl.formatMessage({ id: "vision.enabled" })}
-              checked={vision.plugin?.enabled === true}
-              disabled={!vision.plugin || vision.pending}
+              checked={vision.hasCandidates && vision.plugin?.enabled === true}
+              disabled={!vision.plugin || !vision.ready || !vision.hasCandidates || vision.pending}
               onCheckedChange={(enabled) => void vision.setEnabled(enabled)}
             />
           }
@@ -33,6 +45,7 @@ export function VisionAssistantSettings(target: VisionAssistantTarget) {
               disabled={
                 !vision.plugin ||
                 !vision.ready ||
+                !vision.hasCandidates ||
                 vision.pending ||
                 vision.models.state.status !== "ready"
               }
@@ -43,12 +56,15 @@ export function VisionAssistantSettings(target: VisionAssistantTarget) {
           }
           detail={
             vision.error ? (
-              <p role="alert" className="text-ui-base text-destructive">
-                {vision.error}
-              </p>
-            ) : !vision.plugin ? (
+              <div role="alert" className="flex items-center gap-2 text-ui-base text-destructive">
+                <p>{vision.error}</p>
+                <Button variant="ghost" size="xs" disabled={vision.pending} onClick={vision.reload}>
+                  {intl.formatMessage({ id: "common.retry" })}
+                </Button>
+              </div>
+            ) : status ? (
               <p className="text-ui-sm text-foreground-subtle">
-                {intl.formatMessage({ id: "vision.loading" })}
+                {intl.formatMessage({ id: status })}
               </p>
             ) : undefined
           }

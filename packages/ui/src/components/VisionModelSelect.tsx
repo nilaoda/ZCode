@@ -1,4 +1,4 @@
-import { completeNewModelSelection } from "@zcode/provider";
+import { listVisionModelCandidates } from "@zcode/provider";
 import type { ModelSelectionView } from "@zcode/services";
 import type { ModelSelection } from "@zcode/shared";
 import {
@@ -28,25 +28,7 @@ export function VisionModelSelect({
   compact?: boolean;
 }) {
   const { intl } = useZCodeIntl();
-  const candidates =
-    view?.providers.flatMap((provider) =>
-      provider.models.flatMap((model) => {
-        if (model.config.properties.inputFormat.supportsImage !== true) return [];
-        const selection = completeNewModelSelection(view, {
-          providerId: provider.providerId,
-          modelId: model.modelId,
-        });
-        return selection
-          ? [
-              {
-                key: JSON.stringify([provider.providerId, model.modelId]),
-                name: `${model.modelId} · ${provider.providerName ?? provider.providerId}`,
-                selection,
-              },
-            ]
-          : [];
-      }),
-    ) ?? [];
+  const candidates = view ? listVisionModelCandidates(view) : [];
   const selectedKey = value ? JSON.stringify([value.providerId, value.modelId]) : "automatic";
   const unavailable = value && !candidates.some((candidate) => candidate.key === selectedKey);
   return (
