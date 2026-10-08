@@ -29,6 +29,10 @@ export function refreshBranchAwareBuiltInTools(runtime: AgentRuntimeInternal): v
     bashTimeoutPolicy: runtime.config.bashTimeoutPolicy,
     includeSkill: Boolean(runtime.skillPort),
     includeAgent: Boolean(runtime.subagentPort),
+    includeInspectImage:
+      runtime.config.runtimeFeatures?.visionAssistant === true &&
+      runtime.config.taskType !== "subagent_child" &&
+      Boolean(runtime.subagentPort),
     embeddedSearchEnabled,
     // 本函数是**第二个**
     // 注册入口，且刻意只传一个精简选项集。对「只有 true 才注册」的门（OffPeak / Cron / Workflow…）

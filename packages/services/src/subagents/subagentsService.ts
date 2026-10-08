@@ -8,6 +8,7 @@ import {
   DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS,
   ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   modelSelectionSchema,
+  type ModelSelection,
   type AgentCreateParams,
   type AgentDeleteParams,
   type AgentDiagnostic,
@@ -26,7 +27,13 @@ import {
 } from "@zcode/shared";
 import { normalizeSubagentModelSelection } from "./subagentModelSelection.js";
 import { serializeSubagentMarkdown, parseSubagentMarkdown } from "./subagentMarkdown.js";
-import { resolveSubagentStateFile, resolveUserSubagentRoot, resolveWorkspaceSubagentRoot, resolveZCodeStorageRoot, type SubagentStorageOptions } from "./subagentStorage.js";
+import {
+  resolveSubagentStateFile,
+  resolveUserSubagentRoot,
+  resolveWorkspaceSubagentRoot,
+  resolveZCodeStorageRoot,
+  type SubagentStorageOptions,
+} from "./subagentStorage.js";
 import type { ISubagentsService } from "./subagents.js";
 import { atomicWriteText } from "#src/fs/atomicFileUtils.js";
 import {
@@ -670,6 +677,15 @@ export function createSubagentsService(options?: SubagentsServiceOptions): ISuba
       const queued = writeQueue.then(runUpdate, runUpdate);
       writeQueue = queued.catch(() => {});
       await queued;
+    },
+
+    async getPluginAgentModelOverride(params: {
+      agentId: string;
+    }): Promise<{ modelSelection?: ModelSelection }> {
+      if (!params.agentId.startsWith("plugin:") || params.agentId.trim() !== params.agentId)
+        throw new Error("无效插件 Subagent 身份");
+      const state = await readAgentStateFile(storageOptions);
+      return { modelSelection: state.pluginAgentModelSelectionOverrides[params.agentId] };
     },
 
     async setPluginAgentModelOverride(params: PluginSubagentModelOverrideParams): Promise<void> {

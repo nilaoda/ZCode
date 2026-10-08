@@ -161,6 +161,7 @@ export interface AgentRuntimeConfig {
      * 由 bootstrap 根据 ZCode 官方插件启停推导，不由普通插件 manifest 自声明。
      */
     nodeRepl?: boolean;
+    visionAssistant?: boolean;
     /**
      * 是否允许 node_repl 注入 agent.browsers。还需要宿主提供 browserControlPort。
      */

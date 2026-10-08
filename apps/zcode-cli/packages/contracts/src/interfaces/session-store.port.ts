@@ -467,6 +467,8 @@ export type FilePartSource =
     };
 
 export interface AttachmentStorageMetadata {
+  visionModel?: ModelSelection;
+  visionReference?: string;
   sizeBytes?: number;
   sha256?: string;
   image?: {

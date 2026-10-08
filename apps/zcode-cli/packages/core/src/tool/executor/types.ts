@@ -90,6 +90,9 @@ export interface ToolExecutorOptions {
   executionPort?: ExecutionPort;
   browserControlPort?: BrowserControlPort;
   browserDocumentationRoot?: string;
+  resolveVisionImage?: (
+    reference: string,
+  ) => Promise<import("@zcode/contracts").ModelImageContentBlock | undefined>;
   fileSystemPort?: FileSystemPort;
   httpClientPort?: HttpClientPort;
   imageProcessorPort?: ImageProcessorPort;
@@ -196,6 +199,9 @@ export interface ToolExecutorDeps {
   executionPort?: ExecutionPort;
   browserControlPort?: BrowserControlPort;
   browserDocumentationRoot?: string;
+  resolveVisionImage?: (
+    reference: string,
+  ) => Promise<import("@zcode/contracts").ModelImageContentBlock | undefined>;
   fileSystemPort?: FileSystemPort;
   httpClientPort?: HttpClientPort;
   imageProcessorPort?: ImageProcessorPort;

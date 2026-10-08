@@ -150,6 +150,9 @@ export interface ToolExecutionContext {
   browserControlPort?: BrowserControlPort;
   /** 官方 browser-use plugin docs 资产目录；只在 browser-use 启用时用于 agent.browsers.documentation()。 */
   browserDocumentationRoot?: string;
+  resolveVisionImage?: (
+    reference: string,
+  ) => Promise<import("@zcode/contracts").ModelImageContentBlock | undefined>;
   fileSystemPort?: FileSystemPort;
   httpClientPort?: HttpClientPort;
   imageProcessorPort?: ImageProcessorPort;

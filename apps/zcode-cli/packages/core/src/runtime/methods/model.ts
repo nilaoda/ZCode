@@ -1,3 +1,4 @@
+import { projectVisionImages } from "../helpers/vision-assistant.js";
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import { runWithModelInvocationContext, traceContextToLogContext } from "../deps.js";
 import type { ModelReasoningContentBlock, ModelToolCall, ModelUsage, ToolCallId } from "../deps.js";
@@ -51,7 +52,11 @@ export async function runModelTextRequest(
     this.artifactStore,
   );
   const capabilityProjection = projectMessagesForInputFormat(
-    mediaPathMessages,
+    projectVisionImages(
+      mediaPathMessages,
+      model.properties.inputFormat.supportsImage,
+      this.registry.has("InspectImage"),
+    ),
     model.properties.inputFormat,
   );
   logMediaCapabilityProjection(this.logger, options.traceContext, capabilityProjection, {

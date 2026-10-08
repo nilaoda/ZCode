@@ -1,5 +1,6 @@
 import type {
   ZCodeProvider,
+  ModelSelection,
   AgentSummary,
   AgentsListResult,
   AgentCreateParams,
@@ -23,6 +24,11 @@ export interface ISubagentsService {
   setEnabled(params: { agentId: string; enabled: boolean }): Promise<void>;
 
   setBuiltInModelOverride(params: BuiltInSubagentModelOverrideParams): Promise<void>;
+
+  /** 从同一份 state 读取覆盖，不依赖插件发现或启用状态。 */
+  getPluginAgentModelOverride(params: {
+    agentId: string;
+  }): Promise<{ modelSelection?: ModelSelection }>;
 
   /** 只写用户 state 的完整覆盖，不改插件 Markdown。 */
   setPluginAgentModelOverride(params: PluginSubagentModelOverrideParams): Promise<void>;

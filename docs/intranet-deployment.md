@@ -9,13 +9,13 @@
 
 **外部登录服务已整体移除**，应用不需要、也不提供任何账号登录。
 
-| 已移除 | 实现位置 | 说明 |
-| --- | --- | --- |
-| OAuth provider（zai / bigmodel） | `packages/services/src/oauth/providers/index.ts` | 工厂恒定返回空数组；`zaiProviderAdapter` / `bigmodelProviderAdapter` / 两个 providerConfig 及 `runtimeConfig` 已删除 |
-| OAuth 401 退出判定中的业务 token 分支 | `oauth/oauthUnauthorizedRequest.ts` | 只保留 ZCode 平台 JWT 判定 |
-| 启动时「无可用 Provider 就强制登录」门禁 | `packages/ui/src/lib/rootStartupGate.ts` | `shouldEnableProviderAvailabilityLoginEntryGuard()` 返回 `false`，冷启动直接进工作台 |
-| UI 登录入口 | `packages/ui/src/Root.tsx` | 不再传入 `onLogin`，登录按钮自动隐藏 |
-| 云端 Provider 与模板 | `config/provider/zcode-builtin.json` | 见 §3.3，内置目录已是纯本地版本 |
+| 已移除                                   | 实现位置                                         | 说明                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| OAuth provider（zai / bigmodel）         | `packages/services/src/oauth/providers/index.ts` | 工厂恒定返回空数组；`zaiProviderAdapter` / `bigmodelProviderAdapter` / 两个 providerConfig 及 `runtimeConfig` 已删除 |
+| OAuth 401 退出判定中的业务 token 分支    | `oauth/oauthUnauthorizedRequest.ts`              | 只保留 ZCode 平台 JWT 判定                                                                                           |
+| 启动时「无可用 Provider 就强制登录」门禁 | `packages/ui/src/lib/rootStartupGate.ts`         | `shouldEnableProviderAvailabilityLoginEntryGuard()` 返回 `false`，冷启动直接进工作台                                 |
+| UI 登录入口                              | `packages/ui/src/Root.tsx`                       | 不再传入 `onLogin`，登录按钮自动隐藏                                                                                 |
+| 云端 Provider 与模板                     | `config/provider/zcode-builtin.json`             | 见 §3.3，内置目录已是纯本地版本                                                                                      |
 
 **结果**：冷启动直接进入工作台；没有模型时用户到「设置 → 模型供应商 → 新增」自行添加
 本地模型即可，不会被任何登录页拦住。
@@ -31,16 +31,16 @@
 ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大部分内网适配是配置工作**，
 只有少数几处需要改代码（本分支已完成）。
 
-| 能力 | 状态 |
-| --- | --- |
-| **外部登录（OAuth）** | **已整体移除**，应用无需登录 |
-| **内置 Provider 目录** | **已收敛为纯本地**，只能新增自定义 Provider |
-| 产品后端地址 | 环境变量可整体重定向 |
-| 出站代理 / 自签 CA | 环境变量，覆盖 Electron、模型请求、MCP、子进程 |
-| 遥测 / ARMS RUM | **默认关闭**，端点为空即不上报 |
-| 插件 CDN（目录 + 资源） | 环境变量（本分支改造） |
-| WebFetch 私网访问 | 环境变量白名单（本分支改造） |
-| 本地模型 | 通过 Provider 配置接入，无需改代码 |
+| 能力                    | 状态                                           |
+| ----------------------- | ---------------------------------------------- |
+| **外部登录（OAuth）**   | **已整体移除**，应用无需登录                   |
+| **内置 Provider 目录**  | **已收敛为纯本地**，只能新增自定义 Provider    |
+| 产品后端地址            | 环境变量可整体重定向                           |
+| 出站代理 / 自签 CA      | 环境变量，覆盖 Electron、模型请求、MCP、子进程 |
+| 遥测 / ARMS RUM         | **默认关闭**，端点为空即不上报                 |
+| 插件 CDN（目录 + 资源） | 环境变量（本分支改造）                         |
+| WebFetch 私网访问       | 环境变量白名单（本分支改造）                   |
+| 本地模型                | 通过 Provider 配置接入，无需改代码             |
 
 ---
 
@@ -50,12 +50,12 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 
 这决定了配置该写在哪里。**安装后的桌面 App 不读 `.env` 文件**，这点很容易踩坑。
 
-| 运行形态 | `.env` 是否生效 | 说明 |
-| --- | --- | --- |
-| CLI / TUI（`zcode`） | ✅ 生效 | 从当前工作目录**向上逐级**查找 `.env`；已有 `process.env` 优先于文件（`dotenv` 以 `override: false` 加载） |
-| 桌面 App — 开发态（`pnpm dev:desktop`） | ✅ 生效 | 读仓库根与 `packages/desktop` 下的 `.env` / `.env.local` |
-| 桌面 App — **安装包** | ❌ **不生效** | `loadHostProcessEnvFromLocalFiles()` 在打包模式下直接 return，只保留一个打包标记 |
-| Web 开发服务器 | 构建期读取 | Vite `loadEnv` |
+| 运行形态                                | `.env` 是否生效 | 说明                                                                                                       |
+| --------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------- |
+| CLI / TUI（`zcode`）                    | ✅ 生效         | 从当前工作目录**向上逐级**查找 `.env`；已有 `process.env` 优先于文件（`dotenv` 以 `override: false` 加载） |
+| 桌面 App — 开发态（`pnpm dev:desktop`） | ✅ 生效         | 读仓库根与 `packages/desktop` 下的 `.env` / `.env.local`                                                   |
+| 桌面 App — **安装包**                   | ❌ **不生效**   | `loadHostProcessEnvFromLocalFiles()` 在打包模式下直接 return，只保留一个打包标记                           |
+| Web 开发服务器                          | 构建期读取      | Vite `loadEnv`                                                                                             |
 
 依据：`packages/desktop/src/main/desktopRuntimeEnv.ts:154`（打包模式提前返回）与
 `apps/zcode-cli/packages/cli/src/env.ts:74`（CLI 向上查找 `.env`）。
@@ -103,11 +103,11 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 
 `ProviderApiConfig.type` 只接受三种取值：
 
-| 取值 | 适用 |
-| --- | --- |
+| 取值                      | 适用                                                    |
+| ------------------------- | ------------------------------------------------------- |
 | `openai-chat-completions` | vLLM、Ollama、LM Studio、SGLang、TGI 等 OpenAI 兼容服务 |
-| `openai-responses` | OpenAI Responses API 兼容实现 |
-| `anthropic-messages` | Anthropic Messages API 兼容实现 |
+| `openai-responses`        | OpenAI Responses API 兼容实现                           |
+| `anthropic-messages`      | Anthropic Messages API 兼容实现                         |
 
 `baseUrl` 可以是任意 `http` / `https` 地址，因此内网自建服务直接填内网地址即可。
 
@@ -141,7 +141,11 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
     ],
     "modelConfigRules": {
       "providerModelRules": [
-        { "providerId": "intranet-vllm", "modelId": "qwen3-coder-30b", "config": { "enabled": true } }
+        {
+          "providerId": "intranet-vllm",
+          "modelId": "qwen3-coder-30b",
+          "config": { "enabled": true }
+        }
       ],
       "manualProviderModelRules": []
     }
@@ -161,12 +165,12 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 
 `config/provider/zcode-builtin.json` 已改造为**只服务本地模型**的版本，无需额外配置：
 
-| 已清空 | 原因 |
-| --- | --- |
-| `providerConfigRules.providerRules`（8 条） | 全部是 `account:zai-*` / `account:bigmodel-*` 订阅套餐 Provider，依赖外部登录 |
-| `providerConfigRules.templateRules`（20 条） | zai / bigmodel / OpenAI / Anthropic / DeepSeek / Moonshot / MiniMax / 通义 / 小米 / OpenRouter / opencode 等云端服务模板 |
-| `modelConfigRules.builtinProviderModelRules`（26 条） | 引用已移除的 provider id |
-| `modelConfigRules.templateModelRules`（244 条） | 引用已移除的 template id |
+| 已清空                                                | 原因                                                                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `providerConfigRules.providerRules`（8 条）           | 全部是 `account:zai-*` / `account:bigmodel-*` 订阅套餐 Provider，依赖外部登录                                            |
+| `providerConfigRules.templateRules`（20 条）          | zai / bigmodel / OpenAI / Anthropic / DeepSeek / Moonshot / MiniMax / 通义 / 小米 / OpenRouter / opencode 等云端服务模板 |
+| `modelConfigRules.builtinProviderModelRules`（26 条） | 引用已移除的 provider id                                                                                                 |
+| `modelConfigRules.templateModelRules`（244 条）       | 引用已移除的 template id                                                                                                 |
 
 **刻意保留** `modelConfigRules` 中的 `modelRules`（84）/ `modelApiRules`（72）/
 `providerSiteRules`（52）：这些是按「模型名 / baseUrl」匹配的能力元数据，其中包含
@@ -208,13 +212,13 @@ WebFetch 工具默认只允许公网目标，会拒绝 `localhost`、`*.local` �
 ZCODE_WEBFETCH_ALLOW_PRIVATE_HOSTS=.intranet.example.com,10.0.0.0/8,192.168.0.0/16
 ```
 
-| 写法 | 语义 |
-| --- | --- |
-| `*` | 放行全部私网目标（等价于关闭该策略） |
-| `.intranet.example.com` | 后缀匹配，命中 `intranet.example.com` 与 `*.intranet.example.com` |
-| `*.intranet.example.com` | 同上，两种写法等价 |
-| `git.intranet.example.com` | 精确匹配该主机名 |
-| `10.0.0.0/8` | 字面量 IP 的 CIDR 匹配，IPv4 / IPv6 均可 |
+| 写法                       | 语义                                                              |
+| -------------------------- | ----------------------------------------------------------------- |
+| `*`                        | 放行全部私网目标（等价于关闭该策略）                              |
+| `.intranet.example.com`    | 后缀匹配，命中 `intranet.example.com` 与 `*.intranet.example.com` |
+| `*.intranet.example.com`   | 同上，两种写法等价                                                |
+| `git.intranet.example.com` | 精确匹配该主机名                                                  |
+| `10.0.0.0/8`               | 字面量 IP 的 CIDR 匹配，IPv4 / IPv6 均可                          |
 
 行为说明：
 
@@ -241,15 +245,16 @@ ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL=https://mirror.intranet.example.com/zcode/off
 ### 内置插件现状
 
 本仓库是上游的不完整开源发行版，**上游 monorepo 中的官方插件包目录并未随仓库分发**。
-`official-plugin-definitions.ts` 原先声明的 12 个官方插件里，只有两个在本仓库中可实际 seed：
+当前 `official-plugin-definitions.ts` 声明以下三个可离线 seed 的内置插件：
 
-| 插件 | 状态 |
-| --- | --- |
-| `browser-use` | 可 seed（`apps/zcode-cli/packages/browser-use-plugin`） |
-| `node-repl-host` | 可 seed（`apps/zcode-cli/packages/node-repl-host`） |
-| 其余 10 个 | **插件包缺失，定义已裁剪** |
+| 插件               | 状态                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `browser-use`      | 可 seed（`apps/zcode-cli/packages/browser-use-plugin`）                                    |
+| `node-repl-host`   | 可 seed（`apps/zcode-cli/packages/node-repl-host`）                                        |
+| `vision-assistant` | 可 seed（`apps/zcode-cli/packages/vision-assistant-plugin`）；在模型设置中配置备用视觉模型 |
+| 其余 10 个         | **插件包缺失，定义已裁剪**                                                                 |
 
-因此内网商店只会出现这两个内置插件。若需要 documents / pdf / presentations /
+这三个插件随应用分发，不依赖在线商店完成初始化。若需要 documents / pdf / presentations /
 spreadsheets 等能力，需要先从官方发行包（DMG 或 `zcode` 运行包）中提取对应插件资产，
 vendored 进仓库并恢复 `OFFICIAL_PLUGIN_DEFINITIONS` 条目与
 `packages/shared/src/plugin-marketplaces.ts` 中的 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`。
@@ -283,12 +288,12 @@ export const ZCODE_ARMS_RUM_ENDPOINT = process.env.ZCODE_ARMS_RUM_ENDPOINT ?? ""
 
 构建流水线见 [`.github/workflows/`](../.github/workflows/)：
 
-| 工作流 | 用途 |
-| --- | --- |
-| `placeholder.yml` | 占位，仅用于启用 Actions 页面的手动运行按钮 |
-| `verify.yml` | 手动跑 `pnpm typecheck` / `pnpm lint` / `pnpm architecture:check` |
-| `build-desktop.yml` | 构建 Windows / macOS 桌面安装包 |
-| `build-cli.yml` | 构建 Windows / macOS 命令行运行包 |
+| 工作流              | 用途                                                              |
+| ------------------- | ----------------------------------------------------------------- |
+| `placeholder.yml`   | 占位，仅用于启用 Actions 页面的手动运行按钮                       |
+| `verify.yml`        | 手动跑 `pnpm typecheck` / `pnpm lint` / `pnpm architecture:check` |
+| `build-desktop.yml` | 构建 Windows / macOS 桌面安装包                                   |
+| `build-cli.yml`     | 构建 Windows / macOS 命令行运行包                                 |
 
 **所有工作流都只配置了 `workflow_dispatch`，没有任何自动触发器**——不会因为 push、
 tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow** 手动启动。
@@ -319,16 +324,16 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 构建时设 `ZCODE_LOCAL_IDENTITY=1`（对应 `build-desktop.yml` 的 `local_identity` 输入，
 默认开启）。它与 `ZCODE_ENV` 是**两个独立的轴**：前者决定产品身份，后者决定后端环境。
 
-| | 官方版 | 本版本（Local 身份） |
-| --- | --- | --- |
-| `productName` | `ZCode` | `ZCode Local` |
-| `appId` | `dev.zcode.app` | `dev.zcode.app.local` |
-| Electron `userData` | `<appData>/ZCode` | `<appData>/ZCode Local` |
-| **业务数据根** | `~/.zcode` | **`~/.zcode-local-home/.zcode`** |
-| CUA Helper 安装目录 | 默认 variant | `local` variant |
-| Linux 可执行 / 包名 | `zcode` | `zcode-local` |
-| Windows AppUserModelId | `dev.zcode.app` | `dev.zcode.app.local` |
-| 产物文件名 | `ZCode-<版本>-…` | `ZCode Local-<版本>-…` |
+|                        | 官方版            | 本版本（Local 身份）             |
+| ---------------------- | ----------------- | -------------------------------- |
+| `productName`          | `ZCode`           | `ZCode Local`                    |
+| `appId`                | `dev.zcode.app`   | `dev.zcode.app.local`            |
+| Electron `userData`    | `<appData>/ZCode` | `<appData>/ZCode Local`          |
+| **业务数据根**         | `~/.zcode`        | **`~/.zcode-local-home/.zcode`** |
+| CUA Helper 安装目录    | 默认 variant      | `local` variant                  |
+| Linux 可执行 / 包名    | `zcode`           | `zcode-local`                    |
+| Windows AppUserModelId | `dev.zcode.app`   | `dev.zcode.app.local`            |
+| 产物文件名             | `ZCode-<版本>-…`  | `ZCode Local-<版本>-…`           |
 
 因此两版有各自的应用包、各自的 Electron 状态目录、各自的业务数据根，
 同时运行不会触发单实例锁冲突，也不会互相覆盖任务、设置、凭据或插件缓存。
@@ -344,23 +349,23 @@ tag 或 PR 自动消耗构建资源。全部从 Actions 页面点 **Run workflow
 workflows、hook 信任库等），它们不会跟随自定义数据根。现已统一收敛到
 `@zcode/shared/node` 的 `resolveZCodeUserRootDir()`：
 
-| 原先路径 | 现在 | 说明 |
-| --- | --- | --- |
-| `~/.zcode/commands` | `<数据根>/commands` | 用户级 slash 命令 |
-| `~/.zcode/skills`、`~/.zcode/plugins` | `<数据根>/…` | 用户级技能与插件 |
-| `~/.zcode/cli/config.json` | `<数据根>/cli/config.json` | CLI 与 MCP 用户配置 |
-| `~/.zcode/AGENTS.md` | `<数据根>/AGENTS.md` | 用户级指令 |
-| `~/.zcode/cli/db/db.sqlite` | `<数据根>/cli/db/db.sqlite` | CLI 会话库 |
-| `~/.zcode/cli/log`、`rollout`、`debug` | `<数据根>/…` | 日志与轨迹 |
-| `~/.zcode/workflows`、`security/…` | `<数据根>/…` | 脚本工作流与 hook 信任库 |
+| 原先路径                               | 现在                        | 说明                     |
+| -------------------------------------- | --------------------------- | ------------------------ |
+| `~/.zcode/commands`                    | `<数据根>/commands`         | 用户级 slash 命令        |
+| `~/.zcode/skills`、`~/.zcode/plugins`  | `<数据根>/…`                | 用户级技能与插件         |
+| `~/.zcode/cli/config.json`             | `<数据根>/cli/config.json`  | CLI 与 MCP 用户配置      |
+| `~/.zcode/AGENTS.md`                   | `<数据根>/AGENTS.md`        | 用户级指令               |
+| `~/.zcode/cli/db/db.sqlite`            | `<数据根>/cli/db/db.sqlite` | CLI 会话库               |
+| `~/.zcode/cli/log`、`rollout`、`debug` | `<数据根>/…`                | 日志与轨迹               |
+| `~/.zcode/workflows`、`security/…`     | `<数据根>/…`                | 脚本工作流与 hook 信任库 |
 
 **仍然共用（刻意不改）**：
 
-| 路径 | 为什么不动 |
-| --- | --- |
+| 路径                                 | 为什么不动                                                                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `~/.claude`、`~/.agents`、`~/.codex` | **跨工具**配置约定，与 Claude Code / Codex 等共享；改掉会把别的工具的配置搬到它们不认识的位置。由 `resolveAgentConfigBaseDir()` 按路径首段判断，只有 `.zcode` 跟随数据根 |
-| `~/Library`、`AppData` 等 OS 目录 | Chrome/Chromium 探测、Finder 集成等系统级资源 |
-| 用户显式设置的 `ZCODE_STORAGE_DIR` | 优先级高于身份默认值，用户指定即生效 |
+| `~/Library`、`AppData` 等 OS 目录    | Chrome/Chromium 探测、Finder 集成等系统级资源                                                                                                                            |
+| 用户显式设置的 `ZCODE_STORAGE_DIR`   | 优先级高于身份默认值，用户指定即生效                                                                                                                                     |
 
 实现入口：`packages/shared/src/node/zcodeUserRoot.ts`。选它是因为
 `apps/zcode-cli/*` 全树都不依赖 `@zcode/services`，`@zcode/shared` 是唯一公共依赖。
@@ -376,11 +381,11 @@ ZCODE_HOME / ZCODE_DATA_BASE_DIR 业务数据根」）——上游的用途是�
 
 本版本的需求相反，所以新增了第三种身份：
 
-| 身份 | 应用名 | 业务数据根 | 用途 |
-| --- | --- | --- | --- |
-| `production` | ZCode | `~/.zcode` | 官方正式版 |
-| `preview` | ZCode Preview | `~/.zcode`（有意共享） | 上游的试用包 |
-| `local` | ZCode Local | `~/.zcode-local-home/.zcode` | 自建 / 纯本地模型发行版 |
+| 身份         | 应用名        | 业务数据根                   | 用途                    |
+| ------------ | ------------- | ---------------------------- | ----------------------- |
+| `production` | ZCode         | `~/.zcode`                   | 官方正式版              |
+| `preview`    | ZCode Preview | `~/.zcode`（有意共享）       | 上游的试用包            |
+| `local`      | ZCode Local   | `~/.zcode-local-home/.zcode` | 自建 / 纯本地模型发行版 |
 
 三种身份的 `appId` 与 `productName` 互不相同。所有 `=== "production"` 的既有判断
 （自动更新、正式版专属菜单等）会让 Local 自然落入「非正式版」分支，这正是预期行为。
@@ -410,15 +415,15 @@ sh install.sh
 
 ### 8.4 现状小结
 
-| 项 | 状态 |
-| --- | --- |
-| 桌面端并排安装 / 同时运行 | 默认启用（Local 身份） |
-| 桌面端业务数据隔离 | **默认启用**，装完即隔离，无需环境变量 |
-| 桌面端 Electron 状态隔离 | 默认启用 |
-| 用户级配置 / 日志 / CLI 会话库 | **默认启用**，随数据根走 |
-| 跨工具目录（`.claude` / `.agents` / `.codex`） | 共用（刻意，属跨工具约定） |
-| CLI 并存 | 需手动传三个变量改名与改路径 |
-| CLI 数据隔离 | 需自行设 `ZCODE_DATA_BASE_DIR` |
+| 项                                             | 状态                                   |
+| ---------------------------------------------- | -------------------------------------- |
+| 桌面端并排安装 / 同时运行                      | 默认启用（Local 身份）                 |
+| 桌面端业务数据隔离                             | **默认启用**，装完即隔离，无需环境变量 |
+| 桌面端 Electron 状态隔离                       | 默认启用                               |
+| 用户级配置 / 日志 / CLI 会话库                 | **默认启用**，随数据根走               |
+| 跨工具目录（`.claude` / `.agents` / `.codex`） | 共用（刻意，属跨工具约定）             |
+| CLI 并存                                       | 需手动传三个变量改名与改路径           |
+| CLI 数据隔离                                   | 需自行设 `ZCODE_DATA_BASE_DIR`         |
 
 > Local 身份的 Dynamic Workflow 灰度不做强制开启（该行为只对 Preview 身份生效），
 > 因此 Local 包使用 Host 端默认档位。
@@ -451,10 +456,10 @@ sh install.sh
 这两条曾经是**默认会发生**的请求。现在由 Local 档位在 Host 进程环境里关掉，
 不需要任何运维配置：
 
-| 行为 | 关闭方式 | 关闭后的行为 |
-| --- | --- | --- |
+| 行为                                          | 关闭方式                           | 关闭后的行为                                                                                       |
+| --------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 拉取客户端配置 `<端点>/api/v1/client/configs` | `ZCODE_DISABLE_PRODUCT_ENDPOINT=1` | `clientConfigService` 与 `bigmodelCodingPlanSubscriptionProvider` 两个源头都直接返回空值，不建请求 |
-| 刷新内置 Provider 目录（默认最多 1 小时一次） | 同上 | `EndpointScopedZCodeBuiltinSource` 不再创建远端同步器：不发请求、不写刷新控制文件 |
+| 刷新内置 Provider 目录（默认最多 1 小时一次） | 同上                               | `EndpointScopedZCodeBuiltinSource` 不再创建远端同步器：不发请求、不写刷新控制文件                  |
 
 `ZCODE_DISABLE_PRODUCT_ENDPOINT` 是本次改造新增的开关
 （`packages/shared/src/env.ts`），语义是「禁用一切指向产品 Endpoint 的自动请求」。
@@ -473,13 +478,12 @@ origin 时直接抛错。反馈上报、会话分享、计费、额度、团队�
 
 排查时发现**两处绕过该客户端**的独立请求，已各自单独拦：
 
-| 位置 | 用途 |
-| --- | --- |
-| `packages/desktop/src/main/desktopContextPromptRollout.ts` | 用 Electron `net.request` 拉 `/api/v1/client/configs` |
-| `packages/desktop/src/main/forceUpdateGuard.ts` | 用 Electron `net.request` 拉强更配置（抛错走既有离线降级，不影响启动） |
+| 位置                                                       | 用途                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `packages/desktop/src/main/desktopContextPromptRollout.ts` | 用 Electron `net.request` 拉 `/api/v1/client/configs`                  |
+| `packages/desktop/src/main/forceUpdateGuard.ts`            | 用 Electron `net.request` 拉强更配置（抛错走既有离线降级，不影响启动） |
 
 新增此类直连请求时，记得同步加门禁 —— 客户端层的拦截盖不到它们。
-
 
 **为什么必须真正关掉请求、而不是只让结果失效**：内置目录的优先级规则是
 「revision 高者胜」（`selectReleaseCandidate`）。把本地 revision 钉到 999999
@@ -496,15 +500,15 @@ Local 档位由桌面主进程固定写入 `alwaysOn`（与 Preview 一致），
 
 ### 10.3 已失效或本就按需
 
-| 行为 | 现状 |
-| --- | --- |
-| OAuth 授权 / token 交换与刷新 | 已整体移除（见第 0 节），无可达路径 |
-| 遥测 / ARMS RUM / OTLP | 端点默认空且**不内嵌进产物**，解析器无端点即返回 `undefined`，不启动 exporter |
-| 自动更新 | Local 身份不启用（`enabled: flavor === "production"`） |
-| 登录态相关的计费 / 团队 / 额度 / 反馈 | 需要账号，无登录即不可达 |
-| 插件商店目录与资源 | 仅打开商店时按需加载，基址可用 `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL` 指向内网镜像 |
-| WebSearch | 走模型原生能力，无独立端点 |
-| Node 运行时下载 | 构建期行为，`ZCODE_NODE_DIST_MIRROR` 可换源 |
+| 行为                                  | 现状                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| OAuth 授权 / token 交换与刷新         | 已整体移除（见第 0 节），无可达路径                                              |
+| 遥测 / ARMS RUM / OTLP                | 端点默认空且**不内嵌进产物**，解析器无端点即返回 `undefined`，不启动 exporter    |
+| 自动更新                              | Local 身份不启用（`enabled: flavor === "production"`）                           |
+| 登录态相关的计费 / 团队 / 额度 / 反馈 | 需要账号，无登录即不可达                                                         |
+| 插件商店目录与资源                    | 仅打开商店时按需加载，基址可用 `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL` 指向内网镜像 |
+| WebSearch                             | 走模型原生能力，无独立端点                                                       |
+| Node 运行时下载                       | 构建期行为，`ZCODE_NODE_DIST_MIRROR` 可换源                                      |
 
 ### 10.4 一处隐患（当前不会触发）
 

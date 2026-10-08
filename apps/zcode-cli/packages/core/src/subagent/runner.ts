@@ -66,6 +66,8 @@ import {
 } from "../runtime-task/registry.js";
 
 export interface ExploreSubagentRuntimeRequest {
+  imageAttachments?: SubagentRunRequest["imageAttachments"];
+  requireImageModel?: boolean;
   agentId: string;
   agentType: string;
   allowedTools: readonly string[];
@@ -201,8 +203,11 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
         lifecycle.agentId,
         runOptions?.signal,
       );
-      const hasForegroundModelOverride = runOptions?.modelOverride !== undefined;
-      if (hasForegroundModelOverride) {
+      const requiresForeground =
+        runOptions?.modelOverride !== undefined || request.requireImageModel === true;
+      // 单次图片选择覆盖 profile 的备用模型；启动事件必须与实际执行选择一致。
+      const executionSelection = runOptions?.modelOverride?.selection ?? profile.modelSelection;
+      if (requiresForeground) {
         borrowedForegroundAgentIds.add(lifecycle.agentId);
       }
       const activityWatchdog = createSubagentActivityWatchdog({
@@ -246,8 +251,8 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
                 parentToolCallId: request.parentToolCallId,
                 status: "running",
                 allowedTools: [...resolveAllowedTools(profile, options)],
-                model: profile.modelSelection
-                  ? `${profile.modelSelection.providerId}/${profile.modelSelection.modelId}`
+                model: executionSelection
+                  ? `${executionSelection.providerId}/${executionSelection.modelId}`
                   : undefined,
               },
             );
@@ -291,7 +296,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       let autoBackgroundTimer: AutoBackgroundTimer | undefined;
       try {
         autoBackgroundTimer =
-          !hasForegroundModelOverride && autoBackgroundMs !== undefined
+          !requiresForeground && autoBackgroundMs !== undefined
             ? createAutoBackgroundTimer(
                 registry,
                 lifecycle.agentId,
@@ -299,7 +304,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
                 taskAbort.signal,
               )
             : undefined;
-        const backgroundRequestPromise = !hasForegroundModelOverride
+        const backgroundRequestPromise = !requiresForeground
           ? registry
               .waitForBackgroundRequest(lifecycle.agentId, { signal: taskAbort.signal })
               .then((task) => ({
@@ -1147,6 +1152,8 @@ async function runAgentToCompletion(
       onSessionReady: notifySessionReady,
       permissionMode: lifecycle.profile.permissionMode,
       prompt: request.prompt,
+      imageAttachments: request.imageAttachments,
+      requireImageModel: request.requireImageModel,
       profile: lifecycle.profile,
       registerMessageSink: createMessageSinkRegistration(options, lifecycle, registry),
       reportActivity: monitorOptions.reportActivity,

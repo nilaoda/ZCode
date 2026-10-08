@@ -90,6 +90,7 @@ interface ComposerAttachmentsApi {
   handleWhiteboardMentionSelected: (boardId: string) => Promise<void>;
   removeAttachment: (id: string) => void;
   retryAttachment: (id: string) => void;
+  setVisionModel: (id: string, selection?: import("@zcode/shared").ModelSelection) => void;
   /** 发送成功只清冻结的附件 id；不传表示用户主动清空整个附件区。 */
   clearAttachments: (attachmentIds?: readonly string[]) => void;
   /** 把已由 session 接管的 queue refs 原样恢复为 ready chips；不触发 upload/adopt。 */
@@ -1011,6 +1012,7 @@ export function useComposerAttachments(
           uploadStatus: "ready",
           uploadProgress: 100,
           attachmentRef: { ...attachmentRef },
+          visionModel: attachmentRef.visionModel,
           operationId: `session-owned-${id}`,
           autoRetryCount: 0,
           runtimeRebuildRetryCount: 0,
@@ -1029,12 +1031,21 @@ export function useComposerAttachments(
     [commitScope, scopeKey],
   );
 
+  const setVisionModel = useCallback(
+    (id: string, selection?: import("@zcode/shared").ModelSelection) => {
+      updateItem(scopeKey, id, (item) => ({ ...item, visionModel: selection }));
+    },
+    [scopeKey, updateItem],
+  );
+
   const prepareForSend = useCallback(async (): Promise<AttachmentRef[] | null> => {
     const current = readComposerAttachmentScope(scopeKey);
     if (current.some((item) => item.uploadStatus !== "ready" || !item.attachmentRef)) {
       return null;
     }
-    return current.flatMap((item) => (item.attachmentRef ? [item.attachmentRef] : []));
+    return current.flatMap((item) =>
+      item.attachmentRef ? [{ ...item.attachmentRef, visionModel: item.visionModel }] : [],
+    );
   }, [scopeKey]);
 
   const adoptSentAttachments = useCallback(
@@ -1079,6 +1090,7 @@ export function useComposerAttachments(
       handleWhiteboardMentionSelected,
       removeAttachment,
       retryAttachment,
+      setVisionModel,
       clearAttachments,
       restoreSessionOwnedAttachments,
       prepareForSend,
@@ -1103,6 +1115,7 @@ export function useComposerAttachments(
       prepareForSend,
       removeAttachment,
       retryAttachment,
+      setVisionModel,
     ],
   );
 }

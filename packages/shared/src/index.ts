@@ -1,3 +1,5 @@
+export * from "./vision-assistant.js";
+
 export type {
   FileBinaryPreview,
   FileEntry,

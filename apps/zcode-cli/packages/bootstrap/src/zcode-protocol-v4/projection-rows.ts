@@ -86,6 +86,7 @@ export function buildUserInputRow(base: RowBaseInput, payload: TurnStartedPayloa
       fileName: meta.fileName,
       mime: meta.mime,
       bytes: meta.bytes,
+      ...(meta.visionModel ? { visionModel: meta.visionModel } : {}),
     }));
   const sourceCommandId = payload.intent?.sourceCommandId ?? payload.inputId;
   const rootSourceCommandId = payload.intent?.provenance?.sourceCommandId ?? sourceCommandId;

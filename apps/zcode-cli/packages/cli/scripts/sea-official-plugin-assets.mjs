@@ -19,6 +19,14 @@ const browserUseRequiredRuntimePaths = [
 
 export const officialSeaPlugins = [
   {
+    marketplace: "zcode-plugins-official",
+    name: "vision-assistant",
+    requiresRuntime: false,
+    rootPath: join("packages", "vision-assistant-plugin"),
+    requiredSeedPaths: ["agents/vision-reader.md"],
+    version: "0.1.0",
+  },
+  {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
     // （无 skill、无市场 listing）。它必须始终随发布物嵌入，否则任一能力启用时都没有宿主可跑。
     marketplace: "zcode-plugins-official",
@@ -30,7 +38,6 @@ export const officialSeaPlugins = [
     version: "0.6.0",
   },
   {
-
     marketplace: "zcode-plugins-official",
     name: "browser-use",
     packageName: "@zcode/browser-use-plugin",

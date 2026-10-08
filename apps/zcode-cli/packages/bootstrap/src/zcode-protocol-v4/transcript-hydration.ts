@@ -529,9 +529,13 @@ function subagentStatusFromToolPart(
  * 冷订阅/fork-child 的历史附件由 transcript 反向合成——与 live 事件同一投影入口
  * （buildUserInputRow），保证冷/热路径行内容一致。
  */
-function attachmentMetasOfMessage(
-  parts: readonly MessagePart[],
-): Array<{ fileName: string; mime: string; bytes: number; ref?: string }> {
+function attachmentMetasOfMessage(parts: readonly MessagePart[]): Array<{
+  fileName: string;
+  mime: string;
+  bytes: number;
+  ref?: string;
+  visionModel?: import("@zcode/contracts").ModelSelection;
+}> {
   const fileParts = parts.filter(
     (part): part is Extract<MessagePart, { type: "file" }> => part.type === "file",
   );
@@ -542,6 +546,7 @@ function attachmentMetasOfMessage(
       fileName: part.filename ?? (basenameFromUrl || `attachment-${index + 1}`),
       mime: part.mime,
       bytes: part.metadata?.sizeBytes ?? 0,
+      ...(part.metadata?.visionModel ? { visionModel: part.metadata.visionModel } : {}),
       ...(urlIsStableRef ? { ref: part.url } : {}),
     };
   });

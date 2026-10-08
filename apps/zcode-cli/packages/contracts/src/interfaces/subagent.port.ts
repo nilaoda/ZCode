@@ -9,6 +9,8 @@ import type { SessionId, ToolCallId, TurnId } from "./shared.js";
 import type { TraceContext } from "../tracing/tracer.js";
 
 export interface SubagentRunRequest {
+  imageAttachments?: Array<{ type: "image"; content: string }>;
+  requireImageModel?: boolean;
   sessionId: SessionId;
   turnId?: TurnId;
   parentToolCallId: ToolCallId | string;

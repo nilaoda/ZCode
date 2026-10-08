@@ -1,3 +1,4 @@
+import { resolveVisionImageReference } from "./vision-assistant.js";
 import {
   createConfiguredHookRunner,
   createInMemoryHookRunner,
@@ -51,6 +52,10 @@ function registerRuntimeBuiltInTools(runtime: AgentRuntimeInternal, deps: AgentR
     bashTimeoutPolicy: runtime.config.bashTimeoutPolicy,
     includeSkill: Boolean(runtime.skillPort),
     includeAgent: Boolean(runtime.subagentPort),
+    includeInspectImage:
+      runtime.config.runtimeFeatures?.visionAssistant === true &&
+      runtime.config.taskType !== "subagent_child" &&
+      Boolean(runtime.subagentPort),
     includeSendMessage: runtime.subagentPort?.sendMessage !== undefined,
     includeRespondToCoordinator:
       runtime.config.taskType === "subagent_child" && Boolean(deps.coordinatorResponsePort),
@@ -175,6 +180,12 @@ function createRuntimeToolExecutor(
     browserDocumentationRoot: browserUseEnabled
       ? runtime.config.runtimeFeatures?.browserDocumentationRoot
       : undefined,
+    resolveVisionImage: async (reference) => {
+      const messages = runtime.messageHistory
+        .borrowReadOnlyRuntimeEntries()
+        .flatMap((entry) => (entry.kind === "attachment" ? [] : [entry.message]));
+      return resolveVisionImageReference(messages, reference, runtime.artifactStore);
+    },
     fileSystemPort: deps.fileSystemPort,
     httpClientPort: deps.httpClientPort,
     imageProcessorPort: deps.imageProcessorPort,

@@ -96,6 +96,7 @@ export interface CanonicalUserIntentFact extends CanonicalConversationFactBase {
 }
 
 export interface CanonicalTurnAttachment {
+  visionModel?: TurnAttachmentMeta["visionModel"];
   ref?: string;
   fileName: string;
   mime: string;
@@ -393,6 +394,7 @@ function normalizeAttachment(attachment: TurnAttachmentMeta): CanonicalTurnAttac
     fileName: attachment.fileName,
     mime: attachment.mime,
     bytes: attachment.bytes,
+    ...(attachment.visionModel ? { visionModel: attachment.visionModel } : {}),
   };
 }
 

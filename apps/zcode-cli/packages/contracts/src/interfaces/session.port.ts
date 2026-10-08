@@ -317,6 +317,7 @@ export interface TurnInputIntentMetadata {
 
 /** queue 内保留尚未 resolve 的附件描述；消费时与普通 turn 使用同一 resolver。 */
 export interface PendingTurnAttachment {
+  visionModel?: import("@zcode/shared").ModelSelection;
   type: "file" | "image" | "video" | "pdf" | "url";
   path?: string;
   content?: string;

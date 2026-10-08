@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import {
   VIDEO_INPUT_MAX_BYTES,
   type CreateTempTextAttachmentResult,
+  type ModelSelection,
   type ZCodePromptAttachment,
 } from "@zcode/shared";
 import { PROTOCOL_V4_LIMITS } from "@zcode/shared/zcode-protocol-v4";
@@ -44,6 +45,7 @@ const INLINE_TEXT_ATTACHMENT_MAX_CHARS = 64 * 1024;
 export type ChatComposerAttachmentSourceKind = "clipboard-text";
 
 export interface ChatComposerAttachment {
+  visionModel?: ModelSelection;
   id: string;
   file?: File;
   filename: string;

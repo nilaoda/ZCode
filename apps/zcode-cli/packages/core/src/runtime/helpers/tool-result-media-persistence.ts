@@ -1,5 +1,6 @@
 import type { FilePart } from "@zcode/contracts";
 import { createPartId } from "../deps.js";
+import { visionImageReference } from "./vision-assistant.js";
 import type {
   MessageId,
   ModelMessageContent,
@@ -85,6 +86,11 @@ export async function persistToolResultMediaAttachments(input: {
         storageKind: "artifact",
         ...(block.source?.sizeBytes !== undefined ? { sizeBytes: block.source.sizeBytes } : {}),
         ...(block.source?.sha256 ? { sha256: block.source.sha256 } : {}),
+        ...(block.source?.visionModel ? { visionModel: block.source.visionModel } : {}),
+        ...(block.type === "image" ? { visionReference: visionImageReference(block) } : {}),
+        ...(block.type === "image" && (block.source?.originalPath ?? block.source?.path)
+          ? { originalUrl: block.source?.originalPath ?? block.source?.path }
+          : {}),
       },
     });
   }

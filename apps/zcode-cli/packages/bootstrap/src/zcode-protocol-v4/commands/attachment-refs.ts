@@ -23,11 +23,12 @@ function isUriAttachmentRef(ref: string): boolean {
 
 function displayMetaOf(
   ref: AttachmentRef,
-): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes"> {
+): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes" | "visionModel"> {
   return {
     filename: ref.fileName,
     mimeType: ref.mime,
     sizeBytes: ref.bytes,
+    ...(isImageRef(ref) && ref.visionModel ? { visionModel: ref.visionModel } : {}),
   };
 }
 

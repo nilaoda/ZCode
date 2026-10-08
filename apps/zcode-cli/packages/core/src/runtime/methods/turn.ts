@@ -424,6 +424,7 @@ export async function executeTurnCommand(
         injectReferencedSessionContextReminderIntoMessageHistory.call(this, input, options);
         injectDateChangeReminderIntoMessageHistory.call(this);
         const resolvedAttachments = await resolveTurnAttachments(attachments, {
+          visionAssistantAvailable: this.registry.has("InspectImage"),
           abortSignal: turnAbortSignal,
           artifactStore: this.artifactStore,
           fileSystemPort: this.fileSystemPort,

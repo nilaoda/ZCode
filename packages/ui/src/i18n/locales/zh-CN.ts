@@ -1,5 +1,17 @@
 /** 中文翻译 */
 const zhCN: Record<string, string> = {
+  "vision.title": "视觉助手",
+  "vision.enabled": "启用视觉助手",
+  "vision.description":
+    "主模型支持识图时优先使用自身能力；不支持时，可调用备用视觉模型。插件设置在新会话中生效。",
+  "vision.backup": "备用视觉模型",
+  "vision.backupDescription": "只在需要辅助识图时使用。你也可以为单张图片主动指定其他模型。",
+  "vision.unconfigured": "未配置",
+  "vision.automatic": "自动识图",
+  "vision.thisImage": "本次识图模型",
+  "vision.unavailable": "不可用",
+  "vision.loading": "请先打开一个工作区，以读取视觉助手配置。",
+
   "startPlan.recommendation.subagentDescription":
     "你的体验套餐中，{model} 仍有可用额度，是否将此子智能体的模型切换到体验套餐？",
   "startPlan.recommendation.preferenceSaveFailed": "未能保存“不再提示”，本次仍按你的选择继续。",
@@ -2897,8 +2909,7 @@ const zhCN: Record<string, string> = {
     "内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置。",
   "settings.modelProvider.presetEmpty": "尚未同步，请先完成 OAuth 登录。",
   "settings.modelProvider.noProviders": "还没有供应商",
-  "settings.modelProvider.noProvidersHint":
-    "点击右上角「添加供应商」新增一个自定义供应商。",
+  "settings.modelProvider.noProvidersHint": "点击右上角「添加供应商」新增一个自定义供应商。",
   "settings.modelProvider.customTitle": "自定义供应商",
   "settings.modelProvider.refresh": "刷新",
   "settings.modelProvider.reorderProvider": "拖拽调整供应商顺序",

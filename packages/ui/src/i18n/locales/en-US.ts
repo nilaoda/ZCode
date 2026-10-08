@@ -1,5 +1,18 @@
 /** English translations */
 const enUS: Record<string, string> = {
+  "vision.title": "Vision assistant",
+  "vision.enabled": "Enable vision assistant",
+  "vision.description":
+    "Use the main model’s vision when available; otherwise delegate to the backup vision model. Plugin settings apply to new conversations.",
+  "vision.backup": "Backup vision model",
+  "vision.backupDescription":
+    "Used when vision assistance is needed. You can also choose a different model for an individual image.",
+  "vision.unconfigured": "Not configured",
+  "vision.automatic": "Automatic",
+  "vision.thisImage": "Model for this image",
+  "vision.unavailable": "Unavailable",
+  "vision.loading": "Open a workspace to load the vision assistant configuration.",
+
   "startPlan.recommendation.subagentDescription":
     "Your Start Plan has quota available for {model}. Switch this subagent’s model to the Start Plan?",
   "startPlan.recommendation.preferenceSaveFailed":
@@ -3043,7 +3056,8 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.addModel": "Add model",
   "settings.modelProvider.modelId": "Model ID",
   "settings.modelProvider.fetchModels": "Fetch model list from the API",
-  "settings.modelProvider.fetchModelsAllAdded": "Every model returned by the API has already been added",
+  "settings.modelProvider.fetchModelsAllAdded":
+    "Every model returned by the API has already been added",
   "settings.modelProvider.modelDisplayName": "Display name",
   "settings.modelProvider.modelApiFormat.anthropic": "Anthropic messages",
   "settings.modelProvider.modelApiFormat.openaiCompatible": "OpenAI Compatible",

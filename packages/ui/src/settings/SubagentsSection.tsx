@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- 子智能体管理页集中维护作用域列表、表单和启用状态，避免状态分散 */
+import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import { hasExplicitModelChanged } from "@/lib/startPlanRecommendation.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -549,7 +550,24 @@ function AgentListRow({
           <SubagentModelOverrideControl
             agent={agent}
             disabled={isOperating}
-            modelGroups={modelGroups}
+            modelGroups={
+              agent.pluginId === VISION_ASSISTANT_PLUGIN_ID
+                ? modelGroups
+                    .map((group) => ({
+                      ...group,
+                      items: group.items.filter((item) => {
+                        const identity = parseModelPickerValue(item.value);
+                        return (
+                          modelSelectionView?.providers
+                            .find((provider) => provider.providerId === identity.providerId)
+                            ?.models.find((model) => model.modelId === identity.modelId)?.config
+                            .properties.inputFormat.supportsImage === true
+                        );
+                      }),
+                    }))
+                    .filter((group) => group.items.length > 0)
+                : modelGroups
+            }
             modelSelectionView={modelSelectionView}
             modelSelectionLoading={modelSelectionLoading}
             onModelOverrideChange={onModelOverrideChange}

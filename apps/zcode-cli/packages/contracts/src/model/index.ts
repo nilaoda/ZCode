@@ -329,6 +329,9 @@ export interface ModelToolCall {
 export type AttachmentKind = "local_file" | "resource" | "inline";
 
 export interface AttachmentRef {
+  visionModel?: import("@zcode/shared").ModelSelection;
+  originalPath?: string;
+  visionReference?: string;
   id: string;
   kind: AttachmentKind;
   uri?: string;
@@ -839,6 +842,9 @@ const attachmentRefJsonSchema = {
     sizeBytes: { type: "number" },
     sha256: { type: "string" },
     placeholder: { type: "string" },
+    visionModel: modelSelectionJsonSchema,
+    originalPath: { type: "string" },
+    visionReference: { type: "string", pattern: "^vision-image:[a-f0-9]{64}$" },
   },
 } satisfies JsonSchema;
 

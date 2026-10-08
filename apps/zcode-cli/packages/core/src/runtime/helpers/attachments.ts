@@ -1,5 +1,10 @@
 import { basename, resolvePath } from "../deps.js";
-import { READ_DEFAULT_MAX_LINES, READ_MAX_FILE_SIZE_BYTES } from "@zcode/contracts";
+import {
+  CoreErrorType,
+  createCoreError,
+  READ_DEFAULT_MAX_LINES,
+  READ_MAX_FILE_SIZE_BYTES,
+} from "@zcode/contracts";
 import type {
   FilePartSource,
   FileSystemPort,
@@ -31,6 +36,7 @@ import {
 } from "./attachment-path-reference.js";
 
 type ResolveAttachmentOptions = {
+  visionAssistantAvailable?: boolean;
   abortSignal?: AbortSignal;
   artifactStore?: ToolArtifactStorePort;
   fileSystemPort?: FileSystemPort;
@@ -79,7 +85,13 @@ export function summarizeTurnAttachmentsForEvent(
         : attachment.type === "url"
           ? (attachment.content ?? path)
           : undefined;
-    return { fileName, mime, bytes, ...(ref ? { ref } : {}) };
+    return {
+      fileName,
+      mime,
+      bytes,
+      ...(ref ? { ref } : {}),
+      ...(attachment.visionModel ? { visionModel: attachment.visionModel } : {}),
+    };
   });
 }
 
@@ -87,9 +99,28 @@ export async function resolveTurnAttachments(
   attachments: TurnState["attachments"],
   options: ResolveAttachmentOptions,
 ): Promise<ResolvedTurnAttachment[]> {
+  // 只拒绝新提交的显式识图意图，不能在每次组装历史请求时重复拒绝已经完成的图片。
+  if (
+    options.visionAssistantAvailable === false &&
+    attachments?.some((attachment) => attachment.visionModel)
+  ) {
+    throw createCoreError(
+      CoreErrorType.ConfigurationError,
+      "Vision assistant is disabled. Enable it to use the selected image model.",
+      { recoverable: true },
+    );
+  }
   const resolved: ResolvedTurnAttachment[] = [];
   for (const [index, attachment] of (attachments ?? []).entries()) {
-    resolved.push(await resolveTurnAttachment(attachment, index, options));
+    const item = await resolveTurnAttachment(attachment, index, options);
+    if (attachment.visionModel && item.contentBlock.type === "image") {
+      item.contentBlock = {
+        ...item.contentBlock,
+        source: { ...item.contentBlock.source!, visionModel: attachment.visionModel },
+      };
+      item.metadata = { ...item.metadata, visionModel: attachment.visionModel };
+    }
+    resolved.push(item);
   }
   return resolved;
 }

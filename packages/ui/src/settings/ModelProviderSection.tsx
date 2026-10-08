@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- Model Provider 设置页需要集中编排导航、表单和 OAuth 交互，后续整体拆分时再收敛。 */
+import { VisionAssistantSettings } from "./VisionAssistantSettings.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getProviderFormApiKey,
@@ -1052,6 +1053,16 @@ export function ModelProviderSection({
 
   return (
     <ModelProviderSectionLayout
+      leadingContent={
+        <VisionAssistantSettings
+          localOnly
+          workspacePath={
+            connectivityWorkspaceRequired
+              ? (connectivityWorkspacePath ?? "")
+              : connectivityWorkspacePath || workspacePath
+          }
+        />
+      }
       description={intl.formatMessage({ id: "settings.modelProviderDescription" })}
       refreshLabel={intl.formatMessage({ id: "settings.modelProvider.refresh" })}
       loadingLabel={intl.formatMessage({ id: "common.loading" })}

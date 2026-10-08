@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { basename, isFileSystemPortError, resolvePath } from "../deps.js";
 import { VIDEO_INPUT_MAX_BYTES } from "@zcode/contracts";
 import type {
@@ -363,6 +364,7 @@ async function resolveLocalImageAttachment(
     return localMediaReadFailure(attachment, filename, mime, source);
   }
   const dataUrl = `data:${mime};base64,${read.content}`;
+  const sha256 = `sha256:${createHash("sha256").update(Buffer.from(read.content, "base64")).digest("hex")}`;
   let prepared: PreparedImageData | undefined;
   try {
     prepared = await prepareImageDataUrl(dataUrl, mime, options);
@@ -401,7 +403,8 @@ async function resolveLocalImageAttachment(
         path: absolutePath,
         placeholder: attachment.path,
         sizeBytes: stat.sizeBytes,
-        sha256: read.revision?.hash,
+        sha256,
+        ...(resource.metadata.artifactUri ? { uri: resource.metadata.artifactUri } : {}),
       },
     },
     filename,
@@ -409,7 +412,7 @@ async function resolveLocalImageAttachment(
       ...(prepared.metadata ? { image: prepared.metadata } : {}),
       originalUrl: attachment.path,
       recoverability: resource.metadata.recoverability,
-      sha256: read.revision?.hash,
+      sha256,
       sizeBytes: stat.sizeBytes,
       storageKind: resource.metadata.storageKind,
       ...(resource.metadata.artifactUri ? { artifactUri: resource.metadata.artifactUri } : {}),

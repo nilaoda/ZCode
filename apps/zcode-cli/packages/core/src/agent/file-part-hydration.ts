@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import type {
   AttachmentRef,
   FilePart,
@@ -148,6 +149,13 @@ function attachmentRefFromFilePart(part: FilePart): AttachmentRef {
     sizeBytes: part.metadata?.sizeBytes,
     sha256: part.metadata?.sha256,
     placeholder: part.source?.text.value ?? part.filename,
+    ...(part.source?.type === "file" || part.source?.type === "symbol"
+      ? { originalPath: part.source.path }
+      : part.metadata?.originalUrl && isAbsolute(part.metadata.originalUrl)
+        ? { originalPath: part.metadata.originalUrl }
+        : {}),
+    ...(part.metadata?.visionReference ? { visionReference: part.metadata.visionReference } : {}),
+    ...(part.metadata?.visionModel ? { visionModel: part.metadata.visionModel } : {}),
   };
 }
 

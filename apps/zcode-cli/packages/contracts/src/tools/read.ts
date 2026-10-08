@@ -4,7 +4,7 @@
 // Reference: file read input / output shape
 
 import { z } from "zod";
-import { VIDEO_INPUT_MAX_BYTES } from "@zcode/shared";
+import { type ModelSelection, VIDEO_INPUT_MAX_BYTES } from "@zcode/shared";
 import type { ToolCallId, TraceId } from "../interfaces/shared.js";
 import { toToolJsonSchema } from "./json-schema.js";
 import { getReadPdfPagesValidationFailure, READ_PDF_PAGES_DESCRIPTION } from "./read-pdf.js";
@@ -179,6 +179,9 @@ export interface ReadTextOutput {
 }
 
 export interface ReadImageOutput {
+  filePath?: string;
+  sha256?: string;
+  visionModel?: ModelSelection;
   type: "image";
   base64: string;
   mimeType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
@@ -282,9 +285,24 @@ export const ReadImageDimensionsSchema = z
   })
   .strict();
 
+// contracts 使用 Zod 3，shared 使用 Zod 4，实例不能组合；这里保持 ModelSelection 的相同严格字段。
+const readVisionModelSelectionSchema = z
+  .object({
+    providerId: z.string().trim().min(1),
+    modelId: z.string().trim().min(1),
+    options: z
+      .object({ reasoningLevel: z.string().trim().min(1).optional() })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
 export const ReadImageOutputSchema = z
   .object({
     type: z.literal("image"),
+    filePath: z.string().optional(),
+    sha256: z.string().optional(),
+    visionModel: readVisionModelSelectionSchema.optional(),
     base64: z.string(),
     mimeType: z.enum(["image/jpeg", "image/png", "image/gif", "image/webp"]),
     originalSize: z.number().int().nonnegative(),

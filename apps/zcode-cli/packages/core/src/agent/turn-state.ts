@@ -4,6 +4,7 @@
 
 import type {
   ModelMessageContent,
+  ModelSelection,
   PendingTurnInput,
   SessionId,
   ToolCallId,
@@ -162,6 +163,7 @@ export interface TurnErrorState {
 }
 
 export interface TurnAttachment {
+  visionModel?: ModelSelection;
   type: "file" | "image" | "video" | "pdf" | "url";
   path?: string;
   content?: string;

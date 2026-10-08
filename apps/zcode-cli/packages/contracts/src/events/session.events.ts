@@ -224,6 +224,7 @@ export type MicrocompactBoundaryEventPayload = MicrocompactBoundaryPayload;
  * 只承载展示所需字段，不含内容本体（内容经 resolve/persist 走 FilePart/artifact）。
  */
 export interface TurnAttachmentMeta {
+  visionModel?: ModelSelection;
   fileName: string;
   mime: string;
   bytes: number;

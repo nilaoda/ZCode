@@ -103,6 +103,13 @@ export function createDefaultSubagentPort(
         overrideSelection: options?.modelOverride?.selection,
         resolveSelection: deps.resolveEffectiveModelSelection,
       });
+      if (request.requireImageModel && !hasConcreteModel && !options?.modelOverride) {
+        throw createCoreError(
+          CoreErrorType.ConfigurationError,
+          "Configure a backup vision model in Model settings before using the vision assistant",
+          { recoverable: true },
+        );
+      }
       const modelOverride = options?.modelOverride;
       const inheritedModel = !modelOverride && !hasConcreteModel ? options?.model : undefined;
       // Core Server override 优先于持久化 profile 与父模型继承，但仍只是标准 Selection。
@@ -196,6 +203,13 @@ export function createDefaultSubagentPort(
         );
       }
       const childModel = baseChildModelFactory({ selection: childSelection });
+      if (request.requireImageModel && !childModel.properties.inputFormat.supportsImage) {
+        throw createCoreError(
+          CoreErrorType.ConfigurationError,
+          `Vision assistant model ${childSelection.providerId}/${childSelection.modelId} does not support images`,
+          { recoverable: true },
+        );
+      }
       const childModelFactory: NonNullable<AgentRuntimeDeps["modelFactory"]> = (target) =>
         target.selection.providerId === childSelection.providerId &&
         target.selection.modelId === childSelection.modelId &&
@@ -396,7 +410,7 @@ export function createDefaultSubagentPort(
       }
       request.registerMessageSink?.(createSubagentMessageSink(childRuntime, request));
       try {
-        return await childRuntime.executeTurn(request.prompt, undefined, {
+        return await childRuntime.executeTurn(request.prompt, request.imageAttachments, {
           abortSignal: options?.signal,
           // 子 Runtime 的首轮输入来自父 Agent，而不是真实用户直接输入；保留源事实，避免
           // Subagent Turn 在 Trace 和成功率报表里被误归类为 user。

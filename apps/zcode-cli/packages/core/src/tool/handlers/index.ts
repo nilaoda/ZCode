@@ -2,6 +2,7 @@
 // Built-in Tool Handlers
 // ============================================================
 
+import { inspectImageToolEntry } from "./inspect-image.js";
 import {
   AMEND_WORKFLOW_TOOL_NAME,
   CREATE_WORKFLOW_TOOL_NAME,
@@ -106,6 +107,7 @@ export const builtInTools: ToolEntry[] = [
   taskStopToolEntry,
   readSessionContextToolEntry,
   agentToolEntry,
+  inspectImageToolEntry,
   taskToolEntry,
   skillToolEntry,
   jsToolEntry,
@@ -183,6 +185,7 @@ interface RegisterBuiltInToolsOptions {
   includeDynamicWorkflow?: boolean;
   /** node_repl（js）默认关闭，由官方 browser-use 插件启用。 */
   includeNodeRepl?: boolean;
+  includeInspectImage?: boolean;
   /** browser-use 说明和 agent.browsers 注入由官方 browser-use 插件 + 宿主 browser bridge 共同启用。 */
   includeBrowserUse?: boolean;
   embeddedSearchEnabled?: boolean;
@@ -217,6 +220,7 @@ export function registerBuiltInTools(
     if (isSubagentDispatchToolName(entry.metadata.name) && options.includeAgent !== true) {
       continue;
     }
+    if (entry.metadata.name === "InspectImage" && options.includeInspectImage !== true) continue;
     if (entry.metadata.name === "Skill" && options.includeSkill === false) {
       continue;
     }

@@ -1,5 +1,5 @@
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
-import { buildOfficialPluginAssetsBaseUrl } from "@zcode/shared";
+import { VISION_ASSISTANT_PLUGIN_ID, buildOfficialPluginAssetsBaseUrl } from "@zcode/shared";
 
 // 内置插件的商店信息 seed（原样写入官方 marketplace.json 的条目 raw，键名与 CDN 目录
 // schema 一致：displayName_i18n / examplePrompts_i18n 等），解析复用 adapter 的
@@ -86,11 +86,30 @@ export const OFFICIAL_BROWSER_USE_REQUIRED_SEED_PATHS = [
  * `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 与商店 listing 回退当成「存在且默认启用」，
  * 在设置页留下永远无法加载的条目。内网部署更无法从 CDN 补齐。
  *
- * 因此这里只保留本仓库可实际 seed 的两个插件。若后续 vendored 了上游插件包，
+ * 因此这里只保留本仓库可实际 seed 的插件。若后续 vendored 了上游插件包，
  * 请按上游同名文件恢复对应条目，并同步 `packages/shared/src/plugin-marketplaces.ts`
  * 中的 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`（两处必须逐一对应）。
  */
+export const OFFICIAL_VISION_ASSISTANT_PLUGIN_ID = VISION_ASSISTANT_PLUGIN_ID;
 export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = [
+  {
+    defaultEnabled: true,
+    name: "vision-assistant",
+    version: "0.1.0",
+    rootCandidates: [
+      "packages/vision-assistant-plugin",
+      "../vision-assistant-plugin",
+      "../../vision-assistant-plugin",
+      "../../../vision-assistant-plugin",
+    ],
+    requiredSeedPaths: ["agents/vision-reader.md"],
+    listing: {
+      displayName: "Vision Assistant",
+      displayName_i18n: { "zh-CN": "视觉助手" },
+      description_i18n: { "zh-CN": "为无视觉能力的模型提供图片识别，也可为单张图片指定识图模型。" },
+      category: "productivity",
+    },
+  },
   {
     // 无 listing：宿主不进市场、不对用户露出。它必须始终可用，因为 node_repl 的注册门禁
     // 是「Browser Use 或 Computer Use 任一启用」，宿主自己不参与那个判断。

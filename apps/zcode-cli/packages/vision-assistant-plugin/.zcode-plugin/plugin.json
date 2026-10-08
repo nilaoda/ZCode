@@ -1,0 +1,8 @@
+{
+  "name": "vision-assistant",
+  "version": "0.1.0",
+  "description": "Delegate image understanding to a configured vision model while keeping the main conversation model.",
+  "author": { "name": "ZCode" },
+  "license": "MIT",
+  "agents": "agents"
+}

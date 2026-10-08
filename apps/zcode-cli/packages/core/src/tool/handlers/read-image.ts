@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   CoreErrorType,
   READ_IMAGE_MAX_BASE64_BYTES,
@@ -95,6 +96,8 @@ export async function readImageFile(
 
     return {
       type: "image",
+      filePath,
+      sha256: `sha256:${createHash("sha256").update(read.content).digest("hex")}`,
       base64: Buffer.from(prepared.data).toString("base64"),
       mimeType: outputMimeType,
       originalSize: read.sizeBytes,

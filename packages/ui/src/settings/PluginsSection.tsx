@@ -1,4 +1,6 @@
 /* eslint-disable max-lines -- 共享能力外壳聚合 Scope，并承载 Plugin tabs 与独立 Commands 入口。 */
+import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
+import { VisionAssistantSettings } from "./VisionAssistantSettings.js";
 import { PluginAddMenu } from "@/settings/PluginAddMenu.js";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -719,6 +721,15 @@ function PluginList({
                 />
                 {(selectedPlugin.hookDetails ?? []).length > 0 ? (
                   <PluginHookDetails hooks={selectedPlugin.hookDetails ?? []} />
+                ) : null}
+                {selectedPlugin.id === VISION_ASSISTANT_PLUGIN_ID && target ? (
+                  <VisionAssistantSettings
+                    workspacePath={target.workspacePath}
+                    workspaceIdentity={target.workspaceIdentity}
+                    remoteSessionId={target.remoteSessionId}
+                    remoteTarget={target.remoteTarget}
+                    configScope={configScope}
+                  />
                 ) : null}
                 <PluginConfigControls
                   getValue={getPluginOptionValue}

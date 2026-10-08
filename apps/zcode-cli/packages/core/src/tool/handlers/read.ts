@@ -104,7 +104,10 @@ function formatReadImageOutput(output: ReadImageOutput): ModelMessageContent {
     dataUrl: `data:${output.mimeType};base64,${output.base64}`,
     source: {
       id: "read-image",
-      kind: "inline" as const,
+      kind: output.filePath ? ("local_file" as const) : ("inline" as const),
+      ...(output.filePath ? { path: output.filePath } : {}),
+      ...(output.sha256 ? { sha256: output.sha256 } : {}),
+      ...(output.visionModel ? { visionModel: output.visionModel } : {}),
       mimeType: output.mimeType,
       placeholder: "Read image",
       sizeBytes: output.originalSize,
@@ -166,7 +169,31 @@ const readHandler: ToolHandler = async (input, context) => {
   try {
     const imageMime = inferImageMimeFromPath(filePath);
     if (imageMime) {
-      return await readImageFile(filePath, imageMime, context);
+      const output = await readImageFile(filePath, imageMime, context);
+      const acceptedImage = await context.resolveVisionImage?.(filePath);
+      const source = acceptedImage?.source;
+      if (
+        source?.visionModel &&
+        (source.originalPath === filePath ||
+          (source.kind === "local_file" && source.path === filePath))
+      ) {
+        const sameContent = source.sha256
+          ? source.sha256.replace(/^sha256:/, "") === output.sha256?.replace(/^sha256:/, "")
+          : acceptedImage?.dataUrl === `data:${output.mimeType};base64,${output.base64}`;
+        // 原始路径在冷恢复后是快照别名。Read 读取当前文件，必须验证它仍是那张已指定模型的图。
+        if (!sameContent)
+          throw createCoreError(
+            CoreErrorType.ToolExecutionFailed,
+            "Image file has changed since attachment submission. Attach it again to choose how to inspect it.",
+            { recoverable: true },
+          );
+      }
+      return {
+        ...output,
+        ...(acceptedImage?.source?.visionModel
+          ? { visionModel: acceptedImage.source.visionModel }
+          : {}),
+      };
     }
 
     const videoMime = inferVideoMimeFromPath(filePath);

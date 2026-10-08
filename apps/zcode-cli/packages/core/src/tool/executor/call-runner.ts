@@ -386,6 +386,7 @@ async function executeToolCallImpl(
       executionPort: deps.executionPort,
       browserControlPort: deps.browserControlPort,
       browserDocumentationRoot: deps.browserDocumentationRoot,
+      resolveVisionImage: deps.resolveVisionImage,
       fileSystemPort: deps.fileSystemPort,
       httpClientPort: deps.httpClientPort,
       imageProcessorPort: deps.imageProcessorPort,

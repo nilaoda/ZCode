@@ -1200,6 +1200,7 @@ async function drainPendingInputUnlocked(
     // 按 inputRouting 显式标注。落到持久 metadata 供冷恢复还原同一切分。
     const delivery = pendingInput.delivery ?? "queue";
     const resolvedAttachments = await resolveTurnAttachments(pendingInput.attachments, {
+      visionAssistantAvailable: this.registry.has("InspectImage"),
       artifactStore: this.artifactStore,
       fileSystemPort: this.fileSystemPort,
       imageProcessorPort: this.imageProcessorPort,
