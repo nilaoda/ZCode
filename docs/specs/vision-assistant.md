@@ -17,7 +17,8 @@
 - 视觉候选只来自当前 Host 的 Model Selection View（用户已配置、启用且可执行的模型），再筛选 supportsImage=true；不展示模型模板或未配置的目录候选。新增、删除、停用和能力修改由现有模型变化事件实时更新。
 - Host 在初次模型读取成功后和模型变化后检查候选：没有可选视觉模型时，通过原插件启停命令持久化关闭用户级视觉助手，并通知 UI。模型读取失败或尚未完成不能被当成零候选。后来新增模型不自动重新启用；无候选时禁止手动开启。已选择的备用模型被删除但仍有其他候选时保留失效选择提示，不能静默替换。
 - 插件启停变化只广播失效信号，UI 重读当前目标配置；模型与插件共享原有事实源，无第二份模型列表或启用状态。Host 销毁先取消订阅并拒绝尚未开始的关闭操作；旧 revision 与 superseded 模型结果不能覆盖新状态。
-- 沿用插件和子代理的 runtime 启动快照边界：启停与备用模型的变更对新会话生效，不改写已驻留会话；UI 明确说明。本次图片模型选择随输入提交，在当前会话立即生效。
+- 视觉助手全局配置在每个实际执行轮开始时重读，旧驻留会话、冷恢复和已排队输入均无需新建会话。启停、恢复内置插件和备用模型变更在下一轮生效；本轮识图任务保留本轮配置。其它插件维持原有启动快照边界。读取失败明确报告，不沿用失效快照。
+- bootstrap 通过只读视觉配置端口读取既有用户插件配置、官方缓存资产与子代理模型覆盖；runtime 在 CommandInbox 串行执行边界应用快照，更新 InspectImage 注册及视觉 profile，清理工具缓存。SubagentPort 在新调用时解析当前 profile，已启动子代理持有自己的 profile，不重建 runner 或后台任务 registry。
 - 插件关闭时主模型原生视觉继续工作；需要辅助识图时明确提示配置或启用。
 - 新提交且显式指定模型的图片在工具不可用时拒绝执行；历史图片改为不可用文字引用，不能阻断后续纯文本请求，也不能静默交给主模型。
 - 用户指定的模型不存在、不支持图片或调用失败时明确报告，禁止静默换回主模型。
@@ -115,8 +116,27 @@ sequenceDiagram
         P->>F: 保存关闭状态
         H-->>UI: 插件变化信号 → 重读当前目标
     end
-    Note over H,P: 不创建项目会话；新会话读取配置快照
+    Note over H,P: 不创建项目会话；旧会话下一轮读取最新视觉配置
 ```
+
+```mermaid
+sequenceDiagram
+    participant Settings as 全局设置
+    participant Files as 既有用户配置 / 模型覆盖
+    participant Inbox as CommandInbox
+    participant Runtime as 旧会话 Runtime
+    participant Reader as bootstrap 视觉配置端口
+    Settings->>Files: 原有命令保存启停或模型覆盖
+    Inbox->>Runtime: 串行开始下一执行轮
+    Runtime->>Reader: 读取最新视觉配置
+    Reader->>Files: 异步读取配置与官方资产
+    Reader-->>Runtime: 本轮 enabled + profile
+    Runtime->>Runtime: 更新视觉工具、profile 与缓存
+    Runtime->>Runtime: 原生视觉优先 / 本次指定 / 备用识图
+    Note over Inbox,Runtime: busy 输入执行时再读取；正在运行的子代理不变
+```
+
+16. 旧文本模型会话中全局启用助手并配置模型，下一轮立即可识图；更换备用模型、关闭、重新启用均无需新建会话。排队输入开始执行时读取新配置，本轮启动的识图任务不被后来修改影响。
 
 ## 验证计划
 
@@ -127,6 +147,7 @@ sequenceDiagram
 
 ## 本次验证结果
 
+- 驻留会话接入与一次性记忆迁移：30 个相关测试和 2 个系统 Chrome E2E 通过，覆盖同一 Runtime 连续发送图片、排队输入执行时读取新配置、已启动识图保留旧 profile、全局启停/模型更换及旧记忆导入快速路径。根 typecheck、lint、改动格式和架构检查通过；bootstrap 依赖链 17 项构建/类型检查通过。改动 CLI 文件与 HEAD 对比为 6 个既有诊断、0 个新增诊断。CLI 全量检查仍受下述既有问题阻塞。
 - 打包遗漏修复：3 个资源回归测试通过，覆盖桌面/远程 staging 的真实视觉 Agent、缺失 Agent 拒绝打包和远端资源复用合同。实际运行 Desktop 的 `prepare-agent-node-bundle.mjs` 成功，检查最终 `bundled-agents/darwin-arm64/glm` 中三个插件及全部必需文件，视觉 Agent 正文与源码一致。
 - 本轮根 `pnpm typecheck`、`pnpm lint`（69 个既有 warnings、0 errors）、改动格式、`git diff --check` 与架构检查（0 baseline、0 new）通过；未生成完整 Electron 安装包或执行真实 SSH 部署。
 - 全局入口及实时候选修复：8 个 Service 测试与 1 个系统 Chrome E2E 通过，覆盖无项目配置、远端 ServiceProvider 下使用本机全局服务、错误重试、插件缺失、实时新增删除、零候选关闭、重新添加不自动启用、过期 revision、Host 销毁和启用 RPC 中删除模型。
@@ -138,4 +159,4 @@ sequenceDiagram
 - CLI 全量类型检查受既有 debug 包缺失 `@zcode/shared/node` 依赖阻塞；全量 lint 受既有 max-lines 等错误阻塞，未报告为通过。
 - 浏览器 fixture 仅替换 Host IO；未进行真实供应商付费调用、完整 Electron 启动或真实远程传输验证。
 - 二次 review 已修复历史图片阻断后续请求、冷恢复原始路径丢失模型选择、工具图片引用变化和启动事件显示错误模型；没有新增状态 owner、队列或引用注册表。
-- 架构涉及 shared、services、ui 和 zcode-cli，本轮修复集中在 CLI contracts/core；接纳、持久化、启动及回传仍遵循现有事件顺序。相对 HEAD 净增约 1,880 行（含功能 spec 和测试）。
+- 架构涉及 shared、services、ui 和 zcode-cli；接纳、持久化、启动及回传仍遵循现有事件顺序。

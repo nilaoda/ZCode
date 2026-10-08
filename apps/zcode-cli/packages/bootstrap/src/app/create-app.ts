@@ -35,6 +35,8 @@ import {
   type MessageId,
 } from "@zcode/contracts";
 import { isRemoteWorkspaceIdentity, resolveZCodeRuntimeEnv } from "@zcode/shared";
+import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
+import { createVisionAssistantConfigPort } from "./vision-assistant-config.js";
 import {
   getLegacyProjectMemoryCliStorageRoot,
   migrateProjectMemories,
@@ -775,6 +777,18 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       modelFactory,
       modelIoDir,
       providerRuntimeHeadersPort: options.providerRuntimeHeadersPort,
+      visionAssistantConfigPort: createVisionAssistantConfigPort({
+        userConfigPath: configResult.sources.plugins.paths.user,
+        storageRoot,
+        pluginStorageRoot: options.pluginStorageRoot ?? join(cliStorageRoot, "plugins"),
+        officialPluginRoots: [
+          ...(options.officialPluginRoots ?? []),
+          ...pluginOutcome.plugins
+            .filter((plugin) => plugin.id === VISION_ASSISTANT_PLUGIN_ID)
+            .map((plugin) => plugin.rootPath),
+        ],
+        skipUserConfig: options.skipUserConfig,
+      }),
       resolveEffectiveModelSelection: options.resolveEffectiveModelSelection,
       isRemoteWorkspace: () =>
         isRemoteWorkspaceIdentity(runtimeConfig.memory?.workspaceIdentity ?? ""),

@@ -64,6 +64,7 @@ import { appendBrowserTurnScreenshot } from "./browser-turn-screenshot.js";
 import { clearBrowserTurnState } from "../../repl/browser-turn-state.js";
 import { applySubmissionExecutionState, createTurnModel } from "./turn-model.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
+import { refreshVisionAssistantConfig } from "../helpers/vision-assistant-config.js";
 
 const TARGET_RUN_HEARTBEAT_MS = 15_000;
 
@@ -187,6 +188,8 @@ export async function executeTurnCommand(
       throwIfTurnAborted(turnAbortSignal);
       let admittedModel;
       try {
+        if (rewindCommand === null) await refreshVisionAssistantConfig(this);
+        throwIfTurnAborted(turnAbortSignal);
         admittedModel =
           rewindCommand === null
             ? createTurnModel(this, {

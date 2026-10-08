@@ -70,6 +70,7 @@ export function createDefaultSubagentPort(
     autoBackgroundMs: this.config.subagents?.autoBackgroundMs,
     outputRootDir: this.config.subagents?.outputRootDir,
     profiles: this.config.subagents?.profiles,
+    getProfiles: () => this.config.subagents?.profiles ?? [],
     builtInModelSelectionOverrides: this.config.subagents?.builtInModelSelectionOverrides,
     runtimeTaskRegistry: this.runtimeTaskRegistry,
     emitParentEvent: async (event, traceContext) => {

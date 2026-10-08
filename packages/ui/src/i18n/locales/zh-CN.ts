@@ -3,7 +3,7 @@ const zhCN: Record<string, string> = {
   "vision.title": "视觉助手",
   "vision.enabled": "启用视觉助手",
   "vision.description":
-    "主模型支持识图时优先使用自身能力；不支持时，可调用备用视觉模型。插件设置在新会话中生效。",
+    "主模型支持识图时优先使用自身能力；不支持时，可调用备用视觉模型。设置对已有会话的下一轮对话生效。",
   "vision.backup": "备用视觉模型",
   "vision.backupDescription": "只在需要辅助识图时使用。你也可以为单张图片主动指定其他模型。",
   "vision.unconfigured": "未配置",

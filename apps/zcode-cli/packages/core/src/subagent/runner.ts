@@ -119,6 +119,8 @@ export interface ExploreSubagentPortOptions {
   enqueueParentTaskNotification?: EnqueueParentTaskNotification;
   outputRootDir?: string;
   profiles?: readonly AgentProfile[];
+  /** 新调用读取当前 profile；已启动任务仍持有创建时解析的 profile。 */
+  getProfiles?: () => readonly AgentProfile[];
   builtInModelSelectionOverrides?: Partial<
     Record<"general-purpose" | "Explore", import("@zcode/shared").ModelSelection>
   >;
@@ -134,9 +136,10 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
   const registry = options.runtimeTaskRegistry ?? new InMemoryRuntimeTaskRegistry();
   const abortControllers = new Map<string, AbortController>();
   const borrowedForegroundAgentIds = new Set<string>();
-  const profiles = normalizeAgentProfiles(options.profiles ?? [], {
-    builtInModelSelectionOverrides: options.builtInModelSelectionOverrides,
-  });
+  const getProfiles = () =>
+    normalizeAgentProfiles(options.getProfiles?.() ?? options.profiles ?? [], {
+      builtInModelSelectionOverrides: options.builtInModelSelectionOverrides,
+    });
   const autoBackgroundMs = normalizeAutoBackgroundMs(options.autoBackgroundMs);
 
   const port: SubagentPort & { start: NonNullable<SubagentPort["start"]> } = {
@@ -144,7 +147,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentLaunchRequest,
       launchOptions?: SubagentLaunchOptions,
     ): Promise<AgentOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), rawRequest);
       const executionRequest = toSubagentExecutionRequest(request);
       const backgroundRequested =
         rawRequest.runInBackground === true || profile.background === true;
@@ -176,7 +179,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentRunRequest,
       runOptions?: SubagentRunOptions,
     ): Promise<AgentOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), rawRequest);
       const lifecycle = createSubagentLifecycle(options, request, profile);
       const startedAt = new Date(lifecycle.startedAt);
 
@@ -445,7 +448,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentStartRequest,
       startOptions?: SubagentStartOptions,
     ): Promise<AgentBackgroundedOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), rawRequest);
       const lifecycle = createSubagentLifecycle(options, request, profile);
       const startedAt = new Date(lifecycle.startedAt);
       const output = createAgentBackgroundedOutput(request, lifecycle);
@@ -576,7 +579,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
     ): Promise<SubagentSendMessageResult> {
       return sendMessageToLocalAgent(
         options,
-        profiles,
+        getProfiles(),
         registry,
         abortControllers,
         request,

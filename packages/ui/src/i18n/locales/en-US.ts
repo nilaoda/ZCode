@@ -3,7 +3,7 @@ const enUS: Record<string, string> = {
   "vision.title": "Vision assistant",
   "vision.enabled": "Enable vision assistant",
   "vision.description":
-    "Use the main model’s vision when available; otherwise delegate to the backup vision model. Plugin settings apply to new conversations.",
+    "Use the main model’s vision when available; otherwise delegate to the backup vision model. Settings apply to the next turn in existing conversations.",
   "vision.backup": "Backup vision model",
   "vision.backupDescription":
     "Used when vision assistance is needed. You can also choose a different model for an individual image.",

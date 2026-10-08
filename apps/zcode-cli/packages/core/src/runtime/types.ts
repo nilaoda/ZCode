@@ -320,6 +320,10 @@ export interface AgentRuntimeDeps {
   resolveEffectiveModelSelection?: (selection: ModelSelection) => EffectiveModelSelectionResult;
   modelIoDir?: string;
   providerRuntimeHeadersPort?: ProviderRuntimeHeadersPort;
+  /** 仅在串行执行轮开始时读取全局视觉配置；本轮持有快照，不订阅中途变更。 */
+  visionAssistantConfigPort?: {
+    read(): Promise<{ enabled: boolean; profile?: AgentProfile }>;
+  };
   permissionService?: PermissionService;
   permissionBroker?: PermissionBrokerPort;
   toolScheduler?: ToolScheduler;
