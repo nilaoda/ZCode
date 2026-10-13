@@ -1,5 +1,6 @@
 import { net } from "electron";
 import {
+  isProductEndpointDisabled,
   buildHelpAppConfigUrl,
   buildZCodeSourceHeadersFromContext,
   createHelpAppConfigReader,
@@ -13,6 +14,8 @@ export function createDesktopHelpConfigReader(options: {
 }) {
   const read = createHelpAppConfigReader({ fetchImpl: (input, init) => net.fetch(input, init) });
   return async () => {
+    // 帮助配置也使用独立 net.fetch；内网版在端点解析前返回本地空配置。
+    if (isProductEndpointDisabled()) return {};
     const endpointOrigin = await options.resolveEndpointOrigin();
     return read(
       buildHelpAppConfigUrl(

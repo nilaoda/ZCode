@@ -11,19 +11,25 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 
+/**
+ * Claude Code 官方市场（GitHub git 源）。它不是 ZCode 的强依赖：GitHub 不可达时刷新必然失败，
+ * 该失败不应作为错误提示打扰用户，UI 侧按此 id 静默处理其刷新失败（任何原因）。
+ */
+export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
+
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
-  "vision-assistant@zcode-plugins-official",
-  // node_repl 宿主：不进市场、不对用户露出，也不贡献任何 skill/command/subagent，但必须
-  // 始终可用 —— node_repl 的注册门禁是「Browser Use 或 Computer Use 任一启用」，宿主自己
-  // 不参与那个判断。Browser Use 默认开着，宿主若默认关就等于它上来就没有宿主。
   "node-repl-host@zcode-plugins-official",
-  // 该集合必须与 apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
-  // 里标了 defaultEnabled 的插件逐一对应。本仓库是上游的不完整开源发行版，
-  // image-search / documents / pdf / presentations / spreadsheets / skill-creator /
-  // plugin-creator / zcode-guide 的插件包未随仓库分发，对应定义已裁剪，此处同步收窄。
-  // 恢复上游插件包时，需同时恢复 definition 与本名单。
+  "vision-assistant@zcode-plugins-official",
+  "visualize@zcode-plugins-official",
+  "documents@zcode-plugins-official",
+  "pdf@zcode-plugins-official",
+  "presentations@zcode-plugins-official",
+  "spreadsheets@zcode-plugins-official",
+  "skill-creator@zcode-plugins-official",
+  "plugin-creator@zcode-plugins-official",
+  "zcode-guide@zcode-plugins-official",
 ]);
 
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
@@ -36,6 +42,15 @@ export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
     source: buildOfficialPluginMarketplaceUrl(),
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
     description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
+    pluginCount: 0,
+  },
+  {
+    id: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+    source: "anthropics/claude-plugins-official",
+    name: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+    description:
+      "Directory of popular Claude Code extensions including development tools, productivity plugins, and MCP integrations",
+    // 只内置官方 catalog 来源，不把远端 manifest 快照打包进仓库；首次刷新前数量未知。
     pluginCount: 0,
   },
 ];

@@ -1,3 +1,4 @@
+import { isProductEndpointDisabled } from "@zcode/shared";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog.js";
 import { Tabs, TabsContent } from "@/components/ui/tabs.js";
 import { Button } from "@/components/ui/button.js";
@@ -31,7 +32,8 @@ export const FeedbackCenter = memo(function FeedbackCenterComponent({
   const titleId =
     tab === "tickets" ? "feedback.center.ticketsTitle" : "feedback.center.submitTitle";
 
-  if (!feedbackService) return null;
+  // 不挂载反馈子组件，避免恢复旧对话时发起官方查询。
+  if (isProductEndpointDisabled() || !feedbackService) return null;
 
   return (
     <>

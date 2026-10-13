@@ -3,6 +3,7 @@
 // Subagent Runner
 // ============================================================
 
+import type { GetAgentDefinitions } from "./definitions.js";
 import {
   AgentErrorCode,
   CoreErrorType,
@@ -121,6 +122,7 @@ export interface ExploreSubagentPortOptions {
   profiles?: readonly AgentProfile[];
   /** 新调用读取当前 profile；已启动任务仍持有创建时解析的 profile。 */
   getProfiles?: () => readonly AgentProfile[];
+  getAgentDefinitions?: GetAgentDefinitions;
   builtInModelSelectionOverrides?: Partial<
     Record<"general-purpose" | "Explore", import("@zcode/shared").ModelSelection>
   >;
@@ -137,7 +139,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
   const abortControllers = new Map<string, AbortController>();
   const borrowedForegroundAgentIds = new Set<string>();
   const getProfiles = () =>
-    normalizeAgentProfiles(options.getProfiles?.() ?? options.profiles ?? [], {
+    options.getAgentDefinitions?.().activeAgents ?? normalizeAgentProfiles(options.getProfiles?.() ?? options.profiles ?? [], {
       builtInModelSelectionOverrides: options.builtInModelSelectionOverrides,
     });
   const autoBackgroundMs = normalizeAutoBackgroundMs(options.autoBackgroundMs);
@@ -579,7 +581,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
     ): Promise<SubagentSendMessageResult> {
       return sendMessageToLocalAgent(
         options,
-        getProfiles(),
+        getProfiles,
         registry,
         abortControllers,
         request,
@@ -907,7 +909,7 @@ function createSubagentLifecycleFromTask(
 
 async function sendMessageToLocalAgent(
   options: ExploreSubagentPortOptions,
-  profiles: readonly AgentProfile[],
+  getProfiles: () => readonly AgentProfile[],
   registry: RuntimeTaskRegistry,
   abortControllers: Map<string, AbortController>,
   request: SubagentSendMessageRequest,
@@ -932,7 +934,7 @@ async function sendMessageToLocalAgent(
 
   return resumeTerminalAgentInBackground(
     options,
-    profiles,
+    getProfiles(),
     registry,
     abortControllers,
     task,

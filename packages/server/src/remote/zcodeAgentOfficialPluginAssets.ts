@@ -3,8 +3,17 @@ import { posix } from "node:path";
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_DIR_NAME = "packages";
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
-  "browser-use-plugin",
   "vision-assistant-plugin",
+  "visualize-plugin",
+  "documents-plugin",
+  "pdf-plugin",
+  "presentations-plugin",
+  "spreadsheets-plugin",
+  "browser-use-plugin",
+  "restore-legacy-sessions-plugin",
+  "skill-creator-plugin",
+  "plugin-creator-plugin",
+  "zcode-guide-plugin",
 ] as const;
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS = [
@@ -27,29 +36,65 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS = [
 ] as const;
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
-  ...REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES.map(
-    (packageName) => `${packageName}/.zcode-plugin/plugin.json`,
-  ),
-  // 只校验 Browser Use manifest 会把“有插件壳”的残缺目录
-  // 误判为可复用。生产 remote、开发态 remote 与 release source 校验共用这份必需资产合同。
-  //
-  // 这里只能列 browser-use **自己产出**的资产。node_repl 宿主抽成 @zcode/node-repl-host 后
-  // browser-use 不再产出 dist/mcp/server.js；
-  // 本清单里指向不存在的文件，会让远端资产校验对着幽灵路径报缺失。
-  // 远程工作区当前不承载 Browser Use / Computer Use，因此宿主 runtime 不进这份远端合同——
-  // 要支持远程 bua/cua 时，应把 node-repl-host 补进上面的 PACKAGE_NAMES 并在此声明它的
-  // dist/mcp/server.js，而不是把宿主产物挂回 browser-use 名下。
+  "vision-assistant-plugin/.zcode-plugin/plugin.json",
+  "vision-assistant-plugin/agents/vision-reader.md",
+  "visualize-plugin/.zcode-plugin/plugin.json",
+  "visualize-plugin/skills/visualize/SKILL.md",
+  "visualize-plugin/skills/visualize/references/api.md",
+  "visualize-plugin/skills/visualize/references/styles.md",
+  "visualize-plugin/skills/visualize/tweak.md",
+  "visualize-plugin/skills/visualize/LICENSE.md",
+  "visualize-plugin/skills/visualize/scripts/render.py",
+  "visualize-plugin/skills/visualize/assets/visualize.css",
+  "visualize-plugin/skills/visualize/assets/visualize.html",
+  "visualize-plugin/skills/visualize/assets/calendar.js",
+  "visualize-plugin/skills/visualize/assets/runtime-manifest.json",
+  "visualize-plugin/skills/visualize/scripts/vendor.py",
+  "visualize-plugin/skills/visualize/assets/vendor/manifest.json",
+  "visualize-plugin/skills/visualize/assets/vendor/floating-ui-core-1.7.3.min.js",
+  "visualize-plugin/skills/visualize/assets/vendor/floating-ui-core-1.7.3.min.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/floating-ui-dom-1.7.4.min.js",
+  "visualize-plugin/skills/visualize/assets/vendor/floating-ui-dom-1.7.4.min.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/lucide-1.17.0.js",
+  "visualize-plugin/skills/visualize/assets/vendor/lucide-1.17.0.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/d3-7.9.0.min.js",
+  "visualize-plugin/skills/visualize/assets/vendor/d3-7.9.0.min.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/topojson-client-3.1.0.min.js",
+  "visualize-plugin/skills/visualize/assets/vendor/topojson-client-3.1.0.min.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/world-countries-110m-1.0.0.js",
+  "visualize-plugin/skills/visualize/assets/vendor/world-countries-110m-1.0.0.js.LICENSE",
+  "visualize-plugin/skills/visualize/assets/vendor/us-counties-10m-3.0.1.js",
+  "visualize-plugin/skills/visualize/assets/vendor/us-counties-10m-3.0.1.js.LICENSE",
+  "visualize-plugin/skills/visualize/widgets/calendar.md",
+  "visualize-plugin/skills/visualize/examples/calendar.html",
+  "visualize-plugin/skills/visualize/assets/standalone-host-bridge.js",
+  "visualize-plugin/skills/visualize/assets/standalone-shell.js",
+  "documents-plugin/.zcode-plugin/plugin.json",
+  "documents-plugin/agents/visual-judge.md",
+  "documents-plugin/skills/docx/SKILL.md",
+  "pdf-plugin/.zcode-plugin/plugin.json",
+  "pdf-plugin/agents/visual-judge.md",
+  "pdf-plugin/skills/pdf/SKILL.md",
+  "presentations-plugin/.zcode-plugin/plugin.json",
+  "presentations-plugin/agents/visual-judge.md",
+  "presentations-plugin/skills/pptx/SKILL.md",
+  "spreadsheets-plugin/.zcode-plugin/plugin.json",
+  "spreadsheets-plugin/agents/visual-judge.md",
+  "spreadsheets-plugin/skills/xlsx/SKILL.md",
+  "browser-use-plugin/.zcode-plugin/plugin.json",
+  "browser-use-plugin/scripts/browser-client.mjs",
   "browser-use-plugin/docs/api.json",
   "browser-use-plugin/docs/documents.json",
   "browser-use-plugin/docs/overview.md",
-  // 远端缓存若缺少 recording 正文，documents.json 仍会错误宣告该 lookup 可用。
   "browser-use-plugin/docs/recording.md",
   "browser-use-plugin/docs/workflow.md",
-  "browser-use-plugin/scripts/browser-client.mjs",
   "browser-use-plugin/skills/control-browser/SKILL.md",
   "browser-use-plugin/skills/web-gui-tester/SKILL.md",
-  // 新增视觉插件时遗漏远端复制/复用合同，会让远程会话永远加载不到识图 Agent。
-  "vision-assistant-plugin/agents/vision-reader.md",
+  "restore-legacy-sessions-plugin/.zcode-plugin/plugin.json",
+  "skill-creator-plugin/.zcode-plugin/plugin.json",
+  "plugin-creator-plugin/.zcode-plugin/plugin.json",
+  "zcode-guide-plugin/.zcode-plugin/plugin.json",
+  "zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md",
 ] as const;
 
 export function buildRemoteAgentOfficialPluginDir(remoteProviderDir: string): string {

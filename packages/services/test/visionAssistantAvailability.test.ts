@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { Emitter } from "@zcode/rpc";
 import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
 import { listVisionModelCandidates, type ModelSelectionView } from "@zcode/provider";

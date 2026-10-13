@@ -1,4 +1,5 @@
 import { VISION_ASSISTANT_AGENT_NAME } from "@zcode/shared";
+import type { AgentProfile } from "../../subagent/profile.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { registerBuiltInTools } from "../deps.js";
 import {
@@ -7,6 +8,24 @@ import {
   resolveRuntimeDynamicWorkflowToolsIncluded,
 } from "./tool-allowlist.js";
 import { resolveRuntimeEmbeddedSearchEnabled } from "../methods/embedded-search-branch.js";
+
+/** 上游 Agent 定义按轮加载；仅投影视觉配置，保留其它动态 Agent 和正在运行的快照。 */
+export function applyVisionAssistantProfiles(
+  active: readonly AgentProfile[],
+  configured: readonly AgentProfile[],
+): readonly AgentProfile[] {
+  const vision = configured.filter((profile) => profile.name === VISION_ASSISTANT_AGENT_NAME);
+  const previousPath = active.find((profile) => profile.name === VISION_ASSISTANT_AGENT_NAME)?.path;
+  const profiles = active.filter((profile) =>
+    profile.name !== VISION_ASSISTANT_AGENT_NAME &&
+    !(previousPath && profile.name === "vision-reader" && profile.path === previousPath),
+  );
+  profiles.push(...vision);
+  const alias = configured.find((profile) => profile.name === "vision-reader" &&
+    vision.some((reader) => reader.path === profile.path));
+  if (alias && !profiles.some((profile) => profile.name === "vision-reader")) profiles.push(alias);
+  return profiles;
+}
 
 export async function refreshVisionAssistantConfig(runtime: AgentRuntimeInternal): Promise<void> {
   if (!runtime.visionAssistantConfigPort) return;
@@ -49,9 +68,8 @@ export async function refreshVisionAssistantConfig(runtime: AgentRuntimeInternal
     includeInspectImage: tools.includes("InspectImage"),
     allowedTools: tools,
     disallowedTools: resolveRuntimeDisallowedTools(runtime.config),
-    agentProfiles: profiles,
     embeddedSearchEnabled: resolveRuntimeEmbeddedSearchEnabled(runtime),
-    includeDynamicWorkflow: resolveRuntimeDynamicWorkflowToolsIncluded(runtime.config),
+    includeDynamicWorkflow: resolveRuntimeDynamicWorkflowToolsIncluded(runtime),
     silentDuplicateWarnings: true,
   });
   runtime.cachedTools = null;

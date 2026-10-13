@@ -1,3 +1,4 @@
+import { isProductEndpointDisabled } from "@zcode/shared";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
@@ -62,7 +63,7 @@ export function loadBundledOfficialPluginRootsSync(
 
 function rebuildOfficialMarketplaceSync(storageRoot: string): Record<string, unknown> {
   const bundledPartition = readBundledPartition(storageRoot);
-  const cdnManifest = readJsonRecord(partitionPath(storageRoot, CDN_PARTITION_FILE));
+  const cdnManifest = isProductEndpointDisabled() ? undefined : readJsonRecord(partitionPath(storageRoot, CDN_PARTITION_FILE));
   const bundledManifest = bundledPartition?.manifest;
   const cdnPlugins = readPluginEntries(cdnManifest);
   const cdnPluginNames = new Set(cdnPlugins.map(readPluginName).filter(isDefined));

@@ -28,17 +28,16 @@
 
 ## 1. 改造总览
 
-ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大部分内网适配是配置工作**，
-只有少数几处需要改代码（本分支已完成）。
+Local 发行版禁用应用自带的官方云请求。用户主动配置的模型、MCP、浏览器和 WebFetch 保留。下文的代理与 CA 配置适用于这些用户服务；产品端点和官方 CDN 环境变量不能重新启用内置云功能。
 
 | 能力                    | 状态                                           |
 | ----------------------- | ---------------------------------------------- |
 | **外部登录（OAuth）**   | **已整体移除**，应用无需登录                   |
 | **内置 Provider 目录**  | **已收敛为纯本地**，只能新增自定义 Provider    |
-| 产品后端地址            | 环境变量可整体重定向                           |
+| 产品后端地址            | Local 强制禁用内置产品请求 |
 | 出站代理 / 自签 CA      | 环境变量，覆盖 Electron、模型请求、MCP、子进程 |
-| 遥测 / ARMS RUM         | **默认关闭**，端点为空即不上报                 |
-| 插件 CDN（目录 + 资源） | 环境变量（本分支改造）                         |
+| 遥测 / ARMS RUM         | Local 强制关闭 |
+| 插件 CDN（目录 + 资源） | 内置插件随包提供，不自动访问公共来源 |
 | WebFetch 私网访问       | 环境变量白名单（本分支改造）                   |
 | 本地模型                | 通过 Provider 配置接入，无需改代码             |
 
@@ -64,9 +63,7 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 
 1. **构建期注入** —— 推荐用于分发。构建时把 `.env` 放在仓库根，Vite 会通过
    `__ZCODE_ENDPOINT_ENV__` 把 `pickProductEndpointEnv` 白名单里的公开链接编进产物。
-   覆盖范围：`ZCODE_BASE_URL` / `ZCODE_ENDPOINT_ORIGIN`、`BIGMODEL_API_BASE_URL`、
-   `ZAI_OAUTH_ORIGIN`、`ZAI_BUSINESS_BASE_URL`、`ZAI_OAUTH_CLIENT_ID`、
-   `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL`。这样发出去的安装包已经指向内网，终端用户无需配置。
+   Local 仍强制禁用官方云能力；公开端点编译配置不作为恢复这些功能的入口。用户模型在设置中配置。
 
 2. **操作系统级环境变量** —— 覆盖构建期未注入的部分（代理、CA、Provider 路径等）。
    - macOS：`launchctl setenv ZCODE_HTTP_PROXY http://proxy.intranet.example.com:8080`
@@ -85,14 +82,14 @@ ZCode 的出站流量已经收敛到少数几个可配置入口，因此**绝大
 **CLI / TUI 或开发态：**
 
 1. `cp .env.intranet.example .env`
-2. 按内网环境修改，重点是 `ZCODE_BASE_URL`、代理 / CA、`ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL`
+2. 按用户服务环境修改代理 / CA；无需配置产品端点或官方插件 CDN
 3. 准备两个 Provider 配置文件，路径写进 `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` 与
    `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`（**必须同时提供**，只给一个会在启动时抛错）
 4. 启动并按第 8 节验证
 
 **分发安装包：**
 
-1. 在构建机上把 `.env` 放在仓库根，再构建桌面安装包（构建期注入端点与插件 CDN）
+1. 在构建机上把 `.env` 放在仓库根，再构建 Local 桌面安装包（内置离线插件及图表地图资源）
 2. 其余运行时变量用 OS 级环境变量下发（见 2.1 途径 2）
 
 ---
@@ -232,55 +229,30 @@ ZCODE_WEBFETCH_ALLOW_PRIVATE_HOSTS=.intranet.example.com,10.0.0.0/8,192.168.0.0/
 
 ## 5. 插件与插件商店
 
-官方插件目录（`marketplace.json`）与插件展示资源（icon / hero）都从同一个 CDN 基址派生：
+Local 发行版只使用随包资源：不初始化默认公共市场，不刷新旧安装中的官方在线来源，也不下载官方图标。用户明确添加的自定义来源仍可访问公司镜像或自行选择的地址。
 
-```bash
-ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL=https://mirror.intranet.example.com/zcode/official-plugin
-```
+### 内置插件
 
-- 目录地址 = `${base}/marketplace.json`
-- 资源基址 = `${base}/assets`
-- 未配置时为线上 CDN `https://cdn-zcode.z.ai/zcode/official-plugin`。
+| 能力 | 随包插件 |
+| ---- | -------- |
+| 浏览器与 REPL | `browser-use`、`node-repl-host` |
+| 视觉助手 | `vision-assistant`；在全局模型设置中选择备用视觉模型 |
+| 交互图表与地图 | `visualize`；脚本和地图数据离线提供 |
+| 文档 | `documents`、`pdf`、`presentations`、`spreadsheets` |
+| 创建与指导 | `skill-creator`、`plugin-creator`、`zcode-guide` |
+| 历史恢复 | `restore-legacy-sessions`；按需启用 |
 
-### 内置插件现状
+官方搜图云服务、模拟器下载和 Computer Use 未恢复。桌面、远程资源暂存与 SEA 分发复用同一插件清单；资源缺失时构建明确失败，不在运行时联网补齐。
 
-本仓库是上游的不完整开源发行版，**上游 monorepo 中的官方插件包目录并未随仓库分发**。
-当前 `official-plugin-definitions.ts` 声明以下三个可离线 seed 的内置插件：
-
-| 插件               | 状态                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| `browser-use`      | 可 seed（`apps/zcode-cli/packages/browser-use-plugin`）                                    |
-| `node-repl-host`   | 可 seed（`apps/zcode-cli/packages/node-repl-host`）                                        |
-| `vision-assistant` | 可 seed（`apps/zcode-cli/packages/vision-assistant-plugin`）；在模型设置中配置备用视觉模型 |
-| 其余 10 个         | **插件包缺失，定义已裁剪**                                                                 |
-
-这三个插件随应用分发，不依赖在线商店完成初始化。若需要 documents / pdf / presentations /
-spreadsheets 等能力，需要先从官方发行包（DMG 或 `zcode` 运行包）中提取对应插件资产，
-vendored 进仓库并恢复 `OFFICIAL_PLUGIN_DEFINITIONS` 条目与
-`packages/shared/src/plugin-marketplaces.ts` 中的 `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`。
-
-### 已知遗留
-
-`packages/ui/src/v4/featureSuggestedPrompts.ts` 中仍有约 10 条推荐语料引用已裁剪的插件
-（`plugin://pdf@…`、`plugin://presentations@…`、`plugin://computer-use@…` 等），
-`packages/ui/src/lib/pluginIconSource.ts` 中也保留了对应图标映射。这些条目在裁剪前就已
-指向不存在的插件，属于待清理项，不影响启动。
+Gen UI 使用随包脚本和数据。已知固定资源地址在沙箱内重定向至本地文件，其它自动 HTTP(S) 资源在 Local 模式被拒绝。用户点击普通外链、主动浏览、WebFetch 或自定义模型请求继续可用。
 
 ---
 
 ## 6. 遥测
 
-无需任何操作。`packages/shared/src/env.ts` 中：
+Local 身份在构建与运行两侧强制关闭遥测、ARMS 和自动更新，即使私有构建默认配置或环境变量提供了端点也不会启用。浏览器和主进程不初始化 ARMS SDK；营销、奖励、云内容下载及官方加速在 IO 前短路。用户已有官方凭据不能绕过此策略。
 
-```ts
-export const ZCODE_TELEMETRY_REPORT_ENDPOINT = process.env.ZCODE_TELEMETRY_REPORT_ENDPOINT ?? "";
-export const ZCODE_ARMS_RUM_ENDPOINT = process.env.ZCODE_ARMS_RUM_ENDPOINT ?? "";
-```
-
-两个端点默认空字符串，且不内嵌进构建产物；上报函数首行判空即返回。**只要不设置这两个
-环境变量，遥测与 ARMS RUM 就不会出网。**
-
-若希望代码层面彻底禁用，可把同文件中的 `ZCODE_TELEMETRY_ENABLED` 改为 `false`。
+其它产品身份使用 `scripts/build-time-config.mjs` 的可选构建配置；这不影响 Local 的禁止规则。
 
 ---
 
@@ -505,8 +477,8 @@ Local 档位由桌面主进程固定写入 `alwaysOn`（与 Preview 一致），
 | OAuth 授权 / token 交换与刷新         | 已整体移除（见第 0 节），无可达路径                                              |
 | 遥测 / ARMS RUM / OTLP                | 端点默认空且**不内嵌进产物**，解析器无端点即返回 `undefined`，不启动 exporter    |
 | 自动更新                              | Local 身份不启用（`enabled: flavor === "production"`）                           |
-| 登录态相关的计费 / 团队 / 额度 / 反馈 | 需要账号，无登录即不可达                                                         |
-| 插件商店目录与资源                    | 仅打开商店时按需加载，基址可用 `ZCODE_OFFICIAL_PLUGIN_CDN_BASE_URL` 指向内网镜像 |
+| 登录态相关的计费 / 团队 / 额度 / 反馈 | Local UI 不挂载，反馈与营销等实际 IO 出口也拒绝请求                                                         |
+| 插件商店目录与资源                    | 公共来源不创建、不自动刷新；内置资源随包交付；用户自定义来源保留 |
 | WebSearch                             | 走模型原生能力，无独立端点                                                       |
 | Node 运行时下载                       | 构建期行为，`ZCODE_NODE_DIST_MIRROR` 可换源                                      |
 
@@ -519,5 +491,6 @@ Local 档位由桌面主进程固定写入 `alwaysOn`（与 Preview 一致），
 
 ### 10.5 若需要恢复联网能力
 
-把 `ZCODE_DISABLE_PRODUCT_ENDPOINT` 设为 `0`（或删除该变量）即可恢复这两条请求；
-但 Local 档位由主进程固定写入 `1`，需要改成在 `desktopRuntimeEnv.ts` 里按需下发。
+Local 产品身份优先于环境变量，不能通过 `ZCODE_DISABLE_PRODUCT_ENDPOINT=0` 或端点配置恢复官方云请求。用户主动配置的服务不受此限制。
+
+SSH/WSL 远程运行时在 Local 版不会自动下载官方 CDN 资源。请使用已有缓存/本地开发资源，或主动配置 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 为所需镜像；未配置时不会回退到官方站点。

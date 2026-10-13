@@ -1,3 +1,4 @@
+import { isProductEndpointDisabled } from "@zcode/shared";
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -73,6 +74,8 @@ export interface PrepareModelTelemetryOptions {
 }
 
 export function resolveOtlpTraceEndpoint(env: EnvRecord): string | undefined {
+  // Local 禁用信号优先于捕获/恢复的 OTLP 环境，避免启动时创建 exporter 或身份文件。
+  if (isProductEndpointDisabled(env)) return undefined;
   const traceEndpoint = env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim();
   if (traceEndpoint) return validHttpUrl(traceEndpoint);
   const commonEndpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
@@ -85,6 +88,7 @@ export function resolveOtlpTraceEndpoint(env: EnvRecord): string | undefined {
 }
 
 export function resolveOtlpMetricEndpoint(env: EnvRecord): string | undefined {
+  if (isProductEndpointDisabled(env)) return undefined;
   const metricEndpoint = env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT?.trim();
   if (metricEndpoint) return validHttpUrl(metricEndpoint);
   const commonEndpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();

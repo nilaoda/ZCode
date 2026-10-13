@@ -1,3 +1,4 @@
+import { isProductEndpointDisabled } from "@zcode/shared";
 export type QuickPickCommandIcon =
   | "book"
   | "browser"
@@ -291,6 +292,9 @@ export function createQuickPickCommands({
 
   return commands.filter(
     (command) =>
+      // 快捷命令也必须遵守内网边界，不能绕过已隐藏的菜单恢复官方入口。
+      (!isProductEndpointDisabled() ||
+        !["feedback", "community", "product-docs", "login", "logout"].includes(command.id)) &&
       (supportsTerminal ||
         (command.id !== "toggle-terminal" && command.id !== "add-terminal-tab")) &&
       (supportsReview || command.id !== "add-review-tab"),

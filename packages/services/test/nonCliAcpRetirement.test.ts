@@ -3,7 +3,10 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import test from "node:test";
+import { test, beforeEach, afterEach, vi } from "vitest";
+
+beforeEach(() => vi.stubEnv("ZCODE_LOCAL_IDENTITY", "1"));
+afterEach(() => vi.unstubAllEnvs());
 import { fileURLToPath } from "node:url";
 import {
   ZCODE_PROTOCOL_NAME,

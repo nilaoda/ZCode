@@ -1,4 +1,4 @@
-import { redactFeedbackText } from "@zcode/shared";
+import { isProductEndpointDisabled, redactFeedbackText } from "@zcode/shared";
 /* eslint-disable max-lines -- 反馈 HTTP 客户端集中维护新后端协议、鉴权头合并、OSS 表单直传和响应归一化。 */
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -314,6 +314,8 @@ export class FeedbackHttpClient {
     init?: ApiRequestInit,
     authHeaders?: Record<string, string>,
   ): Promise<T> {
+    // 反馈是应用自带云服务，旧凭据或显式 API base 不能绕过 Local 禁用边界。
+    if (isProductEndpointDisabled()) throw new Error("Feedback is disabled in Local builds");
     const headers = mergeFeedbackRequestHeaders(
       authHeaders ?? (await this.options.getAuthHeaders()),
       init?.headers,

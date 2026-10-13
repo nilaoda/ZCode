@@ -16,11 +16,13 @@ interface ChromiumHardwareAccelerationApp {
  *
  * production / preview 的默认基目录就是 `homedir()`，行为与改造前完全一致。
  */
-function resolveChromiumHardwareAccelerationSettingsFile(): string {
-  return join(resolveDefaultDataBaseDir(), ".zcode", "v2", "setting.json");
+export function resolveChromiumHardwareAccelerationSettingsFile(
+  homePath = resolveDefaultDataBaseDir(),
+): string {
+  return join(homePath, ".zcode", "v2", "setting.json");
 }
 
-function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: unknown): boolean {
+export function extractBootstrapChromiumHardwareAccelerationEnabled(rawValue: unknown): boolean {
   if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) {
     return true;
   }

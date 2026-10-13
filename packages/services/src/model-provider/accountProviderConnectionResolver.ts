@@ -9,6 +9,7 @@ import type {
 } from "@zcode/provider";
 import { AccountProviderService, createAccountProviderConfigResolver } from "@zcode/provider";
 import {
+  isProductEndpointDisabled,
   type ApiClient,
   type ProviderFamilyConnectionSelectionSettings,
   type ProviderFamilyDomain,
@@ -66,6 +67,15 @@ export interface AccountProviderConfigSourceOptions extends AccountProviderConne
 }
 
 /**
+ * off-peak 与 highspeed 都不是独立套餐，而是「已连接的个人/团队 Coding Plan」派生出的
+ * 执行入口：请求期鉴权分别来自 ticket 与加速卡 JWT，本身没有可校验的套餐 Key。
+ * 因此它们既不进入 Coding Plan availability 校验，也不按 selection.kind 直接比对模式。
+ */
+function isCodingPlanDerivedMode(mode: string | undefined): mode is "off-peak" | "highspeed" {
+  return mode === "off-peak" || mode === "highspeed";
+}
+
+/**
  * 把现有账号域、连接模式和套餐权益统一投影为领域层 Connection Result。
  *
  * 该适配器不保存凭据。Personal Coding Plan Key 的物理来源由注入端决定；
@@ -76,6 +86,8 @@ export function createAccountProviderConnectionResolver(
 ): AccountProviderConnectionResolver {
   let previousScopes = new Map<string, string>();
   return async ({ configuredProviders, reasons = [] }) => {
+    // Local 不恢复官方账号连接；必须早于旧设置迁移、凭据读取和远端套餐解析。
+    if (isProductEndpointDisabled()) return [];
     const settings = structuredClone(await options.readSettings());
     const forceCredentialRefresh = reasons.some(isCredentialRefreshReason);
     const accountIdentityByFamily = new Map<ProviderFamilyDomain, Promise<string | null>>();
@@ -98,7 +110,7 @@ export function createAccountProviderConnectionResolver(
           config.access?.type === "zhipu-account" &&
           config.access.accountType === family &&
           config.access.mode &&
-          config.access.mode !== "off-peak"
+          !isCodingPlanDerivedMode(config.access.mode)
             ? [{ providerId, config, planKind: config.access.mode }]
             : [],
         );
@@ -168,7 +180,7 @@ export function createAccountProviderConnectionResolver(
       scopes.set(providerId, scope);
       const resetPrevious =
         previousScopes.has(providerId) && previousScopes.get(providerId) !== scope;
-      if (access.mode === "off-peak") {
+      if (isCodingPlanDerivedMode(access.mode)) {
         const selectedPlanKind = selection?.kind;
         const matchingPlanAvailable =
           settings.providerFamilyDomain === access.accountType &&
@@ -287,6 +299,7 @@ export function createCodingPlanFamilyAvailabilityResolver(
   options: CodingPlanFamilyAvailabilityResolverOptions,
 ): AccountProviderFamilyAvailabilityResolver {
   return ({ family, providers, selections }) => {
+    if (isProductEndpointDisabled()) return Promise.resolve({});
     const context = {
       apiClient: options.apiClient,
       credentialService: options.credentialService,
@@ -309,6 +322,7 @@ export async function resolveCurrentAccountAccess(input: {
   readonly readSettings: () => Promise<AccountProviderConnectionSettings>;
   readonly loadAccountIdentity: (family: ProviderFamilyDomain) => Promise<string | null>;
 }): Promise<ZCodeAccountAccess | null> {
+  if (isProductEndpointDisabled()) return null;
   const settings = await input.readSettings();
   const { accountType, mode } = input.access;
   if (settings.providerFamilyDomain !== accountType) return null;
@@ -318,7 +332,7 @@ export async function resolveCurrentAccountAccess(input: {
   }
   const selection = settings.selections[accountType];
   if (!selection) return null;
-  if (mode === "off-peak") {
+  if (isCodingPlanDerivedMode(mode)) {
     if (selection.kind !== "individual-coding-plan" && selection.kind !== "team-coding-plan") {
       return null;
     }

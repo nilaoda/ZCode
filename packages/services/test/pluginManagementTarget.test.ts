@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { resolvePluginManagementTarget } from "../src/zcode-agent/pluginManagementTarget.js";
 
 test("用户级插件设置不要求项目，使用既有管理进程载体", () => {

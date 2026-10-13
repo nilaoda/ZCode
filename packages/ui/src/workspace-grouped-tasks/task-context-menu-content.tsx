@@ -19,6 +19,7 @@ export function GroupedTaskContextMenuContent({
   fileManagerLabel,
   taskSessionFile,
   taskNativeSessionLogFile,
+  providerConfigFile,
   onMoveTaskToGroup,
   onMoveTaskToTop,
   onStartRenameTask,
@@ -26,6 +27,7 @@ export function GroupedTaskContextMenuContent({
   onMarkTaskAsUnread,
   onOpenTaskPathInFileManager,
   onCopyText,
+  onOpenProviderConfig,
   onOpenTaskFeedback,
   disabledReason,
 }: {
@@ -38,6 +40,7 @@ export function GroupedTaskContextMenuContent({
   fileManagerLabel: string;
   taskSessionFile: { loading: boolean; path: string | null };
   taskNativeSessionLogFile: { loading: boolean; path: string | null };
+  providerConfigFile: { loading: boolean; path: string | null };
   onMoveTaskToGroup: (task: ZCodeTaskMeta, groupId: string | null) => void;
   onMoveTaskToTop: (task: ZCodeTaskMeta) => void;
   onStartRenameTask: (task: ZCodeTaskMeta) => void;
@@ -45,6 +48,7 @@ export function GroupedTaskContextMenuContent({
   onMarkTaskAsUnread: (task: ZCodeTaskMeta) => void;
   onOpenTaskPathInFileManager: () => void;
   onCopyText: (label: string, text: string | null) => void;
+  onOpenProviderConfig: () => void;
   onOpenTaskFeedback: () => void;
   disabledReason?: string;
 }) {
@@ -177,10 +181,10 @@ export function GroupedTaskContextMenuContent({
       {/* 本地化发行版：反馈会上传到外部服务，入口整块隐藏。 */}
       {ZCODE_LOCAL_ONLY_BUILD ? null : (
         <>
-        <ContextMenuSeparator />
-        <ContextMenuItem onSelect={onOpenTaskFeedback}>
-          {intl.formatMessage({ id: "taskList.feedback" })}
-        </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onSelect={onOpenTaskFeedback}>
+            {intl.formatMessage({ id: "taskList.feedback" })}
+          </ContextMenuItem>
         </>
       )}
     </ContextMenuContent>

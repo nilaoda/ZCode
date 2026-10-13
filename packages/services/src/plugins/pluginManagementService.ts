@@ -11,7 +11,7 @@ import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
 import type { IModelSelectionService } from "../model-provider/providerFacadeServices.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 
-interface PluginManagementServiceDependencies {
+export interface PluginManagementServiceDependencies {
   modelSelectionService: IModelSelectionService;
   zcodeAgentService: Pick<
     IZCodeAgentService,

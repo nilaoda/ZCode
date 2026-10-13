@@ -17,18 +17,19 @@ import type { ZCodeApp } from "../../app/types.js";
 const URI_REF_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
 const INLINE_TEXT_ATTACHMENT_MAX_BYTES = 64 * 1024;
 
-function isUriAttachmentRef(ref: string): boolean {
+export function isUriAttachmentRef(ref: string): boolean {
   return URI_REF_PATTERN.test(ref);
 }
 
 function displayMetaOf(
   ref: AttachmentRef,
-): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes" | "visionModel"> {
+): Pick<TurnAttachment, "filename" | "mimeType" | "sizeBytes" | "visionModel" | "sourceKind" | "messageCount"> {
   return {
     filename: ref.fileName,
     mimeType: ref.mime,
     sizeBytes: ref.bytes,
     ...(isImageRef(ref) && ref.visionModel ? { visionModel: ref.visionModel } : {}),
+    ...(ref.sourceKind ? { sourceKind: ref.sourceKind, messageCount: ref.messageCount } : {}),
   };
 }
 
@@ -71,6 +72,10 @@ async function mapAttachmentRef(app: ZCodeApp, ref: AttachmentRef): Promise<Turn
       type: isImageRef(ref) ? "image" : isPdfRef(ref) ? "pdf" : "file",
       ...displayMeta,
     };
+  }
+  if (ref.sourceKind === "topic-history" || ref.sourceKind === "clipboard-text") {
+    // 文本材料必须保留 durable 引用；按普通小文件解码会重新隐藏注入整份历史。
+    return { content: ref.ref, type: "file", ...displayMeta };
   }
   if (isImageRef(ref)) {
     // 图片 URI ref：content 携带 artifact URI，模型请求阶段由 resolveAttachmentDataUrl

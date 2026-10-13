@@ -17,7 +17,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
+import { resolveZCodeDataBaseDir } from "@zcode/shared/node";
 import { join } from "node:path";
 import {
   SAVED_WORKFLOW_FILE_EXTENSION,
@@ -41,7 +41,7 @@ export interface SavedWorkflowRoot {
 
 /**
  * `savedWorkflowRoots` / 派生函数的可选参数。`homeDir` 只为测试注入：生产恒取
- * `os.homedir()`（agent 进程所在机器的家目录），**不**跟任何 `storage.dir` 配置走。
+ * 独立数据基目录；显式注入 homeDir 优先，storage.dir 不覆盖产品数据基目录。
  */
 export interface SavedWorkflowRootsOptions {
   homeDir?: string;
@@ -59,7 +59,7 @@ export function savedWorkflowRoots(
 ): SavedWorkflowRoot[] {
   return [
     { scope: "project", dir: join(cwd, SAVED_WORKFLOW_PROJECT_DIR) },
-    { scope: "global", dir: join(options?.homeDir ?? homedir(), SAVED_WORKFLOW_GLOBAL_DIR) },
+    { scope: "global", dir: join(resolveZCodeDataBaseDir(process.env, options?.homeDir), SAVED_WORKFLOW_GLOBAL_DIR) },
   ];
 }
 

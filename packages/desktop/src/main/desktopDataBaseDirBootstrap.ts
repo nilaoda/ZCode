@@ -34,11 +34,11 @@ export function resolveDefaultDataBaseDir(flavor = ZCODE_PRODUCT_FLAVOR): string
  *
  * 对 production / preview 而言，这里等价于原先的 `homedir()`，行为不变。
  */
-function resolveBootstrapSettingsFile(): string {
-  return join(resolveDefaultDataBaseDir(), ".zcode", "v2", "setting.json");
+export function resolveBootstrapSettingsFile(homePath = resolveDefaultDataBaseDir()): string {
+  return join(homePath, ".zcode", "v2", "setting.json");
 }
 
-function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
+export function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
   if (!rawValue || typeof rawValue !== "object") {
     return null;
   }

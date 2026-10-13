@@ -20,7 +20,7 @@ import { migrateLegacyCommonMcp } from "./legacy.js";
 import { resolveAgentConfigBaseDir } from "@zcode/shared/node";
 
 // 重新导出类型和函数
-export type { McpConfigKeyName, McpSourceDescriptor } from "./types.js";
+export type { McpConfigKeyName, OpenCodeMcpServerConfig, McpSourceDescriptor } from "./types.js";
 export { MCP_SOURCE_DESCRIPTORS, getSourceDescriptor } from "./types.js";
 export { migrateLegacyCommonMcp } from "./legacy.js";
 
@@ -58,7 +58,6 @@ const AGENTS_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   format: "json",
   configKeyName: "mcpServers",
 };
-
 
 const DIRECTORY_MCP_DESCRIPTORS: readonly DirectoryMcpDescriptor[] = [
   ZCODE_MCP_DESCRIPTOR,
