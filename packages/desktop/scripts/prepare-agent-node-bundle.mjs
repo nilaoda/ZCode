@@ -4,7 +4,7 @@
 // 由 app 内置的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行，替代以前随包内置的独立 Node 二进制。
 //
 // 为什么这么做：
-// - agent 没有任何原生 NAPI 插件（ripgrep 是 WASM，其余纯 JS），可直接跑在 Electron 的 Node 上；
+// - Agent 主要是纯 JS；Windows MCP 进程管理使用的外置 Koffi 另行暂存目标架构原生模块；
 // - Electron 41 内置 Node 24.x，与 zcode-cli 的目标运行时一致；
 // - 单平台体积从 ~180MB 降到 ~16MB，且同一份 JS 跨平台通用；
 // - app-server 命令路径不会加载 @zcode/tui，所以这里天然不打包 TUI。
@@ -18,6 +18,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
+import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 import {
   officialPluginPackages,
   stageOfficialPluginAssets,
@@ -210,3 +211,13 @@ buildOfficialPluginRuntimes();
 stageBundle();
 await stageOfficialPluginAssets({ repoRoot, targetRoot: glmDir });
 await stageBundledSkillPack();
+
+// Windows MCP Job Object 从 zcode.cjs 解析 Koffi，旧 CUA 插件目录不在其模块查找路径中。
+// 必须在插件复制完成后暂存到 Agent 根目录，不能依赖本地开发机残留的 node_modules。
+if (platform === "win32") {
+  await stageKoffiIntoBundledAgents({
+    koffiPackageRoot: adaptersRoot,
+    glmDir,
+    targetPlatform: { os: platform, arch },
+  });
+}

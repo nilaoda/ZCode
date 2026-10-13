@@ -46,7 +46,7 @@ sequenceDiagram
 - 自定义 Provider 获取模型、独立产品身份、数据隔离、生成速度及 Git 行尾修复保持成立。
 - 本地视觉、记忆和 WebFetch 回归纳入 Core / Bootstrap 的常规 Vitest 入口，不能仅依赖额外的手工 Node 测试命令。Gen UI 资源装配和 Main 沙箱源码旁回归也纳入根入口。
 - 执行根类型检查、Lint、架构检查及目标回归；如遇上游已有失败，记录真实诊断。验证后清理本次依赖及生成产物，保留原有文件。
-- 本轮仅合并到工作区，不自动提交或推送。
+- 提交与推送需用户明确授权。
 
 ## 本轮验证记录
 
@@ -65,3 +65,29 @@ sequenceDiagram
 - OTLP 捕获区恢复、账号/产品 API、旧远控恢复、默认 UI feature、视觉实时配置与冷恢复、记忆迁移、普通 Provider 模型列表、离线插件与资源装配目标回归通过。视觉/记忆/WebFetch 回归统一进入 Core / Bootstrap 的常规测试目录；沙箱和装配测试进入根入口。
 - 系统 Chrome 实测独立导出绘制 177 个国家并可交互，未知外部资源触发 6 次 CSP 拦截且网络出口为 0；34 个推荐图标全部本地加载且无外部请求。视觉助手浏览器 E2E 通过。
 - Node 单测使用 Electron 包的路径覆盖完成模块加载，未下载或运行 Electron 二进制。本轮未重新执行完整 Electron/安装包 E2E；前轮 Electron Gen UI 结果保留，完整安装包冷启动和跨平台发布仍需 Actions 验证。
+
+## 跨平台打包回归修复
+
+- Actions 构建日志：Windows 在固定资源 SHA-256 校验失败；macOS x64 / arm64 在旧 CUA 插件 Koffi 校验失败。
+- 资源清单的摘要描述原始字节。Visualize 资产目录及独立的 Gen UI tweak 运行时按字节检出，不受 `core.autocrlf` 影响；继续严格校验，不重新计算摘要或回退联网下载。
+- 当前 CUA 插件只提供 SDK；Koffi 的桌面运行时消费者是 Windows Agent 的 MCP Job Object。桌面准备脚本将目标架构的 Koffi 暂存到 `glm/node_modules/koffi`，打包后验证同一路径；macOS/Linux 无此消费者，不要求旧插件原生模块。
+- 资源检出由 Git attributes 唯一控制；Koffi 的目标选择由已有 targetPlatform 控制，准备脚本先复制官方插件、再暂存 Agent 依赖，electron-builder 在最终复制后校验。
+- 回归：模拟 `core.autocrlf=true` 的真实 Git 检出，所有运行时/第三方资源及许可摘要保持一致；Windows 目标只携带目标架构的 Koffi，Agent 目录可解析它，缺失二进制会失败；两个 macOS 目标不再要求 Koffi。
+
+```mermaid
+flowchart LR
+  Git[Git 按字节检出] --> Hash[离线资源严格校验]
+  Target[目标平台] --> Prepare[Agent 准备脚本]
+  Prepare --> Plugins[官方插件资源复制]
+  Plugins --> Koffi[Windows Agent 根目录暂存 Koffi]
+  Koffi --> Package[electron-builder 复制 glm]
+  Package --> Verify[Windows 最终路径校验]
+```
+
+### 本次验证
+
+- 新回归在修复前复现资源换行及旧 Koffi 路径错误；修复后 4 个文件 / 13 项回归通过（Node 24.14.0）。
+- 真实 Koffi 2.15.6 的 Windows x64 / arm64 原生文件摘要与暂存路径通过，暂存后的包在本机 Node 成功加载。
+- 修改范围的 TypeScript 检查通过；根 Lint 为 0 errors / 72 warnings，架构检查为 0 违规。
+- 根 `pnpm typecheck` 已执行，但缺少此前清理的完整工作区依赖、Node/WDIO/Mocha 类型和内部包链接，结果失败；不将此前全项目通过记录作为本轮通过结果。
+- 本轮只安装隔离的必要验证工具；验证后清理工具和新增生成文件，保留原有产物。完整 Windows/macOS 安装包需 Actions 重跑。

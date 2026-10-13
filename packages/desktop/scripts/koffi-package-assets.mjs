@@ -1,29 +1,38 @@
-// Koffi native runtime staging for the bundled CUA MCP server.
+// Koffi native runtime staging for the bundled Windows Agent.
 //
-// The CUA server externalizes koffi because esbuild cannot bundle its
-// platform-dispatching `.node` requires. The installed agent has no hoisted
-// node_modules, so keep only the target binary beside the plugin.
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+// Agent 的 MCP Job Object 通过外置 Koffi 管理 Windows 子进程；
+// 安装包没有 workspace 的 hoisted node_modules，须在 zcode.cjs 同级暂存目标原生模块。
+import { access, cp, mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
-function resolveKoffiRoot(koffiPackageRoot) {
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function resolveKoffiRoot(koffiPackageRoot) {
   const candidates = [
     resolve(koffiPackageRoot),
     resolve(koffiPackageRoot, "node_modules", "koffi"),
   ];
   const virtualStore = resolve(koffiPackageRoot, "..", "..", "..", "..", "node_modules", ".pnpm");
   candidates.push(resolve(virtualStore, "..", "koffi"));
-  if (existsSync(virtualStore)) {
-    for (const entry of readdirSync(virtualStore)) {
+  if (await exists(virtualStore)) {
+    for (const entry of await readdir(virtualStore)) {
       if (entry.startsWith("koffi@"))
         candidates.push(resolve(virtualStore, entry, "node_modules", "koffi"));
     }
   }
   for (const candidate of candidates) {
     const packageJson = resolve(candidate, "package.json");
-    if (!existsSync(packageJson)) continue;
+    if (!(await exists(packageJson))) continue;
     try {
-      if (JSON.parse(readFileSync(packageJson, "utf8")).name === "koffi") return candidate;
+      if (JSON.parse(await readFile(packageJson, "utf8")).name === "koffi") return candidate;
     } catch {
       // Continue searching other installation locations.
     }
@@ -37,43 +46,41 @@ function koffiPlatformKey(targetPlatform) {
   return `${targetPlatform.os}_${targetPlatform.arch}`;
 }
 
-export function stageKoffiIntoBundledAgents({ koffiPackageRoot, glmDir, targetPlatform }) {
+export async function stageKoffiIntoBundledAgents({ koffiPackageRoot, glmDir, targetPlatform }) {
   if (!koffiPackageRoot || !glmDir || !targetPlatform?.os || !targetPlatform?.arch) {
     throw new Error(
       "[koffi-package-assets] koffiPackageRoot, glmDir and targetPlatform are required",
     );
   }
-  const sourceRoot = resolveKoffiRoot(koffiPackageRoot);
+  const sourceRoot = await resolveKoffiRoot(koffiPackageRoot);
   const platformKey = koffiPlatformKey(targetPlatform);
   const sourceNativeDir = resolve(sourceRoot, "build", "koffi", platformKey);
-  if (!existsSync(resolve(sourceNativeDir, "koffi.node"))) {
+  if (!(await exists(resolve(sourceNativeDir, "koffi.node")))) {
     throw new Error(
       `[koffi-package-assets] missing target native addon: ${sourceNativeDir}/koffi.node`,
     );
   }
 
   const targetRoot = resolve(glmDir, "node_modules", "koffi");
-  rmSync(targetRoot, { recursive: true, force: true });
-  mkdirSync(resolve(targetRoot, "build", "koffi", platformKey), { recursive: true });
-  for (const file of ["index.js", "package.json", "index.d.ts"]) {
-    cpSync(resolve(sourceRoot, file), resolve(targetRoot, file));
+  await rm(targetRoot, { recursive: true, force: true });
+  await mkdir(resolve(targetRoot, "build", "koffi", platformKey), { recursive: true });
+  for (const file of ["index.js", "package.json", "index.d.ts", "LICENSE.txt"]) {
+    await cp(resolve(sourceRoot, file), resolve(targetRoot, file));
   }
-  cpSync(
+  await cp(
     resolve(sourceNativeDir, "koffi.node"),
     resolve(targetRoot, "build", "koffi", platformKey, "koffi.node"),
   );
   return resolve(targetRoot, "build", "koffi", platformKey, "koffi.node");
 }
 
-export function verifyStagedKoffi({
-  resourcesDir,
-  targetPlatform,
-  pluginRelativePath = "packages/zcode-cua-plugin",
-}) {
+export async function verifyStagedKoffi({ resourcesDir, targetPlatform, pluginRelativePath = "" }) {
+  // 新 CUA 插件只有 SDK；实际外置 Koffi 消费者是 Windows Agent，其他平台无需校验。
+  if (targetPlatform.os !== "win32") return [];
   const platformKey = koffiPlatformKey(targetPlatform);
   const koffiRoot = resolve(resourcesDir, "glm", pluginRelativePath, "node_modules", "koffi");
   const nativePath = resolve(koffiRoot, "build", "koffi", platformKey, "koffi.node");
-  return existsSync(nativePath) && existsSync(resolve(koffiRoot, "index.js"))
+  return (await exists(nativePath)) && (await exists(resolve(koffiRoot, "index.js")))
     ? []
     : [`missing staged koffi runtime for ${platformKey}: ${nativePath}`];
 }

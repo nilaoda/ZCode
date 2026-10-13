@@ -14,3 +14,7 @@ third-party/runtime/*.txt -text -whitespace
 docs/knip/docs/LICENSE -text -whitespace
 docs/knip/docs/licenses/** -text -whitespace
 third-party/inventory.json linguist-generated=true
+
+# Gen UI 清单校验原始字节；Windows 的自动 CRLF 转换会破坏离线资源与许可摘要。
+apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/** -text
+packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js -text

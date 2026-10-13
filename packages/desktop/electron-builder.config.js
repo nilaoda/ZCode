@@ -489,14 +489,14 @@ function assertPackagedCuaSharp(context) {
   }
 }
 
-function assertPackagedCuaKoffi(context) {
-  const problems = verifyStagedKoffi({
+async function assertPackagedAgentKoffi(context) {
+  const problems = await verifyStagedKoffi({
     resourcesDir: resolvePackagedResourcesDir(context),
     targetPlatform,
   });
   if (problems.length > 0) {
     throw new Error(
-      `CUA plugin koffi runtime is incomplete in the packaged app:\n- ${problems.join("\n- ")}`,
+      `Agent koffi runtime is incomplete in the packaged app:\n- ${problems.join("\n- ")}`,
     );
   }
 }
@@ -673,7 +673,7 @@ export default {
       assertPackagedNodePtyPrebuild(context),
     );
     runTimedSync("afterPack:assertPackagedCuaSharp", () => assertPackagedCuaSharp(context));
-    runTimedSync("afterPack:assertPackagedCuaKoffi", () => assertPackagedCuaKoffi(context));
+    await runTimedAsync("afterPack:assertPackagedAgentKoffi", () => assertPackagedAgentKoffi(context));
     runTimedSync("afterPack:assertPackagedCuaHelper", () => assertPackagedCuaHelper(context));
     if (actualWindowsTarget && shouldPackageComputerUseHelper) {
       await runTimedAsync("afterPack:finalizePackagedWindowsCuaHelper", () =>
@@ -787,8 +787,18 @@ export default {
       // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
       from: `bundled-agents/${targetPlatform.key}/glm`,
       to: "glm",
-      filter: ["**/*", "!**/*.map"],
+      filter: ["**/*", "!**/*.map", "!node_modules{,/**/*}"],
     },
+    ...(targetPlatform.os === "win32"
+      ? [
+          {
+            // electron-builder 会过滤资源根目录的 node_modules，须显式映射 Agent 的 Koffi。
+            from: `bundled-agents/${targetPlatform.key}/glm/node_modules/koffi`,
+            to: "glm/node_modules/koffi",
+            filter: ["**/*"],
+          },
+        ]
+      : []),
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
       // 这里把 ripgrep 作为桌面端内置 runtime tool 打进 resources/tools，
