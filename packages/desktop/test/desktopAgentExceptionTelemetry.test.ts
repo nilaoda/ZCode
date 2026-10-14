@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostAgentProcessExceptionResponse } from "@zcode/shared";
 
 const { sendEvent, sendCustom } = vi.hoisted(() => ({ sendEvent: vi.fn(), sendCustom: vi.fn() }));
-vi.mock("@arms/rum-electron", () => ({ default: { sendEvent, sendCustom, setConfig: vi.fn() } }));
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({ default: { sendEvent, sendCustom, setConfig: vi.fn() } }));
 vi.mock("electron", () => ({ BrowserWindow: {} }));
 vi.mock("../src/main/desktopCrashCapture.js", () => ({ registerCrashEventMonitor: vi.fn() }));
 vi.mock("../src/main/resourceManagerWindow.js", () => ({ getResourceManagerWindowId: vi.fn() }));

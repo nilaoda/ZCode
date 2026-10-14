@@ -1,3 +1,4 @@
+import { isProductEndpointDisabled, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import type { SpanExporter } from "@opentelemetry/sdk-trace-base";
 
@@ -29,6 +30,13 @@ export function parseRendererActionTraceHeaders(
 }
 
 export function createRendererActionTraceExporter(env: EnvRecord): SpanExporter | undefined {
+  // Local/禁用信号必须先于 exporter 构造，防止继承的系统 OTLP 地址恢复应用自动上报。
+  if (
+    ZCODE_LOCAL_ONLY_BUILD ||
+    isProductEndpointDisabled(env) ||
+    env.OTEL_SDK_DISABLED?.trim().toLowerCase() === "true"
+  )
+    return undefined;
   const endpoint = resolveRendererActionTraceEndpoint(env);
   if (!endpoint) return undefined;
   return new OTLPTraceExporter({

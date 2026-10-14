@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import type { DatabaseStartupState } from "@zcode/shared";
 const sdk = vi.hoisted(() => ({ sendCustom: vi.fn(), getConfig: () => ({ env: "prod" }) }));
-vi.mock("@arms/rum-electron", () => ({ default: sdk }));
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({ default: sdk }));
 vi.mock("../src/main/desktopDeviceMid.js", () => ({
   ensureDesktopDeviceMidSync: () => "test-device",
 }));

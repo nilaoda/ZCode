@@ -2,7 +2,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 const ARMS_CUSTOM_PROPERTY_LIMIT = 20;
 
-vi.mock("@arms/rum-electron", () => ({
+// 指标映射测试不需要装配 SSH 或远端运行时。
+vi.mock("../src/main/desktopRuntimeEnv.js", () => ({ desktopRuntimeEnv: "development" }));
+
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({
   default: {
     sendCustom: vi.fn(),
     setConfig: vi.fn(),
@@ -21,7 +24,7 @@ describe("desktopNetworkTelemetry", () => {
   });
 
   it("每个接口窗口只上报一条包含 counts 与耗时的事件", async () => {
-    const arms = await import("@arms/rum-electron");
+    const arms = await import("../src/main/desktopArmsTelemetry.js");
     const {
       configureDesktopNetworkTelemetry,
       ingestHostNetworkObservations,
@@ -90,7 +93,7 @@ describe("desktopNetworkTelemetry", () => {
   });
 
   it("HTTP 阶段耗时与主错误归因齐全时仍只发一条且不超过 20 个属性", async () => {
-    const arms = await import("@arms/rum-electron");
+    const arms = await import("../src/main/desktopArmsTelemetry.js");
     const {
       configureDesktopNetworkTelemetry,
       ingestArmsApiEventsFromBatch,

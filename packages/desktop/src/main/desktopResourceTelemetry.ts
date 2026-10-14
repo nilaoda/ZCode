@@ -1,4 +1,4 @@
-import armsRum from "@arms/rum-electron";
+import armsRum from "./desktopArmsTelemetry.js";
 import {
   bytesToKb,
   createMemorySampleWriteGate,

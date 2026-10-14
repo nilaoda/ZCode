@@ -1,3 +1,4 @@
+import { desktopArmsTelemetryEnabled } from "./desktopArmsTelemetry.js";
 import { wrapStartupReporterRequest } from "./startupTelemetryDelivery.js";
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
@@ -151,16 +152,19 @@ const armsDeviceMid = ensureDesktopDeviceMidSync();
 // 须在 app.whenReady() 创建 BrowserWindow 之前 await armsInitPromise（见 index.ts）。
 // SDK 的 sendCustom 只表示入队，原 request 不检查 HTTP status。
 // 在 init 通过公开 useReporter 安装时包装传输，保留原 SDK 的过滤和序列化链路。
-const useReporter = armsRum.client.useReporter.bind(armsRum.client);
-armsRum.client.useReporter = (reporter) => {
-  const request = reporter.request.bind(reporter);
-  reporter.request = wrapStartupReporterRequest(request, {
-    acknowledged: (eventIds, delivery) =>
-      logger.info("[database-startup] telemetry delivery", { eventIds, delivery }),
-  });
-  useReporter(reporter);
-};
-export const armsInitPromise = !ZCODE_ARMS_RUM_ENDPOINT
+// 关闭时连 reporter 装配也跳过，避免触碰尚未初始化的 SDK。
+if (desktopArmsTelemetryEnabled) {
+  const useReporter = armsRum.client.useReporter.bind(armsRum.client);
+  armsRum.client.useReporter = (reporter) => {
+    const request = reporter.request.bind(reporter);
+    reporter.request = wrapStartupReporterRequest(request, {
+      acknowledged: (eventIds, delivery) =>
+        logger.info("[database-startup] telemetry delivery", { eventIds, delivery }),
+    });
+    useReporter(reporter);
+  };
+}
+export const armsInitPromise = !desktopArmsTelemetryEnabled
   ? Promise.resolve()
   : armsRum
       .init({

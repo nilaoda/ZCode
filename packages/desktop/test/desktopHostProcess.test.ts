@@ -393,7 +393,7 @@ describe("desktopHostProcess MCP 资源样本", () => {
 });
 
 it("PRT-010: main 的真实 Host 消息分发即时报告 Bash 完成事实，拒绝非法属性", async () => {
-  const { default: armsRum } = await import("@arms/rum-electron");
+  const { default: armsRum } = await import("../src/main/desktopArmsTelemetry.js");
   const sendCustom = vi.spyOn(armsRum, "sendCustom").mockImplementation(() => {});
   const { configureDesktopResourceTelemetry } =
     await import("../src/main/desktopResourceTelemetry.js");

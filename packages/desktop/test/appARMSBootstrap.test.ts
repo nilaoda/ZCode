@@ -4,10 +4,21 @@ import { runInNewContext } from "node:vm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ZCODE_AGENT_LIFECYCLE_LOG_MARKER } from "@zcode/shared/process-diagnostic";
 
-const init = vi.fn((_config: unknown) => Promise.resolve());
+const { init, telemetryEnv, sdkClient } = vi.hoisted(() => ({
+  init: vi.fn((_config: unknown) => Promise.resolve()),
+  telemetryEnv: { endpoint: "https://example.test/endpoint", local: false },
+  sdkClient: { useReporter: vi.fn() },
+}));
 
 vi.mock("@arms/rum-electron", () => ({
-  default: { init, client: { useReporter: vi.fn() } },
+  default: {
+    init,
+    get client() {
+      // 关闭遥测时不应访问或改写 SDK reporter；真实 SDK 配置此时尚未初始化。
+      if (telemetryEnv.local || !telemetryEnv.endpoint) throw new Error("SDK is disabled");
+      return sdkClient;
+    },
+  },
 }));
 
 vi.mock("../src/main/desktopDeviceMid.js", () => ({
@@ -32,7 +43,12 @@ vi.mock("@zcode/shared", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@zcode/shared")>();
   return {
     ...actual,
-    ZCODE_ARMS_RUM_ENDPOINT: "https://example.test/endpoint",
+    get ZCODE_ARMS_RUM_ENDPOINT() {
+      return telemetryEnv.endpoint;
+    },
+    get ZCODE_LOCAL_ONLY_BUILD() {
+      return telemetryEnv.local;
+    },
     ZCODE_ENV: "test",
     ZCODE_VERSION: "0.0.0-test",
     mapZCodeEnvToArmsRumEnv: vi.fn(() => "local"),
@@ -223,7 +239,24 @@ describe("appARMSBootstrap beforeReport", () => {
   beforeEach(() => {
     vi.resetModules();
     init.mockClear();
+    telemetryEnv.endpoint = "https://example.test/endpoint";
+    telemetryEnv.local = false;
+    sdkClient.useReporter = vi.fn();
   });
+
+  it.each(["empty-endpoint", "local-with-endpoint"] as const)(
+    "%s：关闭时不访问 reporter，也不阻断主窗口启动等待",
+    async (mode) => {
+      telemetryEnv.endpoint = mode === "empty-endpoint" ? "" : "https://example.test/endpoint";
+      telemetryEnv.local = mode === "local-with-endpoint";
+      const useReporter = sdkClient.useReporter;
+      const { armsInitPromise } = await import("../src/main/appARMSBootstrap.js");
+      await expect(armsInitPromise).resolves.toBeUndefined();
+      expect(init).not.toHaveBeenCalled();
+      expect(sdkClient.useReporter).toBe(useReporter);
+      expect(useReporter).not.toHaveBeenCalled();
+    },
+  );
 
   it("使用 Desktop 本地开发运行态计算 ARMS 环境", async () => {
     await import("../src/main/appARMSBootstrap.js");

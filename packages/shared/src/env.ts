@@ -112,7 +112,7 @@ export const RUNTIME_ZCODE_DEBUG =
   typeof process !== "undefined" ? process.env.ZCODE_DEBUG : undefined;
 
 // ── 构建期可选能力（见 docs/desktop/build-time-optional-capabilities.md），未注入时一律关闭 ──
-/** ARMS RUM 上报地址；为空时 SDK 以 enable=false 初始化，不产生上报。 */
+/** ARMS RUM 上报地址；为空或 Local 时跳过 SDK 初始化，业务出口直接返回。 */
 export const ZCODE_ARMS_RUM_ENDPOINT: string =
   !ZCODE_LOCAL_ONLY_BUILD && typeof __ZCODE_ARMS_RUM_ENDPOINT__ !== "undefined"
     ? __ZCODE_ARMS_RUM_ENDPOINT__

@@ -49,6 +49,9 @@ vi.mock("electron", () => ({
   },
 }));
 
+// 资源采样的映射和时钟测试不需要装配 SSH、远端资源与真实运行环境。
+vi.mock("../src/main/desktopRuntimeEnv.js", () => ({ desktopRuntimeEnv: "development" }));
+
 vi.mock("../src/main/logger.js", () => ({
   // Bug 根因：resourceManagerWindow 会在导入时加载真实 logger，导致 macOS 把测试中的
   // Windows E2E 日志路径当作相对目录创建；本用例只验证资源采样，隔离无关的日志 IO。
@@ -59,7 +62,7 @@ vi.mock("../src/main/logger.js", () => ({
   },
 }));
 
-vi.mock("@arms/rum-electron", () => ({
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({
   default: {
     sendCustom: sendCustomMock,
     setConfig: vi.fn(),

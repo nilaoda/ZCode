@@ -1,4 +1,4 @@
-import armsRum from "@arms/rum-electron";
+import armsRum from "./desktopArmsTelemetry.js";
 import {
   ZCODE_VERSION,
   type DatabaseStartupState,
@@ -39,7 +39,7 @@ function send(
         deviceMid,
         platform: process.platform,
         appVersion: ZCODE_VERSION,
-        armsEnv: armsRum.getConfig().env === "prod" ? "prod" : "local",
+        armsEnv: armsRum.getConfig()?.env === "prod" ? "prod" : "local",
         rendererId: 0,
       },
     });

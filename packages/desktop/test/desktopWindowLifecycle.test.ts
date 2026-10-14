@@ -3,6 +3,12 @@ vi.mock("../src/main/databaseStartupRelay.js", () => ({
   getDatabaseStartupPortPayload: () => ({ databaseStartupId: "window-host-test" }),
 }));
 
+// 生命周期用例只验证注册调用与窗口行为，隔离资源管理窗口的真实日志 IO。
+vi.mock("../src/main/resourceManagerWindow.js", () => ({
+  registerMainApplicationWindow: vi.fn(),
+  unregisterMainApplicationWindow: vi.fn(),
+}));
+
 vi.mock("electron", () => ({
   app: {
     setBadgeCount: vi.fn(),
@@ -35,12 +41,16 @@ import {
   handleDesktopWindowCloseRequest,
 } from "../src/main/desktopWindowLifecycle.js";
 
+const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, "platform")!;
+
 describe("desktopWindowLifecycle createWindow", () => {
   afterEach(() => {
+    Object.defineProperty(process, "platform", originalPlatformDescriptor);
     vi.useRealTimers();
   });
 
-  it("local Host 始终携带 conversation backing cwd 供历史 workspace spawn 兜底", () => {
+  it("Windows 首窗 dom-ready 显示并激活，Host 携带 conversation backing cwd", () => {
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
     let handleDomReady: (() => void) | undefined;
     const webContents = {
       id: 42,
@@ -87,6 +97,8 @@ describe("desktopWindowLifecycle createWindow", () => {
 
     expect(handleDomReady).toBeTypeOf("function");
     handleDomReady?.();
+    expect(win.show).toHaveBeenCalledOnce();
+    expect(win.focus).toHaveBeenCalledOnce();
     expect(spawnHostProcess).toHaveBeenCalledWith(
       win,
       "local-42",

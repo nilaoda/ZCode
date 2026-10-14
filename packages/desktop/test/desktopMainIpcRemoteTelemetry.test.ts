@@ -8,6 +8,7 @@ type RemoteIpcOptions = Parameters<
 >[0];
 
 const h = vi.hoisted(() => ({
+  telemetryEnabled: true,
   handlers: new Map<string, IpcHandler>(),
   listeners: new Map<string, IpcHandler>(),
   fromWebContents: vi.fn(),
@@ -16,6 +17,13 @@ const h = vi.hoisted(() => ({
   shellOpenPath: vi.fn(),
   configureRemoteUsageArmsTelemetry: vi.fn(),
   reportRemoteConnectResultToArms: vi.fn(),
+}));
+
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({
+  default: { sendCustom: vi.fn() },
+  get desktopArmsTelemetryEnabled() {
+    return h.telemetryEnabled;
+  },
 }));
 
 vi.mock("electron", () => ({
@@ -125,6 +133,7 @@ describe("remote workspace connect telemetry IPC", () => {
   });
 
   beforeEach(() => {
+    h.telemetryEnabled = true;
     h.handlers.clear();
     h.listeners.clear();
     h.fromWebContents.mockReset();
@@ -134,6 +143,13 @@ describe("remote workspace connect telemetry IPC", () => {
     h.shellOpenPath.mockReset().mockResolvedValue("");
     h.configureRemoteUsageArmsTelemetry.mockReset();
     h.reportRemoteConnectResultToArms.mockReset();
+  });
+
+  it("关闭遥测时不配置定时 reporter，远程连接 IPC 仍正常注册", async () => {
+    h.telemetryEnabled = false;
+    await registerHarness();
+    expect(h.configureRemoteUsageArmsTelemetry).not.toHaveBeenCalled();
+    expect(h.handlers.has(PlatformChannels.ConnectRemote)).toBe(true);
   });
 
   it("注册 IPC 时配置 remote usage ARMS reporter", async () => {

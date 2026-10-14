@@ -1,3 +1,4 @@
+import { ZCODE_ARMS_RUM_ENDPOINT, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import type { IpcRenderer } from "electron";
 
 /** 与 @arms/rum-electron 内置 preload 一致 */
@@ -64,6 +65,8 @@ export function patchArmsEventBridgeIfPresent(): boolean {
 }
 
 export function scheduleArmsEventBridgePatch(maxAttempts = 100): void {
+  // 未初始化 ARMS 时没有 Bridge，继续重试只会无谓唤醒 preload。
+  if (ZCODE_LOCAL_ONLY_BUILD || !ZCODE_ARMS_RUM_ENDPOINT) return;
   if (patchArmsEventBridgeIfPresent()) {
     return;
   }
@@ -81,6 +84,7 @@ export function scheduleArmsEventBridgePatch(maxAttempts = 100): void {
 }
 
 export function installArmsRumBridgeIpcForward(ipc: IpcRenderer): void {
+  if (ZCODE_LOCAL_ONLY_BUILD || !ZCODE_ARMS_RUM_ENDPOINT) return;
   const patched = ipc as PatchedIpcRenderer;
   if (patched.__zcodeArmsIpcPatched) {
     return;

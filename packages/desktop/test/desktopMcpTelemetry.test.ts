@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendCustom = vi.fn();
 
-vi.mock("@arms/rum-electron", () => ({
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({
   default: { sendCustom },
 }));
 

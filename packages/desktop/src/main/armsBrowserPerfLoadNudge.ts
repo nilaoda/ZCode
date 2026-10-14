@@ -1,3 +1,4 @@
+import { desktopArmsTelemetryEnabled } from "./desktopArmsTelemetry.js";
 import type { WebContents } from "electron";
 
 /**
@@ -38,6 +39,8 @@ export const ARMS_BROWSER_PERF_LOAD_NUDGE_SCRIPT = `(function () {
 })();`;
 
 export function scheduleArmsBrowserPerfLoadNudge(webContents: WebContents): void {
+  // SDK 停用时不向业务页面注入 load 补发和重试脚本。
+  if (!desktopArmsTelemetryEnabled) return;
   const nudge = (): void => {
     if (webContents.isDestroyed()) {
       return;

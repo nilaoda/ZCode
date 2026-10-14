@@ -15,7 +15,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("@arms/rum-electron", () => ({
+vi.mock("../src/main/desktopArmsTelemetry.js", () => ({
   default: {
     sendCustom,
     setConfig,
