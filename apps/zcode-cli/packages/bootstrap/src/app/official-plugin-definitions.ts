@@ -61,6 +61,8 @@ export interface OfficialPluginDefinition {
 }
 
 const ZAI_AUTHOR = { name: "Z.ai" } as const;
+// 上游官方插件图标 CDN 基址；内网发行版不可达，缺省图标回退即可，不发起请求。
+const OFFICIAL_PLUGIN_ASSETS_BASE_URL = "https://cdn-zcode.z.ai/zcode/official-plugin/assets";
 
 export const OFFICIAL_NODE_REPL_HOST_REQUIRED_SEED_PATHS = ["dist/mcp/server.js"] as const;
 

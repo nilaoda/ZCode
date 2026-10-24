@@ -34,6 +34,16 @@ export interface ZCodeAgentListMcpServerStatusesParams extends ZCodeAgentWorkspa
   mode?: ZCodeMcpListMode;
 }
 
+/** 用户级控制面不寄居项目；workspace/effective 视图仍须明确目标。 */
+export type ZCodeAgentPluginViewParams =
+  | (ZCodeAgentWorkspaceTarget & { configScope?: "user" | "workspace" })
+  | {
+      configScope: "user";
+      workspacePath?: never;
+      workspaceIdentity?: never;
+      remoteSessionId?: never;
+    };
+
 export interface ZCodeAgentAddPluginMarketplaceParams extends ZCodeAgentPluginMutationTarget {
   dryRun?: boolean;
   operationId?: string;
@@ -101,10 +111,12 @@ export interface ZCodeAgentDescribePluginParams extends ZCodeAgentWorkspaceTarge
   pluginName: string;
 }
 
-export interface ZCodeAgentSetPluginEnabledParams extends ZCodeAgentPluginMutationTarget {
+export type ZCodeAgentSetPluginEnabledParams = {
   enabled: boolean;
   operationId?: string;
   pluginId: string;
+  /** 仅 Host 观测使用；不会传给 CLI（上游推荐入口携带，本发行版不消费）。 */
+  telemetry?: ZCodeAgentPluginMutationTarget["telemetry"];
 } & (
   | (ZCodeAgentWorkspaceTarget & { scope?: "user" | "workspace" })
   | { scope: "user"; workspacePath?: never; workspaceIdentity?: never; remoteSessionId?: never }

@@ -12,6 +12,7 @@ import { mergeSlashCommandsAfterCommandRefresh } from "@/settings/pluginSlashCom
 import { useCommandsStore } from "@/store/commandsStore.js";
 import { useMcpStore } from "@/store/mcpStore.js";
 import { notifyPluginManagementChange } from "@/store/pluginManagementStoreLoading.js";
+import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 
 function toMessage(error: unknown): string {

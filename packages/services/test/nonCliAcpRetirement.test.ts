@@ -70,9 +70,11 @@ test("current Project Memory catalog and files remain readable", async () => {
 test("opening the task index leaves retired ACP IDs and user rows untouched", async () => {
   const dir = await mkdtemp(join(tmpdir(), "zcode-acp-index-"));
   const path = join(dir, "tasks.sqlite");
-  const repo = new TaskIndexRepo(path);
+  // 上游 3.16 起构造参数为 (migrationSettings, storageHostId, startupDbPath, ...)；
+  // 显式传第三参，避免落到真实用户 tasks 库。
+  const repo = new TaskIndexRepo(undefined, undefined, path);
   try {
-    await repo.syncTaskMeta({ meta });
+    await repo.applyCliFacts({ meta });
     repo.close();
     const database = new DatabaseSync(path);
     try {
@@ -198,6 +200,20 @@ test("current session recovery preserves Desktop and replayable projections", as
         indexed.push(params.meta);
         return params.meta;
       },
+      // 上游 3.16 起 adapter 通过 syncer 广播快照；按真实转换从 session 派生 meta。
+      async syncSnapshotAndBroadcast(params: unknown) {
+        const session = (params as {
+          session: { sessionId: string; workspace: { workspacePath: string }; title?: string };
+        }).session;
+        const derived: ZCodeTaskMeta = {
+          ...meta,
+          taskId: session.sessionId,
+          workspacePath: session.workspace.workspacePath,
+          ...(session.title ? { title: session.title } : {}),
+        };
+        indexed.push(derived);
+        return derived;
+      },
       close() {},
     } as unknown as TaskIndexRepo,
     taskIndexSyncer: {
@@ -207,6 +223,20 @@ test("current session recovery preserves Desktop and replayable projections", as
         return { fire() {} };
       },
       ensureSessionSubscription() {},
+      // 上游 3.16 起 adapter 通过 syncer 广播快照；按真实转换从 session 派生 meta。
+      async syncSnapshotAndBroadcast(params: unknown) {
+        const session = (params as {
+          session: { sessionId: string; workspace: { workspacePath: string }; title?: string };
+        }).session;
+        const derived: ZCodeTaskMeta = {
+          ...meta,
+          taskId: session.sessionId,
+          workspacePath: session.workspace.workspacePath,
+          ...(session.title ? { title: session.title } : {}),
+        };
+        indexed.push(derived);
+        return derived;
+      },
       disposeAll() {},
     } as unknown as Options["taskIndexSyncer"],
   });

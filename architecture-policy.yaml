@@ -747,6 +747,18 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: merge-v3162-connect-desktop-source-server
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/host/connectDesktopSourceServer.ts]
+    reason: 上游 v3.16.2 新增的 Source 连接装配；合并时剥离了 Bots topic relay 接线（依赖已移除的 IBotsService），与上游快照不再逐字节一致，故登记例外。
+  - id: merge-v3162-remote-workspace-rpc-contract
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/host/remoteWorkspaceRpcContract.ts]
+    reason: 上游 v3.16.2 新增的 RPC 合同；合并时从通道清单移除 botsService（Bots 已按发行版策略删除），偏离上游快照。
+  - id: local-client-config-service
+    rule: unmanaged-new-file
+    paths: [packages/services/src/client-config/clientConfigService.ts]
+    reason: 本地化发行版的客户端配置服务（产品端点禁用时返回空快照），属 fork 自有代码；接管 services 模块不在本次范围。
   - id: side-pane-full-view-shortcut-command-edit
     rule: unmanaged-new-file
     paths: [packages/shared/src/shortcutCommands.ts]

@@ -170,7 +170,6 @@ describe("useSettings AskUserQuestion runtime preference", () => {
           update: vi.fn(async () => undefined),
         },
         zcodeAgentService,
-        botsService,
       }) as unknown as IServiceAccessor;
     const controllerServices = createServices("zh-CN");
     const sourceServices = createServices("en-US");
@@ -203,7 +202,6 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       broadcastService,
       settingService: controllerSettingService,
       zcodeAgentService,
-      botsService,
     } as unknown as IServiceAccessor;
     const { useSettings } = await import("@/hooks/useSettingService.js");
     const hook = renderHook(() =>
@@ -256,7 +254,6 @@ describe("useSettings AskUserQuestion runtime preference", () => {
 
     expect(settingService.update).toHaveBeenCalledWith({ toolSearchMode: "local" });
     expect(zcodeAgentService.syncAppRuntimePreferences).not.toHaveBeenCalled();
-    expect(botsService.syncAppRuntimePreferences).not.toHaveBeenCalled();
     expect(broadcastService.send).not.toHaveBeenCalled();
     hook.unmount();
   });

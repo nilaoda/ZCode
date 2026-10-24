@@ -42,6 +42,7 @@ import { ModelConfigSelect, type ModelSelectGroup } from "@/ModelConfigSelect.js
 import type { ComposerModelOptions } from "@/chat-input-toolbar/ComposerModelMenu.js";
 import { Button } from "@/components/ui/button.js";
 import { formatHighspeedRemainingTime } from "@/highspeed/highspeedTime.js";
+import { HighspeedModelIndicator } from "@/highspeed/HighspeedModelIndicator.js";
 import { ChatContextUsage } from "@/chat-input-toolbar/display.js";
 import {
   hasChatCodingPlanUsageRemaining,
@@ -454,7 +455,10 @@ function V4ComposerModelControlsImpl({
   disabled,
   modelLocked = false,
   highspeedPresented = false,
+  highspeedEntranceAnimated = false,
+  highspeedSweepActive = false,
   highspeedExpiresAt,
+  highspeedModel,
   activeConfigPicker,
   onConfigPickerOpenChange,
   onSelectModel,
@@ -1257,17 +1261,29 @@ function V4ComposerModelControlsImpl({
         data-usage-max={usage?.contextWindow?.maxTokens ?? ""}
         className="hidden"
       />
-      <ChatContextUsage
-        codingPlanUsageRemaining={codingPlanUsageRemaining}
-        taskUsage={taskUsage}
-        decodeWindow={usage?.decodeWindow}
-        startPlanBalance={contextStartPlanBalance}
-        selectedProvider={displayProvider}
-        intl={intl}
-        locale={locale}
-        onSendCompressionCommand={onSendCompressionCommand}
-        compressionDisabled={disabled || recoveryPending}
-      />
+      {/* Highspeed 卡激活即锁定模型；不能等动效交接完成才隐藏，否则 usage 圈圈会短暂闪现。 */}
+      {!modelLocked ? (
+        <ChatContextUsage
+          codingPlanUsageRemaining={codingPlanUsageRemaining}
+          taskUsage={taskUsage}
+          decodeWindow={usage?.decodeWindow}
+          startPlanBalance={contextStartPlanBalance}
+          selectedProvider={displayProvider}
+          intl={intl}
+          locale={locale}
+          onSendCompressionCommand={onSendCompressionCommand}
+          compressionDisabled={disabled || recoveryPending}
+        />
+      ) : null}
+      {/* 加速轮的模型由本次卡决定，选型菜单此时不可用，所以指示器优先于选型加载态。 */}
+      {highspeedPresented && highspeedModel ? (
+        <HighspeedModelIndicator
+          model={highspeedModel}
+          originalModel={modelTriggerDisplay.fullLabel}
+          sweepActive={highspeedSweepActive}
+          animateEntrance={highspeedEntranceAnimated}
+        />
+      ) : null}
       {modelSelectionState.status === "error" && modelSelectionReload ? (
         <Button
           type="button"

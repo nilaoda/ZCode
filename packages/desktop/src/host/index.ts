@@ -170,7 +170,6 @@ import { pushDynamicWorkflowUserModeToRemoteHosts } from "./remoteDynamicWorkflo
 import { connectDesktopSourceServer } from "./connectDesktopSourceServer.js";
 import { prepareRemoteWorkspaceIdentity } from "./remoteWorkspacePreparation.js";
 import { createWindowHostControllerRuntime } from "./windowHostControllerService.js";
-import { resolveBotRemoteWorkspace } from "./botRemoteWorkspaceResolver.js";
 import { SourceServerDirectory } from "./sourceServerDirectory.js";
 import { connectSourceServerTarget } from "./connectSourceServerTarget.js";
 import {
@@ -3716,13 +3715,6 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               // 本地化发行版禁用遥测：上游在此把插件生命周期/UI 遥测转发给 renderer
               // 再上报外部端点；这里不在源头接线，services 侧的可选回调保持休眠。
               resolveBotProjectConnection,
-              resolveBotRemoteWorkspace: (workspace) =>
-                sourceServerDirectory
-                  ? resolveBotRemoteWorkspace(workspace, "lookup", {
-                      directory: sourceServerDirectory,
-                      listSessions: () => windowRemoteConnectionRegistry.listSessions(),
-                    })
-                  : Promise.resolve(null),
               setWorkspaceProjection,
               remoteProjectConnection: {
                 connectHost: async (host) => {

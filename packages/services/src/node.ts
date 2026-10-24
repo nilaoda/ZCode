@@ -1167,11 +1167,6 @@ export function createLocalServices(options: {
   /** 已鉴权 Desktop stdio 连接提供的私有回查频道；不作为公共 service 暴露。 */
   topicResourceRelayChannel?: (request: unknown) => IChannel;
   parentPort?: Parameters<typeof createBroadcastService>[0];
-  /** Desktop Window Host 提供当前 Source 身份和线路，其他宿主不推断 Desktop 状态。 */
-  resolveBotRemoteWorkspace?: (target: {
-    workspacePath: string;
-    workspaceIdentity: string;
-  }) => Promise<{ workspacePath: string; workspaceIdentity: string } | null>;
   /** Host 装配层注入的设置权威；与网络 transport 必须来自同一 Window Host 生命周期。 */
   settingService?: ISettingService;
   setWorkspaceProjection?: ReturnType<
@@ -2995,6 +2990,7 @@ export function disposeServiceResources(services: ServiceCollection): void {
   // terminal/task wrapper 这类会拉起子进程的服务只能等宿主进程自己结束，时序上可能留下短暂残留。
   // 这里集中调用各服务的本地 disposeAll 钩子，把“退出 app = 回收所有托管资源”落成机械动作。
   const disposableServices = [
+    services.getOptional(ICloudContentService),
     services.getOptional(IPluginManagementService),
     services.getOptional(ITerminalService),
     services.getOptional(IZCodeTaskService),
@@ -3035,6 +3031,7 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   // app 关闭时 host 需要等 agent 进程树完成 graceful + force 清理。
   // 旧的同步 dispose 会在 host 退出时丢掉强杀 timer，导致 zcode-cli/app-server 变成孤儿进程。
   const disposableServices = [
+    services.getOptional(ICloudContentService),
     services.getOptional(IPluginManagementService),
     services.getOptional(ITerminalService),
     services.getOptional(IZCodeTaskService),

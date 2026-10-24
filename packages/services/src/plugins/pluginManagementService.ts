@@ -17,7 +17,8 @@ import type { IModelSelectionService } from "../model-provider/providerFacadeSer
 import { createServiceLogger } from "../logger/serviceLogger.js";
 
 export interface PluginManagementServiceDependencies {
-  modelSelectionService: IModelSelectionService;
+  // 本地化（视觉助手）：上游测试与纯 Agent 宿主不注入模型选择服务；缺省时跳过联动。
+  modelSelectionService?: IModelSelectionService;
   reportTelemetryEvent?: (event: RendererTelemetryEventPayload) => void | Promise<void>;
   now?: () => number;
   zcodeAgentService: Pick<
@@ -54,8 +55,6 @@ export function createPluginManagementService(
   let latestView: ModelSelectionView | undefined;
   let reconciliation = Promise.resolve();
   let writes = Promise.resolve();
-  const service: IPluginManagementService & { disposeAll(): void } = {
-    onDidChange: changed.event,
   const now = dependencies.now ?? Date.now;
   type Params =
     import("../zcode-agent/zcodeAgentPluginParams.js").ZCodeAgentPluginMutationTarget & {
@@ -83,7 +82,7 @@ export function createPluginManagementService(
   };
   const report = (
     action: string,
-    params: Params,
+    params: Params | ({ telemetry?: Params["telemetry"] } & Partial<Omit<Params, "telemetry">>),
     startedAt: number,
     result?: Result,
     error?: unknown,
@@ -171,22 +170,27 @@ export function createPluginManagementService(
       /* 观测端故障与业务隔离。 */
     }
   };
-  const observeMutation = async <T extends Result>(
+  // 参数形状解耦 MutationTarget：用户级 setPluginEnabled 可不带 workspace 目标，
+  // 遥测观察只需要剥离 telemetry 字段本身。
+  const observeMutation = async <T, P extends { telemetry?: Params["telemetry"] }>(
     action: string,
-    params: Params,
-    invoke: (clean: Params) => Promise<T>,
+    params: P,
+    invoke: (clean: Omit<P, "telemetry">) => Promise<T>,
   ): Promise<T> => {
     const startedAt = now();
     const { telemetry: _telemetry, ...clean } = params;
     try {
       const result = await invoke(clean);
-      report(action, params, startedAt, result);
+      report(action, params, startedAt, result as Result | undefined);
       return result;
     } catch (error) {
       report(action, params, startedAt, undefined, error);
       throw error;
     }
   };
+
+  const service: IPluginManagementService & { disposeAll(): void } = {
+    onDidChange: changed.event,
       listPlugins: (params) => agent.listPlugins(params),
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),
     resolveSuggestedPluginReference: (params) => agent.resolveSuggestedPluginReference(params),
@@ -221,7 +225,7 @@ export function createPluginManagementService(
     setPluginEnabled(params) {
       const operation = writes.then(async () => {
         if (disposed) throw new Error("Plugin management service is disposed");
-        if (params.pluginId === VISION_ASSISTANT_PLUGIN_ID && params.enabled) {
+        if (models && params.pluginId === VISION_ASSISTANT_PLUGIN_ID && params.enabled) {
           const read = await models.getView();
           if (disposed) throw new Error("Plugin management service is disposed");
           const view = latestView && latestView.revision > read.revision ? latestView : read;
@@ -244,7 +248,7 @@ export function createPluginManagementService(
     },
     disposeAll() {
       disposed = true;
-      subscription.dispose();
+      subscription?.dispose();
       changed.dispose();
     },
   };
@@ -273,9 +277,11 @@ export function createPluginManagementService(
         if (!disposed) logger.warn(undefined, "视觉助手自动关闭失败", error);
       });
   };
-  const subscription = models.onDidChange(observe);
-  void models.getView().then(observe, (error: unknown) => {
-    if (!disposed) logger.warn(undefined, "视觉模型候选初始化失败，保留现有启用状态", error);
-  });
+  const subscription = models?.onDidChange(observe);
+  void models
+    ?.getView()
+    .then(observe, (error: unknown) => {
+      if (!disposed) logger.warn(undefined, "视觉模型候选初始化失败，保留现有启用状态", error);
+    });
   return service;
 }

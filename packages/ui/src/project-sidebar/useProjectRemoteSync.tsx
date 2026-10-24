@@ -176,6 +176,8 @@ function ProjectRemoteSyncDialog({ target, onClose }: { target: SyncTarget; onCl
           commandsService: services.commandsService,
           mcpSyncService: services.mcpSyncService,
           zcodeAgentService: services.zcodeAgentService,
+          // 本地化：插件管理 store 的刷新需要管理服务（视觉助手联动）。
+          pluginManagementService: services.pluginManagementService,
           reason: "project-remote-plugin-sync",
           skillsService: services.skillsService,
           workspaceIdentity: target.identity,

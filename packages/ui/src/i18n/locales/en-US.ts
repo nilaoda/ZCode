@@ -524,9 +524,6 @@ const enUS: Record<string, string> = {
     "The result could not be confirmed. Check your benefits later. This action will not be retried this session to avoid duplicate submissions.",
   "marketingTouch.succeeded": "Action succeeded",
   "workspace.context.lastActivity": "Last active {time}",
-    "Resends the full reply as text. Content already received may be duplicated.",
-    "No bound groups. Mention the bot with /enable in a group to add it here.",
-    "Topic history is off; only the current request and explicit references are submitted.",
 
   "manualClaimPlan.banner.aria": "Claimable trial plan",
   "manualClaimPlan.banner.tag": "Limited-time offer",

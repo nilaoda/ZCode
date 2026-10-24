@@ -6,7 +6,7 @@
  * 导致 main/index.ts 导入 resolveWindowsAppUserModelIdForFlavor 时报 TS2724。
  * 改 .mjs 导出时必须同步本文件。
  */
-export type DesktopProductFlavor = "production" | "preview";
+export type DesktopProductFlavor = "production" | "preview" | "local";
 
 export interface DesktopProductIdentity {
   readonly flavor: DesktopProductFlavor;
@@ -14,7 +14,9 @@ export interface DesktopProductIdentity {
   readonly productName: string;
   readonly linuxExecutableName: string;
   readonly linuxPackageName: string;
-  readonly cuaHelperInstallVariant: "preview" | null;
+  readonly cuaHelperInstallVariant: "preview" | "local" | null;
+  /** null 表示跟随真实家目录；local 用独立基目录实现与官方版并排安装。 */
+  readonly dataBaseDirName: string | null;
 }
 
 export const ZCODE_PREVIEW_IDENTITY_ENV: "ZCODE_PREVIEW_IDENTITY";
@@ -38,4 +40,5 @@ export function resolveWindowsAppUserModelId(
 export const desktopProductIdentities: Readonly<{
   production: DesktopProductIdentity;
   preview: DesktopProductIdentity;
+  local: DesktopProductIdentity;
 }>;

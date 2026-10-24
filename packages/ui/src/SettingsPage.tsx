@@ -1799,8 +1799,6 @@ export function SettingsPage({
                               desktopChromiumHardwareAccelerationEnabled={
                                 desktopChromiumHardwareAccelerationEnabled
                               }
-                              receivePreviewUpdates={receivePreviewUpdates}
-                              autoDownloadAndInstallUpdates={autoDownloadAndInstallUpdates}
                               dataBaseDir={dataBaseDir}
                               terminalInheritSystemProfile={terminalInheritSystemProfile}
                               terminalFontFamily={terminalFontFamily}
@@ -1875,10 +1873,6 @@ export function SettingsPage({
                               onKeepAwakeWhileRunningChange={handleKeepAwakeWhileRunningChange}
                               onDesktopChromiumHardwareAccelerationChange={
                                 handleDesktopChromiumHardwareAccelerationChange
-                              }
-                              onReceivePreviewUpdatesChange={handleReceivePreviewUpdatesChange}
-                              onAutoDownloadAndInstallUpdatesChange={
-                                handleAutoDownloadAndInstallUpdatesChange
                               }
                               onMessageStreamShowReasoningChange={
                                 handleMessageStreamShowReasoningChange
