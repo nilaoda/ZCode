@@ -6,6 +6,12 @@
  */
 "use client";
 
+import commandRivAsset from "./assets/rive/command-2.0.riv";
+import glintRivAsset from "./assets/rive/glint-2.0.riv";
+import haloRivAsset from "./assets/rive/halo-2.0.riv";
+import manaRivAsset from "./assets/rive/mana-2.0.riv";
+import obsidianRivAsset from "./assets/rive/obsidian-2.0.riv";
+import orbRivAsset from "./assets/rive/orb-1.2.riv";
 import { cn } from "../lib/utils.js";
 import type { RiveParameters } from "@rive-app/react-webgl2";
 import {
@@ -52,36 +58,37 @@ interface PersonaProps {
 // The state machine name is always 'default' for Elements AI visuals
 const stateMachine = "default";
 
+// 本地化：Rive 动画源文件入库存放（assets/rive/），渲染期零出网。
 const sources = {
   command: {
     dynamicColor: true,
     hasModel: true,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/command-2.0.riv",
+    source: commandRivAsset,
   },
   glint: {
     dynamicColor: true,
     hasModel: true,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/glint-2.0.riv",
+    source: glintRivAsset,
   },
   halo: {
     dynamicColor: true,
     hasModel: true,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/halo-2.0.riv",
+    source: haloRivAsset,
   },
   mana: {
     dynamicColor: false,
     hasModel: true,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/mana-2.0.riv",
+    source: manaRivAsset,
   },
   obsidian: {
     dynamicColor: true,
     hasModel: true,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/obsidian-2.0.riv",
+    source: obsidianRivAsset,
   },
   opal: {
     dynamicColor: false,
     hasModel: false,
-    source: "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/orb-1.2.riv",
+    source: orbRivAsset,
   },
 };
 

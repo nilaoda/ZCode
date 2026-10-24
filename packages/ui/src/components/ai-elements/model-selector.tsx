@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "../ui/dialog.js";
 import { cn } from "../lib/utils.js";
+import genericProviderLogo from "./assets/generic-provider-logo.svg";
 import type { ComponentProps, ReactNode } from "react";
 
 export type ModelSelectorProps = ComponentProps<typeof Dialog>;
@@ -183,7 +184,7 @@ export const ModelSelectorLogo = ({
     alt={`${provider} logo`}
     className={cn("size-3 dark:invert", className)}
     height={12}
-    src={`https://models.dev/logos/${provider}.svg`}
+    src={genericProviderLogo}
     width={12}
   />
 );

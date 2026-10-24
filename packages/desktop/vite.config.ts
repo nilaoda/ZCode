@@ -82,6 +82,8 @@ function createE2EUIRendererCoveragePlugin(repoRoot: string): Plugin {
   );
 
   return {
+    // 本地化：ai-elements Persona 组件的 Rive 动画资产（.riv）入库引线，需作为静态资产发射。
+    assetsInclude: [".riv"],
     name: "zcode:e2e-ui-source-coverage",
     enforce: "pre",
     transform(sourceCode, id, options) {

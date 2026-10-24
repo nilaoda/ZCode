@@ -373,3 +373,51 @@ ZCODE_DIST_BASE_URL=https://mirror.intranet.corp/zcode/
 ---
 
 *生成时间：2026-09-21*
+
+---
+
+## 10. 合并上游 v3.16.2 后的出网复审（2026-10）
+
+> 排查方式：全量扫描运行时代码（`packages/*/src`、`apps/zcode-cli/packages/*/src`）中的
+> 外部 URL 字面量与 fetch/WebSocket 调用点，逐一核对是否被现有拦截层覆盖。
+
+### 10.1 拦截层完好性（合并后逐项确认）
+
+| 层 | 状态 |
+| --- | --- |
+| `isProductEndpointDisabled()`（Local 构建恒 true） | ✅ 68 处消费点完好 |
+| `NodeApiClient` 客户端层兜底（覆盖反馈/分享/计费/额度/组织/客户端配置） | ✅ `nodeApiClient.ts:303` |
+| Electron net 直连双拦截（contextPromptRollout / forceUpdateGuard） | ✅ 各自 gate 在位 |
+| UI 反馈/上报入口隐藏（ZCODE_LOCAL_ONLY_BUILD） | ✅ 已移植到 3.16 新结构（任务菜单/帮助菜单/侧栏导航） |
+| 客户端配置空快照 | ✅ 已补上游新增的 `uiPluginRecommendations` 字段 |
+| ARMS RUM / OTLP | ✅ 端点默认空 + Local 编译期关闭 |
+| 自动更新 | ✅ `enabled: flavor === "production"`，Local 恒禁用；发行产物不含 feed |
+
+### 10.2 上游 3.16 新增出网点处置
+
+**已本地化入库（渲染期零出网）：**
+
+- ai-elements `Persona`：6 个 Rive 动画源（原 vercel-storage CDN）→ `packages/ui/src/components/ai-elements/assets/rive/`，desktop/web vite 配置补 `.riv` assetsInclude。
+- ai-elements `ModelSelectorLogo`：原 `models.dev/logos/<provider>.svg`（供应商名动态、无法枚举 vendor）→ 入库通用回退图标 `assets/generic-provider-logo.svg`。
+- `officeSuggestedPrompts`（上游新模块，当前无消费方）：16 个提示卡图标（原 cdn-zcode 与 cloudbase favicon）→ `packages/ui/src/assets/plugin-icons/`，改 import 引用。
+
+**多重门禁休眠（代码保留，无自动请求）：**
+
+- 手机远控 relay v2：WebSocket 地址由端点解析器派生（可重定向内网网关），连接仅发生在
+  `webRemoteControlManager.start()` 之后——featureGate 恒 false + 登录入口移除，双重不可达。
+- 官方插件定义中的 `OFFICIAL_PLUGIN_ASSETS_BASE_URL` 图标字符串：marketplace listing 数据，
+  市场入口已隐藏；属展示数据而非自动请求，保留上游结构（缺失时 UI 回退默认图标）。
+
+**构建/用户流程配置（非自动运行时请求）：**
+
+- `remoteCdn.ts`（codegeex releases）/ `pluginCdn.ts` / `nodeDistMirror`：远程资产与打包下载
+  默认地址，仅在用户显式安装插件/准备远程资产时使用；内网流程走本地下载后上传。
+- `api.github.com` / `github.com`（插件市场 git/archive 源）、websearch 工具：用户/Agent
+  显式调用触发，失败即离线降级。
+
+### 10.3 已知环境注意事项
+
+- 在官方 ZCode.app 内运行测试会话时，宿主注入的 `ZCODE_CUA_BUNDLED_HELPER_APP_PATH`
+  会污染 `desktopRuntimeEnv` 的 3 个用例（干净 CI 不受影响）。
+- apps/zcode-cli 嵌套 workspace 必须由根 workspace 统一 install/build；
+  `pnpm --dir` 孤立安装会用错误的 zod 版本污染解析。
