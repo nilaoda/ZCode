@@ -1,4 +1,4 @@
-import { TID_V4_TASK_OPEN_IN_SPLIT, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 
 interface TaskActionMenuItemProps {
   children: React.ReactNode;
@@ -15,6 +15,7 @@ interface TaskActionMenuSeparatorProps {
 export function TaskActionMenuContent({
   intl,
   isPinned,
+  isArchived = false,
   fileManagerLabel,
   taskSessionFile,
   activeSessionId,
@@ -31,8 +32,6 @@ export function TaskActionMenuContent({
   onStartRenameTask,
   onArchiveTask,
   onMarkTaskAsUnread,
-  onOpenInSplitPane,
-  openInSplitPaneDisabled = false,
   onOpenTaskFeedback,
   onOpenTaskPathInFileManager,
   onCopyWorkspacePath,
@@ -46,6 +45,7 @@ export function TaskActionMenuContent({
     formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
   };
   isPinned: boolean;
+  isArchived?: boolean;
   fileManagerLabel: string;
   taskSessionFile: { loading: boolean; path: string | null; exists: boolean };
   activeSessionId?: string | null;
@@ -66,10 +66,6 @@ export function TaskActionMenuContent({
   onStartRenameTask: () => void;
   onArchiveTask: () => void;
   onMarkTaskAsUnread: () => void;
-  /** 「在分屏打开」（仅桌面 shell 传入；手机远控不显示该入口）。 */
-  onOpenInSplitPane?: () => void;
-  /** 当前 session 或 pane 数达上限且目标无已有归属时禁用（保留布局与层级）。 */
-  openInSplitPaneDisabled?: boolean;
   onOpenTaskFeedback?: () => void;
   onOpenTaskPathInFileManager: () => void;
   onCopyWorkspacePath: () => void;
@@ -114,7 +110,7 @@ export function TaskActionMenuContent({
           }
         }}
       >
-        {intl.formatMessage({ id: "taskList.archive" })}
+        {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
       </Item>
       <Item
         disabled={taskTargetActionsDisabled}
@@ -127,15 +123,6 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.markAsUnread" })}
       </Item>
-      {onOpenInSplitPane ? (
-        <Item
-          data-testid={TID_V4_TASK_OPEN_IN_SPLIT}
-          disabled={taskTargetActionsDisabled || openInSplitPaneDisabled}
-          onSelect={onOpenInSplitPane}
-        >
-          {intl.formatMessage({ id: "taskList.openInSplitPane" })}
-        </Item>
-      ) : null}
       <Separator />
       {!hideMobileUnsupportedActions ? (
         <Item
