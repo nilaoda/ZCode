@@ -23,10 +23,9 @@ import { ProviderStatusIndicator } from "./ProviderStatusIndicator.js";
 import {
   resolveModelProviderFamilySpecByProviderId,
   isStartPlanModelProviderId,
-  TID_MODEL_PROVIDER_NAV_ITEM,
-  testId,
   ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
+import { TID_MODEL_PROVIDER_NAV_ITEM, testId } from "@zcode/shared/test-ids";
 import { useCallback, useMemo, type KeyboardEvent } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import type { ModelProviderNavGroup, ModelProviderNavItem } from "./constants.js";

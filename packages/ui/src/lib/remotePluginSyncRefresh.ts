@@ -3,7 +3,7 @@ import type {
   IMcpSyncService,
   ISkillsService,
   IPluginManagementService,
-  IZCodeSessionService,
+  IZCodeAgentService,
 } from "@zcode/services";
 import { logger } from "@/logger.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
@@ -11,6 +11,7 @@ import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js"
 import { mergeSlashCommandsAfterCommandRefresh } from "@/settings/pluginSlashCommandRefresh.js";
 import { useCommandsStore } from "@/store/commandsStore.js";
 import { useMcpStore } from "@/store/mcpStore.js";
+import { notifyPluginManagementChange } from "@/store/pluginManagementStoreLoading.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 
@@ -91,7 +92,7 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
   workspaceIdentity?: string | null;
   workspacePath?: string | null;
   pluginManagementService: IPluginManagementService;
-  zcodeSessionService: Pick<IZCodeSessionService, "closeSession">;
+  zcodeAgentService: IZCodeAgentService;
 }): Promise<void> {
   const workspacePath = params.workspacePath;
   if (!workspacePath) {
@@ -110,7 +111,6 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
   }
 
   await invalidateDeferredDraftSessionForSkillChange({
-    zcodeSessionService: params.zcodeSessionService,
     workspacePath,
     workspaceIdentity: workspaceIdentityParam,
     reason: params.reason,
@@ -129,4 +129,11 @@ export async function refreshWorkspacePluginCapabilitiesAfterRemoteSync(params: 
   await useMcpStore
     .getState()
     .ensureLoadedForWorkspace(workspacePath, params.mcpSyncService, workspaceIdentityParam);
+  // 同步入口可能没有打开全局设置；按真实目标通知所有已挂载投影。
+  notifyPluginManagementChange({
+    workspacePath,
+    workspaceIdentity,
+    authorityKey: null,
+    scope: "user",
+  });
 }

@@ -36,6 +36,23 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS = [
 ] as const;
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
+  // 工作流技能已迁出插件；远端复用仍必须检查这份 Agent 必需资产。
+  "bundled-skills/skills/dynamic-workflows/SKILL.md",
+  "bundled-skills/skills/dynamic-workflows/patterns.md",
+  "bundled-skills/skills/dynamic-workflows/examples.md",
+  ...REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES.map(
+    (packageName) => `${packageName}/.zcode-plugin/plugin.json`,
+  ),
+  // 只校验 Browser Use manifest 会把“有插件壳”的残缺目录
+  // 误判为可复用。生产 remote、开发态 remote 与 release source 校验共用这份必需资产合同。
+  //
+  // 这里只能列 browser-use **自己产出**的资产。node_repl 宿主抽成 @zcode/node-repl-host 后
+  // browser-use 不再产出 dist/mcp/server.js；
+  // 本清单里指向不存在的文件，会让远端资产校验对着幽灵路径报缺失。
+  // 远程工作区当前不承载 Browser Use / Computer Use，因此宿主 runtime 不进这份远端合同——
+  // 要支持远程 bua/cua 时，应把 node-repl-host 补进上面的 PACKAGE_NAMES 并在此声明它的
+  // dist/mcp/server.js，而不是把宿主产物挂回 browser-use 名下。
+  // 本地化：视觉助手与 visualize 插件随发行版离线打包，远端复用校验需包含其 manifest。
   "vision-assistant-plugin/.zcode-plugin/plugin.json",
   "vision-assistant-plugin/agents/vision-reader.md",
   "visualize-plugin/.zcode-plugin/plugin.json",
@@ -90,6 +107,36 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   "browser-use-plugin/docs/workflow.md",
   "browser-use-plugin/skills/control-browser/SKILL.md",
   "browser-use-plugin/skills/web-gui-tester/SKILL.md",
+  // 修复原因：仅校验 manifest 无法发现文档插件缺少技能正文或视觉评审 Agent。
+  // 文档插件 0.2.0 起带查看面板，远端还必须有 office-runtime 构建出的 server 与面板资源。
+  "image-search-plugin/.mcp.json",
+  "documents-plugin/agents/visual-judge.md",
+  "documents-plugin/skills/docx/SKILL.md",
+  "documents-plugin/skills/docx-viewer/SKILL.md",
+  "documents-plugin/dist/server.mjs",
+  "documents-plugin/dist/ui/assets.json",
+  "documents-plugin/dist/ui/panel.html",
+  "pdf-plugin/agents/visual-judge.md",
+  "pdf-plugin/skills/pdf/SKILL.md",
+  "pdf-plugin/skills/pdf-viewer/SKILL.md",
+  "pdf-plugin/dist/server.mjs",
+  "pdf-plugin/dist/ui/assets.json",
+  "pdf-plugin/dist/ui/panel.html",
+  "presentations-plugin/agents/visual-judge.md",
+  "presentations-plugin/skills/pptx/SKILL.md",
+  "presentations-plugin/skills/pptx-viewer/SKILL.md",
+  "presentations-plugin/dist/server.mjs",
+  "presentations-plugin/dist/ui/assets.json",
+  "presentations-plugin/dist/ui/panel.html",
+  "spreadsheets-plugin/agents/visual-judge.md",
+  "spreadsheets-plugin/skills/xlsx/SKILL.md",
+  "spreadsheets-plugin/skills/xlsx-viewer/SKILL.md",
+  "spreadsheets-plugin/dist/server.mjs",
+  "spreadsheets-plugin/dist/ui/assets.json",
+  "spreadsheets-plugin/dist/ui/panel.html",
+  "zcode-cua-plugin/docs/computer-use.md",
+  "zcode-cua-plugin/scripts/computer-use-client.mjs",
+  "zcode-cua-plugin/skills/computer-use/SKILL.md",
   "restore-legacy-sessions-plugin/.zcode-plugin/plugin.json",
   "skill-creator-plugin/.zcode-plugin/plugin.json",
   "plugin-creator-plugin/.zcode-plugin/plugin.json",

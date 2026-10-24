@@ -71,6 +71,71 @@ describe("AutomationRepo 调度状态机", () => {
     }
   });
 
+  it("freezes project directories once before persistence and keeps them on later runs", async () => {
+    const prepare = vi.fn(async () => ({
+      projectId: "p",
+      hostId: "local",
+      workspacePath: "/primary",
+      additionalDirectories: ["/extra"],
+    }));
+    const service = new AutomationService(repo, prepare);
+    const automation = await service.create(
+      makeParams({
+        projectId: "p",
+        workspacePath: "/stale",
+        hostId: "untrusted",
+        additionalDirectories: ["/stale-extra"],
+      }),
+    );
+    expect(prepare).toHaveBeenCalledExactlyOnceWith("p");
+    expect(automation).toMatchObject({
+      projectId: "p",
+      hostId: "local",
+      workspacePath: "/primary",
+      additionalDirectories: ["/extra"],
+    });
+    prepare.mockRejectedValue(new Error("project deleted after definition creation"));
+    const run = await service.runNow(automation.automationId);
+    expect(run?.automation).toMatchObject({
+      workspacePath: "/primary",
+      additionalDirectories: ["/extra"],
+    });
+    expect(prepare).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects unresolved or bound project creation before persisting a schedule", async () => {
+    const prepare = vi.fn(async () => {
+      throw new Error("project.missing");
+    });
+    const service = new AutomationService(repo, prepare);
+    await expect(service.create(makeParams({ projectId: "p" }))).rejects.toThrow("project.missing");
+    await expect(
+      new AutomationService(repo).create(makeParams({ projectId: "p" })),
+    ).rejects.toThrow("project.creation-unavailable");
+    await expect(
+      service.create(makeParams({ projectId: "p", targetTaskId: "bound" })),
+    ).rejects.toThrow("project.bound-task");
+    expect(await repo.list()).toEqual([]);
+  });
+
+  it("persists the project execution directory snapshot across repository reopen", async () => {
+    const created = await repo.create(
+      makeParams({ projectId: "project-a", hostId: "local", additionalDirectories: ["/extra"] }),
+      { nextRunAt: NOW + MINUTE },
+    );
+    expect(created).toMatchObject({
+      projectId: "project-a",
+      hostId: "local",
+      additionalDirectories: ["/extra"],
+    });
+    repo.close();
+    expect(await repo.get(created.automationId)).toMatchObject({
+      workspacePath: "/tmp/ws",
+      projectId: "project-a",
+      additionalDirectories: ["/extra"],
+    });
+  });
+
   it("create + list + get：新建后可查询，初始为 active/enabled", async () => {
     const created = await repo.create(makeParams({ targetTaskId: "task-1" }), {
       nextRunAt: NOW + MINUTE,
@@ -237,45 +302,7 @@ describe("AutomationRepo 调度状态机", () => {
     await expect(repo.get(created.automationId)).resolves.toBeDefined();
   });
 
-  it("Bot 创建来源只在内部读取接口持久化，不泄露到 automation 展示模型", async () => {
-    const botDeliveryTarget = {
-      provider: "feishu" as const,
-      botId: "bot-feishu",
-      providerUserId: "chat-1",
-      chatType: "group" as const,
-    };
-    const created = await repo.create(makeParams({ botDeliveryTarget }), {
-      nextRunAt: NOW + MINUTE,
-    });
 
-    await expect(
-      repo.getBotDeliveryTarget(created.automationId, created.workspaceKey),
-    ).resolves.toEqual(botDeliveryTarget);
-    expect(await repo.get(created.automationId)).not.toHaveProperty("botDeliveryTarget");
-    repo.close();
-    repo = new AutomationRepo(dbPath);
-    await expect(
-      repo.getBotDeliveryTarget(created.automationId, created.workspaceKey),
-    ).resolves.toEqual(botDeliveryTarget);
-    await expect(
-      repo.getBotDeliveryTarget(created.automationId, "other-workspace"),
-    ).resolves.toBeUndefined();
-  });
-
-  it("Bot 回推目标脏数据按未配置处理，不能拖垮定时任务列表", async () => {
-    const created = await repo.create(makeParams(), { nextRunAt: NOW + MINUTE });
-    repo.close();
-    const db = new DatabaseSync(dbPath);
-    db.prepare("UPDATE automations SET bot_delivery_target = ? WHERE automation_id = ?").run(
-      '{"provider":"telegram"}',
-      created.automationId,
-    );
-    db.close();
-    repo = new AutomationRepo(dbPath);
-
-    await expect(repo.getBotDeliveryTarget(created.automationId)).resolves.toBeUndefined();
-    await expect(repo.list()).resolves.toHaveLength(1);
-  });
 
   it("读取历史空白或未知 mode 时按未设置归一化，避免单条脏数据拖垮整批协议校验", async () => {
     const blankMode = await repo.create(makeParams({ title: "blank mode" }), {

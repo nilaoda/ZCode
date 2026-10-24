@@ -15,6 +15,7 @@ import type { WorkspaceHookPolicyProvider } from "@zcode/core";
 import type { AccountProviderConfigSnapshot } from "@zcode/provider";
 import {
   zcodeProtocolErrorCodes,
+  type AppToolSearchMode,
   type ZCodeDeliveryKind,
   type ModelSelection,
   type ZCodeModelContextBudgetStrategy,
@@ -85,6 +86,7 @@ export interface ZCodeProtocolSessionRecord {
   subagentRuntimeConfigEnabled?: boolean;
   memoryEnabled: boolean;
   nativeSearchEnhancementsEnabled: boolean;
+  toolSearchMode: AppToolSearchMode;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   createdAt: number;
   deliveryKind?: ZCodeDeliveryKind;
@@ -103,6 +105,7 @@ export interface ZCodeProtocolSessionRecord {
   traceContext: TraceContext;
   unsubscribe?: () => void;
   updatedAt: number;
+  lastOutcome?: "completed" | "interrupted" | "error";
   workspace: ZCodeWorkspaceRef;
   activeAbortController?: AbortController;
   /** background runner 释放 ready lock 后，持久化/snapshot/broadcast 尚未完成的引用计数。 */
@@ -156,6 +159,8 @@ export interface ZCodeProtocolAgentServerContext {
   // 协议请求则持有 operation lease，禁止异步 handler 与容量回收交错。
   sessionResidentPool?: SessionResidentPool;
   sessions: Map<string, ZCodeProtocolSessionRecord>;
+  /** 仅覆盖异步创建窗口，结束即释放；输入命令仍由 CommandInbox 排队。 */
+  sessionCreationIds?: Set<string>;
   notify(notification: ZCodeProtocolNotification): void;
   requestClient<T>(
     method: ZCodeProtocolMethod,

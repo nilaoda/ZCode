@@ -1,11 +1,10 @@
 import { useState } from "react";
+import { DesktopCommandIds } from "@zcode/shared";
 import {
-  DesktopCommandIds,
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
   TID_WORKSPACE_HELP_MENU_TRIGGER,
-  ZCODE_LOCAL_ONLY_BUILD,
-} from "@zcode/shared";
-import {
+} from "@zcode/shared/test-ids";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";import {
   ActivityIcon,
   BookOpenIcon,
   CircleHelpIcon,

@@ -7,7 +7,7 @@ const captured = vi.hoisted(() => ({
 }));
 
 vi.mock("electron", () => ({
-  app: { isPackaged: false },
+  app: { isPackaged: false, name: "ZCode" },
   Menu: {
     buildFromTemplate: (template: MenuItemConstructorOptions[]) => {
       captured.template = template;

@@ -3,6 +3,9 @@ export { AppErrorBoundary, ScopedErrorBoundary } from "./ErrorBoundary.js";
 export type { ScopedErrorBoundaryVariant } from "./ErrorBoundary.js";
 export { Button, buttonVariants } from "./components/ui/button.js";
 export { DesktopWindowFrame } from "./DesktopWindowFrame.js";
+// 上游 3.16 的 relay v2 手机壳层随 R3 迁入 web-remote-control/；运行时由桌面 main 的
+// featureGate（本发行版固定 false）关闭，组件保留以维持上游结构。
+export { WebRemoteControlDialog } from "@/web-remote-control/index.js";
 export {
   WebRemoteControlFeatureProvider,
   useWebRemoteControlFeatureEnabled,
@@ -48,6 +51,11 @@ export {
   REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE,
   createRemoteWorkspaceDisconnectedError,
 } from "./lib/remoteWorkspaceServiceError.js";
+export {
+  getSourceSettingsServices,
+  registerSourceSettingsServices,
+  useSourceSettingsServices,
+} from "./store/sourceSettingsServiceStore.js";
 
 // Hooks —— 统一的服务和平台操作访问层
 export {
@@ -112,3 +120,4 @@ export { generateMobileDeviceFingerprint, setStreamClientId } from "./lib/stream
 export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoading.js";
 
 export { LocalTtftObserver, setLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
+export { ensurePendingTaskDraft } from "@/v4/composer/composerDraftStore.js";

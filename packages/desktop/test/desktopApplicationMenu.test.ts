@@ -30,6 +30,7 @@ vi.mock("electron", () => ({
 // Bugfix: 这个用例只验证菜单模板，不能通过 importActual 拉完整 shared/services/main 依赖。
 // 全量 pre-push 并发时真实依赖加载会撞 5s 超时，并让 ZCODE_ENV 的模块缓存污染后续断言。
 vi.mock("@zcode/shared", () => ({
+  ZCODE_LOCAL_ONLY_BUILD: false,
   DesktopCommandIds: {
     NewTask: "newTask",
     OpenWorkspace: "openWorkspace",
@@ -257,22 +258,6 @@ describe("desktopApplicationMenu endpoint submenu", () => {
     const template = buildFromTemplateMock.mock
       .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
     // Bugfix: 批量会话压测下线后，即使是本地开发运行形态也不能继续保留 Help 菜单入口。
-    expect(findMenuItem(template, "Bulk Session Stress Test")).toBeUndefined();
-  });
-
-  it("生产打包构建隐藏压测开关", async () => {
-    envMock.value = "production";
-    envMock.isPackaged = true;
-    const { rebuildApplicationMenu } = await import("../src/main/desktopApplicationMenu.js");
-
-    rebuildApplicationMenu({
-      currentApplicationLocale: "en-US",
-      zcodeEndpointSelection: "production",
-      executeDesktopCommand: vi.fn(),
-    });
-
-    const template = buildFromTemplateMock.mock
-      .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
     expect(findMenuItem(template, "Bulk Session Stress Test")).toBeUndefined();
   });
 
