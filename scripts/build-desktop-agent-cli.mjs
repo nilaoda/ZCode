@@ -65,6 +65,22 @@ const requiredDevPluginRuntimeBuilds = [
     packageName: "@zcode/browser-use-plugin",
     artifactPath: "browser-use-plugin/scripts/browser-client.mjs",
   },
+  // 上游 v3.16 补充：legacy prepare-prebuilds.mjs 退役后，本脚本是插件 runtime 的唯一
+  // 构建入口；干净 CI 中以下产物不再有其他步骤产出（插件 dist 被 gitignore）。
+  {
+    packageName: "@zcode/android-emulator-plugin",
+    artifactPath: "android-emulator-plugin/dist/mcp/server.js",
+  },
+  {
+    packageName: "@zcode/ios-simulator-plugin",
+    artifactPath: "ios-simulator-plugin/dist/mcp/server.js",
+  },
+  // 文档插件的查看面板 server 由 office-runtime 构建（0.2.0 起带查看面板）；
+  // 不构建则面板入口可见但 MCP 启动失败，官方插件资产校验也会在打包链报 missing。
+  ...["documents", "pdf", "presentations", "spreadsheets"].map((name) => ({
+    packageName: `@zcode/${name}-plugin`,
+    artifactPath: `${name}-plugin/dist/server.mjs`,
+  })),
 ];
 const defaultBuildFilters = [
   ...cliWorkspaceBuilds.map(({ packageName }) => packageName),
