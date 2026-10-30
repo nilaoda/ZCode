@@ -33,7 +33,8 @@ export function ProjectSidebarNavigation({
       {/* Relay V2 远控：当前电脑是项目与任务的上一级，放在导航首行；手机端占用原顶部留白。 */}
       {deviceNavigation ? <WebRemoteControlDeviceHeader navigation={deviceNavigation} /> : null}
       <NewTaskButtonGroup onCreateTask={onCreate} />
-      {props.onOpenAutomations ? (
+      {/* 远控主视图会把自动化和插件市场重置为聊天；入口必须一同隐藏，避免点击无效。 */}
+      {!props.isWebRemoteControl && props.onOpenAutomations ? (
         <Button
           variant="ghost"
           size="lg"
@@ -47,8 +48,9 @@ export function ProjectSidebarNavigation({
           {intl.formatMessage({ id: "workspace.openScheduledSettings" })}
         </Button>
       ) : null}
-      {/* 本地化发行版：插件市场内容来自远端 marketplace（联网），侧边栏入口隐藏。 */}
-      {ZCODE_LOCAL_ONLY_BUILD ? null : (
+      {/* 本地化发行版：插件市场内容来自远端 marketplace（联网），侧边栏入口隐藏；
+          上游 3.17 起手机远控壳层同样隐藏。 */}
+      {!props.isWebRemoteControl && !ZCODE_LOCAL_ONLY_BUILD ? (
         <Button
           variant="ghost"
           size="lg"
@@ -60,7 +62,7 @@ export function ProjectSidebarNavigation({
           <Blocks className="size-4" />
           {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

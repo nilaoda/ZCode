@@ -23,6 +23,7 @@ import {
   officialPluginPackages,
   stageOfficialPluginAssets,
 } from "../../../scripts/official-plugin-assets.mjs";
+import { BUNDLED_NPM_VERSION, stageBundledNpm } from "./bundled-npm-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
