@@ -31,9 +31,18 @@ async function resolvePushBase(root, head, remote) {
 }
 
 async function firstPushBase(root, head) {
-  // 首次推送没有 remote SHA；只使用已确认的集成分支，缺失时严格报错，不猜测其他分支。
-  const staging = await commit(root, "origin/staging");
-  return (await git(root, ["merge-base", staging, head])).toString().trim();
+  // 首次推送没有 remote SHA；按候选顺序解析集成分支。上游默认 origin/staging；
+  // 本地化发行版的集成分支是 main（无 staging），按 architecture/git-base.mjs 的
+  // 同一套候选顺序回退，缺失时才严格报错，不猜测其他分支。
+  for (const candidate of ["origin/staging", "origin/main", "main"]) {
+    try {
+      const base = await commit(root, candidate);
+      return (await git(root, ["merge-base", base, head])).toString().trim();
+    } catch (error) {
+      if (candidate === "main") throw error;
+    }
+  }
+  throw new Error("无法解析集成分支基线");
 }
 
 /** 只解析比较基线；改动文件与关联测试全部由 Vitest 官方选择。 */
