@@ -421,3 +421,35 @@ ZCODE_DIST_BASE_URL=https://mirror.intranet.corp/zcode/
   会污染 `desktopRuntimeEnv` 的 3 个用例（干净 CI 不受影响）。
 - apps/zcode-cli 嵌套 workspace 必须由根 workspace 统一 install/build；
   `pnpm --dir` 孤立安装会用错误的 zod 版本污染解析。
+
+---
+
+## 11. 合并上游 v3.17.1 后的出网复审（2026-10）
+
+### 11.1 上游新增出网面处置
+
+| 出网面 | 传输通道 | 处置 |
+| --- | --- | --- |
+| Sites 部署面板（新功能） | 产品端点（`resolveRuntimeZCodeEndpointOrigin`） | 侧栏「部署」入口加 `ZCODE_LOCAL_ONLY_BUILD` 门禁；插件随包分发但部署请求被 NodeApiClient 兜底拦截 |
+| Gen UI 沙箱白名单 | 上游将自有 CDN `zcode.z.ai` 加入 `GEN_UI_STATIC_DOMAINS` | 不采纳，白名单保持不含自有 CDN |
+| 对话遥测引擎（新，conversation-telemetry） | 产品端点 | 模块入库、零装配点（源头休眠） |
+| `ZCODE_TELEMETRY_REPORT_ENDPOINT`（新常量） | 遥测上报 | Local 构建为空；`appARMSBootstrap` 重套 `desktopArmsTelemetryEnabled` 短路 |
+| bots 渠道 URL（telegram/feishu/weixin，upstream 侧） | bots providers | bots 维持删除，未合入 |
+| data-sync（跨设备配置同步，新功能） | SSH/WSL/Docker 远端设备连接（无产品端点引用，经核实） | 保留；传输不出外网 |
+
+URL 字面量集合与合并前完全一致（228 = 228，零新增）。
+
+### 11.2 工程结构变化
+
+- 上游退役 App 单测执行链（`test:unit` → `test:engineering` 显式清单 + `test:architecture`；
+  根 vitest 不再发现 App 业务单测，治理测试 `retired-app-unit-evidence` 强制执行）。
+- `verify.yml` 新增 `node scripts/build-desktop-agent-cli.mjs` 步骤：插件 runtime 构建清单
+  （office 四件套 + zcode-site + 模拟器 + node-repl-host）在每次 PR 预演，发布构建不再单独踩坑。
+- Electron 44.7.0 + electron-builder 26.17：fork 不触原生面，`electron-rebuild`（node-pty）
+  已在 frozen-lockfile 安装中通过；electron-builder 与 fork 身份配置的交互由 CI release 构建验证。
+
+### 11.3 已知保留项
+
+- 协议休眠字段 `botDeliveryTarget`（可选接受侧，无写入方）维持与上游兼容。
+- 12 个上游保留但不在 engineering 清单的单测文件（多为 E2E 夹具），与上游状态一致，不运行。
+- i18n 存在 7 个上游自身的中英文不对称键，非 fork 引入。
