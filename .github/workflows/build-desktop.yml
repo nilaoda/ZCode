@@ -89,7 +89,17 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # pnpm 在 CI runner 上偶发 side-effects cache 的 ENOENT rename 竞态
+        # （ERR_PNPM_ENOENT rename _tmp_* -> esbuild，macOS arm64 实测）；
+        # 重试两次规避，三次全失败才判定失败。
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            pnpm install --frozen-lockfile && exit 0
+            echo "[retry] pnpm install failed (attempt $attempt/3)"
+            sleep 20
+          done
+          exit 1
         env:
           # CI 不需要 git hooks。
           HUSKY: "0"

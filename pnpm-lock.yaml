@@ -851,6 +851,8 @@ importers:
         specifier: ^4.20.0
         version: 4.21.0
 
+  apps/zcode-cli/packages/vision-assistant-plugin: {}
+
   apps/zcode-cli/packages/visualize-plugin: {}
 
   apps/zcode-cli/packages/zcode-cua-plugin:

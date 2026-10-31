@@ -8,6 +8,46 @@ import {
   officialSeaPlugins,
 } from "../scripts/sea-official-plugin-assets.mjs";
 
+// 回归闸门（3.17 合并教训）：SEA 清单驱动桌面打包与运行时 seed，条目被上游同步
+// 挤掉时插件会从安装包与内置列表整体消失且测试全绿。钉住发行版插件目录：
+// fork 独有视觉助手必须在列；云端搜图（image-search）与已停发的 zcode-site 不得出现。
+// 回归闸门（3.17 合并教训）：SEA 清单驱动桌面打包与运行时 seed，条目被上游同步
+// 挤掉时插件会从安装包与内置列表整体消失且既有测试全绿（动态夹具适配任意清单）。
+// 钉住发行版插件目录：fork 独有视觉助手必须在列；云端搜图与已停发的 zcode-site 不得出现。
+const FORBIDDEN_SEA_PLUGIN_NAMES = new Set(["image-search", "zcode-site"]);
+const REQUIRED_SEA_PLUGIN_NAMES = [
+  "vision-assistant",
+  "visualize",
+  "node-repl-host",
+  "android-emulator",
+  "ios-simulator",
+  "documents",
+  "pdf",
+  "presentations",
+  "spreadsheets",
+  "browser-use",
+  "restore-legacy-sessions",
+  "skill-creator",
+  "plugin-creator",
+  "zcode-guide",
+];
+
+const seaPluginNames = officialSeaPlugins.map((plugin) => plugin.name);
+
+test("SEA 官方插件清单覆盖发行版目录（含 fork 独有视觉助手）", () => {
+  const names = seaPluginNames;
+  for (const name of REQUIRED_SEA_PLUGIN_NAMES) {
+    assert.ok(names.includes(name), `${name} 必须在 SEA 清单中`);
+  }
+  assert.deepEqual(names.slice().sort(), REQUIRED_SEA_PLUGIN_NAMES.slice().sort());
+});
+
+test("SEA 清单不包含云端服务插件（image-search / zcode-site）", () => {
+  for (const name of FORBIDDEN_SEA_PLUGIN_NAMES) {
+    assert.ok(!seaPluginNames.includes(name), `${name} 不得随发行版分发`);
+  }
+});
+
 test("includes the document judge agent in official SEA assets", async () => {
   const stagingDirectory = await mkdtemp(join(tmpdir(), "zcode-sea-document-agent-"));
   const root = join(import.meta.dirname, "../../..");

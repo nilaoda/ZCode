@@ -21,6 +21,16 @@ const browserUseRequiredRuntimePaths = [
 const officeViewerRuntimePaths = ["dist/server.mjs", "dist/ui/assets.json", "dist/ui/panel.html"];
 
 export const officialSeaPlugins = [
+{
+    marketplace: "zcode-plugins-official",
+    // 本地化 fork 插件：视觉助手（上游无此插件）。SEA 清单驱动桌面打包与运行时
+    // seed——本条目缺失会让插件从安装包与内置列表中整体消失（3.17 合并教训）。
+    name: "vision-assistant",
+    requiresRuntime: false,
+    rootPath: join("packages", "vision-assistant-plugin"),
+    requiredSeedPaths: ["agents/vision-reader.md"],
+    version: "0.1.0",
+  },
   {
     marketplace: "zcode-plugins-official",
     name: "visualize",
@@ -90,16 +100,6 @@ export const officialSeaPlugins = [
     rootPath: join("packages", "documents-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
     version: "0.2.1",
-  },
-  {
-    marketplace: "zcode-plugins-official",
-    name: "image-search",
-    packageName: "@zcode/image-search-plugin",
-    requiresRuntime: false,
-    requiredSeedPaths: [".mcp.json"],
-    rootPath: join("packages", "image-search-plugin"),
-    // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.1.1",
   },
   {
     marketplace: "zcode-plugins-official",

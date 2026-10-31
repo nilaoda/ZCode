@@ -1039,7 +1039,10 @@ export function PluginsSection({
   }, [scope.resolution]);
   // 插件商店作用于当前 workspace 的 Host；只有选中当前 workspace 所在设备的「用户」时提供入口，
   // 否则在商店里安装会写到另一台设备。
-  const marketplaceAvailable = selectedScope.kind === "user" && scope.isActiveWorkspaceDevice;
+  // 本地化发行版：插件市场依赖远端 marketplace 与 CDN 图标（联网），总闸门关闭——
+  // onAdd/onOpenPluginStore 全链为 undefined，所有浏览入口（空态、卡片菜单、面包屑）随之消失。
+  const marketplaceAvailable =
+    !ZCODE_LOCAL_ONLY_BUILD && selectedScope.kind === "user" && scope.isActiveWorkspaceDevice;
   const openPluginStoreForSelectedScope = useCallback(
     (_returnScopeKey?: string, intent?: "add-marketplace") => {
       // Workspace 是已安装 Plugin 的配置视图，不提供 Marketplace 入口；市场只在 User

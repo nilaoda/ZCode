@@ -5,6 +5,7 @@ import {
   isPublicStoreMarketplaceId,
   resolvePluginDisplayName,
   sortPluginStoreEntries,
+  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import {
@@ -228,16 +229,19 @@ export function WorkspacePluginPreview({
             )}
           </CommandList>
         </Command>
-        <div className="mx-1 mt-3 border-t border-border py-1">
-          <Button
-            variant="ghost"
-            className="h-8 w-full justify-between rounded-xl px-3 py-1 text-ui-base/relaxed"
-            onClick={() => browse()}
-          >
-            {intl.formatMessage({ id: "chat.plugins.browseMarketplace" })}
-            <ArrowUpRight className="size-4" />
-          </Button>
-        </div>
+        {/* 本地化发行版：市场入口在导航层已拦截（不可用），这里直接不渲染。 */}
+        {ZCODE_LOCAL_ONLY_BUILD ? null : (
+          <div className="mx-1 mt-3 border-t border-border py-1">
+            <Button
+              variant="ghost"
+              className="h-8 w-full justify-between rounded-xl px-3 py-1 text-ui-base/relaxed"
+              onClick={() => browse()}
+            >
+              {intl.formatMessage({ id: "chat.plugins.browseMarketplace" })}
+              <ArrowUpRight className="size-4" />
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
