@@ -278,7 +278,7 @@ describe("ZCode App Provider Registry runtime", () => {
       app.testModelConnectivity({
         selection: { providerId: "provider-a", modelId: "model-b" },
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({}); // connectivity 模式返回无指标空对象（speed 才带 metrics）
     expect(createdReasoningLevels).toContain("low");
 
     await app.close?.();

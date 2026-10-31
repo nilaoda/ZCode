@@ -18,7 +18,6 @@ export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
-  "image-search@zcode-plugins-official",
   "documents@zcode-plugins-official",
   "pdf@zcode-plugins-official",
   "presentations@zcode-plugins-official",
@@ -32,8 +31,10 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   "zcode-guide@zcode-plugins-official",
   // visualize（交互视图）随 UI 插件合入时 CLI 定义已标 defaultEnabled，但这里漏加，
   // Settings 会把它当成默认关闭，与 CLI 实际启用状态不一致。
+  // 本地化 fork 插件：视觉助手默认启用（official-plugin-definitions 的
+  // defaultEnabled 集合机械对照，bootstrap 单测校验逐一对应）。
+  "vision-assistant@zcode-plugins-official",
   "visualize@zcode-plugins-official",
-  "zcode-site@zcode-plugins-official",
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。

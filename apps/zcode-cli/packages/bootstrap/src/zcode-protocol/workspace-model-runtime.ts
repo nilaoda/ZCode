@@ -67,7 +67,8 @@ export async function testProviderModelConnectivity(
     );
     return {
       success: true as const,
-      ...(probe.metrics ? { metrics: probe.metrics } : {}),
+      // 旧契约的 app 实现可能返回 void（测试 fake / 第三方宿主）；无 metrics 时按普通成功处理。
+      ...(probe?.metrics ? { metrics: probe.metrics } : {}),
     };
   } finally {
     if (!active) await app.close?.();

@@ -156,9 +156,8 @@ describe("plugins/referenceCatalog protocol", () => {
       const zcodeGuide = result.plugins.find(
         (entry) => entry.pluginId === "zcode-guide@zcode-plugins-official",
       );
-      expect(zcodeGuide?.icon).toBe(
-        "https://cdn-zcode.z.ai/zcode/official-plugin/assets/zcode-guide/icon.png",
-      );
+      // 本地化：listing 不携带 CDN icon 外链（插件市场已隐藏，零出网约定）。
+      expect(zcodeGuide?.icon).toBeUndefined();
       // 内置 seed listing 的本地化显示名沿 display-only 通道进入 catalog，
       // 供 Picker 中文搜索/展示（插件 @ 引用中文搜索）。
       expect(zcodeGuide?.category).toBeUndefined();

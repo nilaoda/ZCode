@@ -28,7 +28,20 @@ test("离线视觉插件具备稳定身份，启停控制能力，模型覆盖�
     name: manifest.name,
     enabled: true,
     rootPath,
-    components: [{ kind: "agent", items: [{ name: "vision-reader" }] }],
+    components: [
+      {
+        kind: "agent",
+        // 上游 3.17 起 loader 只读取发现阶段保留的源路径，夹具需自带 path。
+        items: [
+          {
+            name: "vision-reader",
+            path: fileURLToPath(
+              new URL("../../vision-assistant-plugin/agents/vision-reader.md", import.meta.url),
+            ),
+          },
+        ],
+      },
+    ],
   };
   assert.equal(resolvePluginRuntimeFeatures({ plugins: [plugin] } as never).visionAssistant, true);
   assert.equal(

@@ -171,6 +171,8 @@ export function ModelRowInput({
           ),
           state: "success",
           successEmphasis: true,
+          // 默认 3.5s 读不完三个数字；测速结果给足 10s。
+          durationMs: 10_000,
           dismissible: true,
           dismissLabel: intl.formatMessage({ id: "common.close" }),
         });
@@ -183,6 +185,7 @@ export function ModelRowInput({
             { provider: providerName, model: modelId },
           ),
           state: "success",
+          durationMs: 10_000,
           dismissible: true,
           dismissLabel: intl.formatMessage({ id: "common.close" }),
         });

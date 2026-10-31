@@ -210,22 +210,6 @@ export const officialSeaPlugins = [
     rootPath: join("packages", "zcode-guide-plugin"),
     version: "0.3.0",
   },
-  {
-    // skill + start.sh 模板 + 零依赖的 zcode-site CLI，加上 Sites 面板（dist/ 下的 MCP server 与页面，
-    // 由插件自己的 build 脚本构建）。版本与 package.json / plugin.json / official-plugin-definitions.ts 同步 bump。
-    marketplace: "zcode-plugins-official",
-    name: "zcode-site",
-    packageName: "@zcode/zcode-site-plugin",
-    requiresRuntime: true,
-    requiredRuntimePaths: ["dist/server.mjs", "dist/ui/panel.html"],
-    requiredSeedPaths: [
-      "scripts/zcode-site.mjs",
-      "scripts/stage.mjs",
-      "skills/site-deploy/SKILL.md",
-    ],
-    rootPath: join("packages", "zcode-site-plugin"),
-    version: "0.4.2",
-  },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再打入 SEA 资源清单。
 ];
 
