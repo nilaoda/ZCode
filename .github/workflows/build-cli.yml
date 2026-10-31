@@ -54,10 +54,6 @@ jobs:
             # 固定 macOS 版本而非 -latest：运行包含 node-pty 等原生产物，
             # 构建基线不应随镜像自动漂移。
             runner: macos-15
-          - label: macOS x64
-            platform: macos-x64
-            # macos-13 已于 2025-12-04 退役；标准 Intel 标签是 macos-15-intel。
-            runner: macos-15-intel
           - label: Windows x64
             platform: windows-x64
             # 与 build-desktop 同因：windows-2025 预装的 VS 2026（版本号 18）

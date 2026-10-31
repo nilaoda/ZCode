@@ -1,6 +1,8 @@
 name: Build Desktop
 
 # 构建 Windows / macOS 桌面安装包。
+# 本地化发行版只保留 macOS arm64 与 Windows x64：Intel macOS 构建慢且无用户，已移除
+# （需要时恢复 build-cli/build-desktop 矩阵中的 macOS x64 条目即可）。
 #
 # 触发方式：**仅手动触发**（Actions 页面 Run workflow）。本仓库不配置任何自动触发器，
 # 不会因为 push、tag 或 PR 自动消耗构建资源。
@@ -46,15 +48,6 @@ jobs:
             # 固定 macOS 版本而非 -latest：运行包含 node-pty 等原生产物，
             # 构建基线的 OS 版本会直接影响产物的最低系统要求，不应随镜像自动漂移。
             runner: macos-15
-            artifact_glob: |
-              packages/desktop/dist/*.dmg
-              packages/desktop/dist/*.zip
-          - label: macOS x64
-            os: mac
-            arch: x64
-            # Intel runner。注意 macos-13 已于 2025-12-04 退役，
-            # 当前可用的标准 Intel 标签是 macos-15-intel。
-            runner: macos-15-intel
             artifact_glob: |
               packages/desktop/dist/*.dmg
               packages/desktop/dist/*.zip
