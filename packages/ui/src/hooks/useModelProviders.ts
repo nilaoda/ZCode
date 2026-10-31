@@ -180,7 +180,11 @@ export function useModelProviders(target: {
   );
 
   const testModelConnectivity = useCallback(
-    async (providerId: string, modelId: string): Promise<ModelConnectivityResult> => {
+    async (
+      providerId: string,
+      modelId: string,
+      mode?: "connectivity" | "speed",
+    ): Promise<ModelConnectivityResult> => {
       // 远程激活时 target.workspacePath 是远端路径，不能作为本机 Agent cwd。
       const remoteActive = Boolean(
         target.connectivityWorkspaceRequired || target.workspaceIdentity?.trim(),
@@ -210,6 +214,7 @@ export function useModelProviders(target: {
         workspacePath,
         providerId,
         modelId,
+        ...(mode ? { mode } : {}),
       });
     },
     [
@@ -223,18 +228,18 @@ export function useModelProviders(target: {
     ],
   );
 
-    /**
-     * 通过供应商的 `/models` 接口拉取可用模型列表（设置页「添加模型」用）。
-     * 由 Host 发起：渲染进程直接请求会被 CORS 拦住，且拿不到 API Key。
-     */
-    const listProviderModels = useCallback(
-      async (providerId: string): Promise<ProviderModelsResult> =>
-        providerSettingsService.listProviderModels({ providerId }),
-      [providerSettingsService],
-    );
+  /**
+   * 通过供应商的 `/models` 接口拉取可用模型列表（设置页「添加模型」用）。
+   * 由 Host 发起：渲染进程直接请求会被 CORS 拦住，且拿不到 API Key。
+   */
+  const listProviderModels = useCallback(
+    async (providerId: string): Promise<ProviderModelsResult> =>
+      providerSettingsService.listProviderModels({ providerId }),
+    [providerSettingsService],
+  );
 
-    return {
-      modelProviders: effectiveModelProviders,
+  return {
+    modelProviders: effectiveModelProviders,
     providerTemplates: providerSettingsView?.providerTemplates ?? [],
     displayOrder: providerOrdering.displayOrder,
     reorderableProviderIds: providerOrdering.reorderableProviderIds,
@@ -253,8 +258,8 @@ export function useModelProviders(target: {
     deleteProvider,
     reorderProviderModels,
     saveDisplayOrder,
-      testModelConnectivity,
-      listProviderModels,
-      providerSettingsView,
-    };
-  }
+    testModelConnectivity,
+    listProviderModels,
+    providerSettingsView,
+  };
+}

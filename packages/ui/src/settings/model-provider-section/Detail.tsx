@@ -285,7 +285,11 @@ export function ModelProviderSectionDetail({
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete: (provider: ProviderSettingsFormProvider) => Promise<void>;
   onReorderProviderModels?: (providerId: string, modelIds: string[]) => Promise<void>;
-  onTestModel: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
+  onTestModel: (
+    providerId: string,
+    modelId: string,
+    mode?: "connectivity" | "speed",
+  ) => Promise<ModelConnectivityResult>;
   onRetryCodingPlan?: () => void | Promise<void>;
   onCodingPlanLogin: (
     presetId: BuiltinModelProviderId,

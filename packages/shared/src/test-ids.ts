@@ -526,6 +526,7 @@ export const TID_MODEL_PROVIDER_API_FORMAT_ITEM = "model-provider-api-format-ite
 export const TID_MODEL_PROVIDER_MODEL_INPUT = "model-provider-model-input";
 /** 模型供应商模型删除按钮（动态后缀为模型行号） */
 export const TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON = "model-provider-model-delete-button";
+export const TID_MODEL_PROVIDER_MODEL_SPEED_BUTTON = "model-provider-model-speed-button";
 /** 模型供应商添加模型按钮 */
 export const TID_MODEL_PROVIDER_ADD_MODEL_BUTTON = "model-provider-add-model-button";
 

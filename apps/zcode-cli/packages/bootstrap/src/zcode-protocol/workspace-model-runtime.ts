@@ -58,11 +58,17 @@ export async function testProviderModelConnectivity(
       version: context.deps.version,
     }));
   try {
-    await app.testModelConnectivity(
-      { selection: params.selection as ModelSelection },
+    const probe = await app.testModelConnectivity(
+      {
+        selection: params.selection as ModelSelection,
+        ...(params.mode ? { mode: params.mode } : {}),
+      },
       { abortSignal },
     );
-    return { success: true as const };
+    return {
+      success: true as const,
+      ...(probe.metrics ? { metrics: probe.metrics } : {}),
+    };
   } finally {
     if (!active) await app.close?.();
   }

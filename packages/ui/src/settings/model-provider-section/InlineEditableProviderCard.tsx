@@ -172,7 +172,11 @@ export function InlineEditableProviderCard({
   ) => Promise<unknown>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete?: () => void | Promise<void>;
-  onTestModel?: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
+  onTestModel?: (
+    providerId: string,
+    modelId: string,
+    mode?: "connectivity" | "speed",
+  ) => Promise<ModelConnectivityResult>;
   onReorderModelIds?: (modelIds: string[]) => Promise<void>;
   readOnlyEndpoints?: boolean;
   presetApiKeyUrl?: string;
@@ -612,7 +616,7 @@ export function InlineEditableProviderCard({
   }, []);
 
   const handleTestModel = useCallback(
-    async (model: string): Promise<ModelConnectivityResult> => {
+    async (model: string, mode?: "connectivity" | "speed"): Promise<ModelConnectivityResult> => {
       if (!onTestModel) {
         return Promise.resolve({
           success: false,
@@ -624,7 +628,7 @@ export function InlineEditableProviderCard({
       // revision 边界。现在只 flush 本卡片唯一的 Provider 草稿；Service 会等待同一 Provider
       // 操作队列和 Registry 刷新完成，再按正式 providerId/modelId 创建 Model。
       await commitPendingDraft("connectivity-test");
-      return onTestModel(provider.providerId, model);
+      return onTestModel(provider.providerId, model, mode);
     },
     [commitPendingDraft, onTestModel, provider.providerId],
   );

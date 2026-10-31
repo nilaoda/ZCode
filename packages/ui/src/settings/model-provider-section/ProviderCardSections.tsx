@@ -20,6 +20,7 @@ import {
   TID_MODEL_PROVIDER_NAME_EDIT_BUTTON,
   TID_MODEL_PROVIDER_NAME_INPUT,
   testId,
+  TID_MODEL_PROVIDER_MODEL_SPEED_BUTTON,
 } from "@zcode/shared/test-ids";
 import { InfoIcon, LockKeyholeIcon, Plus, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
@@ -372,7 +373,10 @@ export function ProviderModelsSection({
    */
   providerApiFormat?: ProviderApiType;
   models: ProviderSettingsFormModel[];
-  onTestModel?: (model: string) => Promise<ModelConnectivityResult>;
+  onTestModel?: (
+    model: string,
+    mode?: "connectivity" | "speed",
+  ) => Promise<ModelConnectivityResult>;
   onModelCommit: (
     originalModelId: string,
     model: ProviderSettingsFormModel,
@@ -520,6 +524,7 @@ export function ProviderModelsSection({
                     providerAccess={providerAccess}
                     inputTestId={testId(TID_MODEL_PROVIDER_MODEL_INPUT, String(index))}
                     deleteTestId={testId(TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON, String(index))}
+                    speedTestId={testId(TID_MODEL_PROVIDER_MODEL_SPEED_BUTTON, String(index))}
                     model={model}
                     onCommit={(value, basedOnRevision) =>
                       onModelCommit(model.modelId, value, basedOnRevision)

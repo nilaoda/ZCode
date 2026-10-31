@@ -1924,20 +1924,16 @@ async function createWindowRemoteConnectionHandle(params: {
       intent: params.membershipIntent ?? "add",
     });
     params.signal.throwIfAborted();
-    try {
-      connection = await connectServerRemote(admission.target, {
-        signal: params.signal,
-        fetchImpl: requireActiveHostApiNetworkTransport().fetch,
-        commitMembership: admission.commit,
-        onClose: ({ code, reason }) => {
-          sourceClosed = true;
-          detachOwnSourceSettings();
-          notifyClose({ exitCode: code, signal: null, ...(reason ? { error: reason } : {}) });
-        },
-      });
-    } catch (error) {
-      throw error;
-    }
+    connection = await connectServerRemote(admission.target, {
+      signal: params.signal,
+      fetchImpl: requireActiveHostApiNetworkTransport().fetch,
+      commitMembership: admission.commit,
+      onClose: ({ code, reason }) => {
+        sourceClosed = true;
+        detachOwnSourceSettings();
+        notifyClose({ exitCode: code, signal: null, ...(reason ? { error: reason } : {}) });
+      },
+    });
   } else {
     if (!sourceServerDirectory) {
       throw new Error("Source Server manager 尚未初始化");

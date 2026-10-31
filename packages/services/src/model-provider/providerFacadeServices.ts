@@ -91,6 +91,8 @@ export interface ProviderSettingsConnectivityTestInput {
   readonly workspaceIdentity?: string;
   readonly providerId: ProviderId;
   readonly modelId: ModelId;
+  /** speed：发足量 decode tokens 并回传 tok/s 指标；缺省只验证连通。 */
+  readonly mode?: "connectivity" | "speed";
 }
 
 export interface ProviderSettingsConnectivityRequest {
@@ -98,6 +100,8 @@ export interface ProviderSettingsConnectivityRequest {
   readonly workspaceIdentity?: string;
   readonly providerId: ProviderId;
   readonly modelId: ModelId;
+  /** speed：发足量 decode tokens 并回传 tok/s 指标；缺省只验证连通。 */
+  readonly mode?: "connectivity" | "speed";
 }
 
 export type ProviderSettingsConnectivityTester = (
@@ -211,47 +215,48 @@ export function createProviderSettingsService(
           },
         };
       }
-        return testConnectivity({
-          workspacePath: input.workspacePath,
-          ...(input.workspaceIdentity ? { workspaceIdentity: input.workspaceIdentity } : {}),
-          providerId: input.providerId,
-          modelId: input.modelId,
-        });
-      },
-      listProviderModels: async (input) => {
-        await ensureReady();
-        const provider = facade
-          .getView()
-          .providers.find((item) => item.providerId === input.providerId);
-        // 读 effectiveConfig 而不是 personalConfig：内置基线可能提供 baseUrl，
-        // 用户只覆盖了 API Key 或格式，只读 personal 会漏掉这类组合。
-        const api = provider?.effectiveConfig.api;
-        if (!api) {
-          return {
-            ok: false,
-            error: { message: "供应商未配置 API 信息", code: "missing-base-url" },
-          };
-        }
-        // 格式决定鉴权头（Bearer vs x-api-key），缺失时不能猜 —— 猜错会变成静默的 401。
-        const apiFormat = api.type;
-        if (!apiFormat) {
-          return {
-            ok: false,
-            error: { message: "供应商未配置 API 格式", code: "unsupported-format" },
-          };
-        }
-        const access = provider?.effectiveConfig.access;
-        return fetchProviderModels({
-          apiFormat,
-          baseUrl: api.baseUrl ?? "",
-          ...(isApiKeyAccess(access) && access.apiKey?.trim()
-            ? { apiKey: access.apiKey.trim() }
-            : {}),
-          ...(api.headers ? { headers: api.headers } : {}),
-        });
-      },
-    };
-  }
+      return testConnectivity({
+        workspacePath: input.workspacePath,
+        ...(input.workspaceIdentity ? { workspaceIdentity: input.workspaceIdentity } : {}),
+        providerId: input.providerId,
+        modelId: input.modelId,
+        ...(input.mode ? { mode: input.mode } : {}),
+      });
+    },
+    listProviderModels: async (input) => {
+      await ensureReady();
+      const provider = facade
+        .getView()
+        .providers.find((item) => item.providerId === input.providerId);
+      // 读 effectiveConfig 而不是 personalConfig：内置基线可能提供 baseUrl，
+      // 用户只覆盖了 API Key 或格式，只读 personal 会漏掉这类组合。
+      const api = provider?.effectiveConfig.api;
+      if (!api) {
+        return {
+          ok: false,
+          error: { message: "供应商未配置 API 信息", code: "missing-base-url" },
+        };
+      }
+      // 格式决定鉴权头（Bearer vs x-api-key），缺失时不能猜 —— 猜错会变成静默的 401。
+      const apiFormat = api.type;
+      if (!apiFormat) {
+        return {
+          ok: false,
+          error: { message: "供应商未配置 API 格式", code: "unsupported-format" },
+        };
+      }
+      const access = provider?.effectiveConfig.access;
+      return fetchProviderModels({
+        apiFormat,
+        baseUrl: api.baseUrl ?? "",
+        ...(isApiKeyAccess(access) && access.apiKey?.trim()
+          ? { apiKey: access.apiKey.trim() }
+          : {}),
+        ...(api.headers ? { headers: api.headers } : {}),
+      });
+    },
+  };
+}
 
 export function createModelSelectionService(
   facade: ModelSelectionFacade,

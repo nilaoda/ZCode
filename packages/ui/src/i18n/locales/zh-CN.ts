@@ -4078,6 +4078,13 @@ const zhCN: Record<string, string> = {
     "删除后将移除这条自定义 Provider 配置，当前设置页中的相关内容不会自动恢复。",
   "settings.modelProvider.deleteConfirmAction": "确认删除",
   "settings.modelProvider.testModel": "测试模型",
+  "settings.modelProvider.speedTest": "测试生成速度",
+  "settings.modelProvider.speedTesting": "正在测速：{provider} / {model}…",
+  "settings.modelProvider.speedResult":
+    "{provider} / {model} 解码 ≈{tps} tok/s · 首字 {ttft}ms · {tokens} tokens",
+  "settings.modelProvider.speedResultUnavailable":
+    "{provider} / {model} 测速完成，但本次响应缺少计时数据",
+  "settings.modelProvider.speedFailed": "测速失败：{provider} / {model} · {reason}",
   "settings.modelProvider.testModel.enableProviderFirst": "请先启用供应商",
   "settings.modelProvider.testModel.providerUnavailable": "该供应商当前不可用，无法测试连接",
   "settings.modelProvider.testModel.modelUnavailable": "该模型当前不可用，无法测试连接",

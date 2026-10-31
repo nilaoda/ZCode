@@ -68,9 +68,23 @@ export function isCodingPlanModelProviderId(id: string): boolean {
   );
 }
 
+/**
+ * 测速 probe（speed 模式）一次请求的解码指标。
+ * 口径与上下文浮窗 decodeWindow 一致：decode = 首内容 → 流结束。
+ */
+export interface ModelSpeedTestMetrics {
+  readonly outputTokens: number;
+  /** 首个内容 token 到达耗时（TTFT）。 */
+  readonly ttftMs: number;
+  /** 首内容到流结束的解码耗时。 */
+  readonly decodeMs: number;
+  /** 解码吞吐 = outputTokens / (decodeMs / 1000)。 */
+  readonly decodeTps: number;
+}
+
 /** 一个正式 Model 的连通性测试结果。 */
 export type ModelConnectivityResult =
-  | { readonly success: true }
+  | { readonly success: true; readonly metrics?: ModelSpeedTestMetrics }
   | {
       readonly success: false;
       readonly error: {

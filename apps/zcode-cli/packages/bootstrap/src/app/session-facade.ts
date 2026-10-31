@@ -593,7 +593,7 @@ export function createSessionFacade(deps: CreateSessionFacadeDeps): SessionFacad
         deps.providerRegistry,
         input.selection,
       );
-      await deps.runtime.testModelConnectivity(
+      return deps.runtime.testModelConnectivity(
         { ...input, selection },
         {
           abortSignal: options?.abortSignal,

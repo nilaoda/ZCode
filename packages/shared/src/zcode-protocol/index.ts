@@ -2573,11 +2573,25 @@ export const zcodeProviderTestModelConnectivityParamsSchema = z
   .object({
     workspace: zcodeWorkspaceRefSchema,
     selection: modelSelectionSchema,
+    /** speed：发足量 decode tokens 并回传 tok/s 指标；缺省只验证连通。 */
+    mode: z.enum(["connectivity", "speed"]).optional(),
+  })
+  .strict();
+const zcodeModelSpeedTestMetricsSchema = z
+  .object({
+    outputTokens: z.number().int().nonnegative(),
+    ttftMs: z.number().int().nonnegative(),
+    decodeMs: z.number().int().positive(),
+    decodeTps: z.number().nonnegative(),
   })
   .strict();
 export const zcodeProviderTestModelConnectivityResultSchema = z
-  .object({ success: z.literal(true) })
+  .object({
+    success: z.literal(true),
+    metrics: zcodeModelSpeedTestMetricsSchema.optional(),
+  })
   .strict();
+export type ZCodeModelSpeedTestMetrics = z.infer<typeof zcodeModelSpeedTestMetricsSchema>;
 export type ZCodeProviderTestModelConnectivityParams = z.infer<
   typeof zcodeProviderTestModelConnectivityParamsSchema
 >;

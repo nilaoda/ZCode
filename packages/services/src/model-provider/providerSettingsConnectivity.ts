@@ -1,4 +1,4 @@
-import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ModelConnectivityResult, ModelSpeedTestMetrics } from "@zcode/shared";
 import type { ProviderSettingsConnectivityTester } from "./providerFacadeServices.js";
 
 interface FormalModelConnectivityInput {
@@ -8,11 +8,12 @@ interface FormalModelConnectivityInput {
     readonly providerId: string;
     readonly modelId: string;
   };
+  readonly mode?: "connectivity" | "speed";
 }
 
 type FormalModelConnectivityExecutor = (
   input: FormalModelConnectivityInput,
-) => Promise<{ readonly success: true }>;
+) => Promise<{ readonly success: true; readonly metrics?: ModelSpeedTestMetrics }>;
 
 /**
  * 设置页只负责把已经落盘并进入 Registry 的 ModelSelection 交给目标 Environment。
@@ -23,15 +24,16 @@ export function createProviderSettingsConnectivityTester(dependencies: {
 }): ProviderSettingsConnectivityTester {
   return async (input) => {
     try {
-      await dependencies.testModelConnectivity({
+      const probe = await dependencies.testModelConnectivity({
         workspacePath: input.workspacePath,
         ...(input.workspaceIdentity ? { workspaceIdentity: input.workspaceIdentity } : {}),
         selection: {
           providerId: input.providerId,
           modelId: input.modelId,
         },
+        ...(input.mode ? { mode: input.mode } : {}),
       });
-      return { success: true };
+      return { success: true, ...(probe.metrics ? { metrics: probe.metrics } : {}) };
     } catch (error) {
       return {
         success: false,

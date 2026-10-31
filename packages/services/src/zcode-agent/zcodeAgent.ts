@@ -367,6 +367,8 @@ export interface ZCodeAgentGenerateWorkspaceTextParams extends ZCodeAgentWorkspa
 
 export interface ZCodeAgentTestModelConnectivityParams extends ZCodeAgentWorkspaceTarget {
   selection: ZCodeProviderTestModelConnectivityParams["selection"];
+  /** speed：发足量 decode tokens 并回传 tok/s 指标；缺省只验证连通。 */
+  mode?: ZCodeProviderTestModelConnectivityParams["mode"];
   signal?: AbortSignal;
 }
 

@@ -5820,6 +5820,7 @@ export function createZCodeAgentService(
         {
           workspace: buildWorkspaceRef(params),
           selection: params.selection,
+          ...(params.mode ? { mode: params.mode } : {}),
         },
         zcodeProviderTestModelConnectivityResultSchema,
         { signal: params.signal },

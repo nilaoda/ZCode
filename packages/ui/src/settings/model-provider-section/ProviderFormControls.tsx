@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
-import { Loader2Icon, Trash2, Unplug } from "lucide-react";
+import { GaugeIcon, Loader2Icon, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
 import { Switch } from "@/components/ui/switch.js";
@@ -21,6 +21,7 @@ export function ModelRowInput({
   providerAccess,
   inputTestId,
   deleteTestId,
+  speedTestId,
   onCommit,
   onResolveDraft,
   settingsRevision = 0,
@@ -35,6 +36,7 @@ export function ModelRowInput({
   providerAccess?: ProviderConfigObject["access"];
   inputTestId?: string;
   deleteTestId?: string;
+  speedTestId?: string;
   onCommit: (model: ProviderSettingsFormModel, basedOnRevision: number) => void | Promise<void>;
   onResolveDraft?: (
     nextModelId: string,
@@ -43,11 +45,12 @@ export function ModelRowInput({
   settingsRevision?: number;
   onDelete?: () => void;
   onEnabledChange?: (enabled: boolean) => void;
-  onTest?: (model: string) => Promise<ModelConnectivityResult>;
+  onTest?: (model: string, mode?: "connectivity" | "speed") => Promise<ModelConnectivityResult>;
 }) {
   const { intl, locale } = useZCodeIntl();
   const { showFeedback } = useProviderDetailFeedback();
   const [isTesting, setIsTesting] = useState(false);
+  const [isSpeedTesting, setIsSpeedTesting] = useState(false);
   const [metadataDialogOpen, setMetadataDialogOpen] = useState(false);
   const [metadataSaving, setMetadataSaving] = useState(false);
   const metadataSavingRef = useRef(false);
@@ -133,6 +136,113 @@ export function ModelRowInput({
       setMetadataSaving(false);
     }
   }, [commitDraft]);
+
+  const handleSpeedTest = useCallback(async () => {
+    if (!onTest || isSpeedTesting || !providerEnabled) {
+      return;
+    }
+
+    const modelId = draft.idValue.trim();
+    const dedupeKey = `model-speed:${providerId}:${modelId}`;
+    showFeedback({
+      key: dedupeKey,
+      message: intl.formatMessage(
+        { id: "settings.modelProvider.speedTesting" },
+        { provider: providerName, model: modelId },
+      ),
+      state: "pending",
+      durationMs: 0,
+    });
+    setIsSpeedTesting(true);
+    try {
+      const result = await onTest(modelId, "speed");
+      if (result.success && result.metrics) {
+        showFeedback({
+          key: dedupeKey,
+          message: intl.formatMessage(
+            { id: "settings.modelProvider.speedResult" },
+            {
+              provider: providerName,
+              model: modelId,
+              tps: result.metrics.decodeTps.toFixed(1),
+              ttft: result.metrics.ttftMs,
+              tokens: result.metrics.outputTokens,
+            },
+          ),
+          state: "success",
+          successEmphasis: true,
+          dismissible: true,
+          dismissLabel: intl.formatMessage({ id: "common.close" }),
+        });
+      } else if (result.success) {
+        // 流正常结束但适配器未产出计时/usage；按成功但无指标处理。
+        showFeedback({
+          key: dedupeKey,
+          message: intl.formatMessage(
+            { id: "settings.modelProvider.speedResultUnavailable" },
+            { provider: providerName, model: modelId },
+          ),
+          state: "success",
+          dismissible: true,
+          dismissLabel: intl.formatMessage({ id: "common.close" }),
+        });
+      } else {
+        const localizedReason =
+          result.error.code === "provider-unavailable"
+            ? intl.formatMessage({ id: "settings.modelProvider.testModel.providerUnavailable" })
+            : result.error.code === "model-unavailable"
+              ? intl.formatMessage({ id: "settings.modelProvider.testModel.modelUnavailable" })
+              : result.error.message.trim();
+        showFeedback({
+          key: dedupeKey,
+          message: intl.formatMessage(
+            { id: "settings.modelProvider.speedFailed" },
+            {
+              provider: providerName,
+              model: modelId,
+              reason:
+                localizedReason ||
+                intl.formatMessage({ id: "settings.modelProvider.testModel.failed" }),
+            },
+          ),
+          state: "failure",
+          durationMs: 8_000,
+          dismissible: true,
+          dismissLabel: intl.formatMessage({ id: "common.close" }),
+        });
+      }
+    } catch (error) {
+      showFeedback({
+        key: dedupeKey,
+        message: intl.formatMessage(
+          { id: "settings.modelProvider.speedFailed" },
+          {
+            provider: providerName,
+            model: modelId,
+            reason:
+              error instanceof Error
+                ? error.message
+                : intl.formatMessage({ id: "settings.modelProvider.testModel.failed" }),
+          },
+        ),
+        state: "failure",
+        durationMs: 8_000,
+        dismissible: true,
+        dismissLabel: intl.formatMessage({ id: "common.close" }),
+      });
+    } finally {
+      setIsSpeedTesting(false);
+    }
+  }, [
+    onTest,
+    isSpeedTesting,
+    draft.idValue,
+    intl,
+    providerId,
+    providerName,
+    providerEnabled,
+    showFeedback,
+  ]);
 
   const handleTest = useCallback(async () => {
     if (!onTest || isTesting || !providerEnabled) {
@@ -224,6 +334,11 @@ export function ModelRowInput({
   ) : (
     <Unplug className="size-3.5 text-foreground-subtle" />
   );
+  const speedIcon = isSpeedTesting ? (
+    <Loader2Icon className="size-3.5 text-foreground-subtle animate-spin" />
+  ) : (
+    <GaugeIcon className="size-3.5 text-foreground-subtle" />
+  );
   const draftErrorMessage =
     commitErrorMessage ??
     (draftErrorField
@@ -233,6 +348,7 @@ export function ModelRowInput({
       : null);
   const shouldShowTestButton = Boolean(onTest);
   const testDisabled = !providerEnabled || isTesting || !draft.idValue.trim() || !onTest;
+  const speedTestDisabled = !providerEnabled || isSpeedTesting || !draft.idValue.trim() || !onTest;
   const contextWindowLabel = formatModelContextWindowLabel(
     model.config.properties?.contextWindow ?? 0,
     locale,
@@ -285,6 +401,27 @@ export function ModelRowInput({
             onClick={handleTest}
           >
             {testIcon}
+          </Button>
+        ) : null}
+        {shouldShowTestButton ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 p-0"
+            data-testid={speedTestId}
+            disabled={speedTestDisabled}
+            title={intl.formatMessage({
+              id: providerEnabled
+                ? "settings.modelProvider.speedTest"
+                : "settings.modelProvider.testModel.enableProviderFirst",
+            })}
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            onClick={handleSpeedTest}
+          >
+            {speedIcon}
           </Button>
         ) : null}
         <ProviderModelMetadataDialog

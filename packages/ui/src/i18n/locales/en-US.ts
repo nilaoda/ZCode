@@ -4629,6 +4629,13 @@ const enUS: Record<string, string> = {
     "This removes the custom provider configuration. Related edits on the current settings page will not be restored automatically.",
   "settings.modelProvider.deleteConfirmAction": "Delete provider",
   "settings.modelProvider.testModel": "Test model",
+  "settings.modelProvider.speedTest": "Test generation speed",
+  "settings.modelProvider.speedTesting": "Speed testing {provider} / {model}…",
+  "settings.modelProvider.speedResult":
+    "{provider} / {model} decode ≈{tps} tok/s · TTFT {ttft}ms · {tokens} tokens",
+  "settings.modelProvider.speedResultUnavailable":
+    "{provider} / {model} speed test finished, but this response lacked timing data",
+  "settings.modelProvider.speedFailed": "Speed test failed: {provider} / {model} · {reason}",
   "settings.modelProvider.testModel.enableProviderFirst": "Enable the provider first",
   "settings.modelProvider.testModel.providerUnavailable":
     "This provider is currently unavailable for connectivity testing.",

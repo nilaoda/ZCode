@@ -1080,8 +1080,12 @@ export function ModelProviderSection({
   );
 
   const handleTestModel = useCallback(
-    async (providerId: string, modelId: string): Promise<ModelConnectivityResult> => {
-      return testModelConnectivity(providerId, modelId);
+    async (
+      providerId: string,
+      modelId: string,
+      mode?: "connectivity" | "speed",
+    ): Promise<ModelConnectivityResult> => {
+      return testModelConnectivity(providerId, modelId, mode);
     },
     [testModelConnectivity],
   );

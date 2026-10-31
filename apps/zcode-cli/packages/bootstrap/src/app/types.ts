@@ -87,6 +87,7 @@ import type {
   WorkflowAgentRunner,
   WorkspaceCheckpointSummary,
   WorkspaceForkResult,
+  ModelSpeedProbeMetrics,
   WorkspaceGenerateTextInput,
   WorkspaceHookPolicyProvider,
   WorkspaceHookReviewTarget,
@@ -644,9 +645,9 @@ export interface ZCodeApp {
     toolCalls?: ModelToolCall[];
   }>;
   testModelConnectivity(
-    input: { selection: ModelSelection },
+    input: { selection: ModelSelection; mode?: "connectivity" | "speed" },
     options?: { abortSignal?: AbortSignal; traceContext?: TraceContext },
-  ): Promise<void>;
+  ): Promise<{ metrics?: ModelSpeedProbeMetrics }>;
   expertWorkflowStatus(options?: {
     abortSignal?: AbortSignal;
     definitionId?: string;

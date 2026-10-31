@@ -3,6 +3,10 @@ export type {
   WorkspaceGenerateTextInput,
   WorkspaceGenerateTextResult,
 } from "./runtime/methods/workspace-generate-text.js";
+export type {
+  ModelConnectivityProbeResult,
+  ModelSpeedProbeMetrics,
+} from "./runtime/methods/workspace-generate-text.js";
 export type { StartSavedWorkflowRunResult } from "./runtime/methods/dynamic-workflow-run-start.js";
 export type {
   AmendWorkflowRunSettingsInput,
