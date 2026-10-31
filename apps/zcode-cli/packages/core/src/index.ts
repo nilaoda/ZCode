@@ -187,6 +187,8 @@ export type {
   AmendWorkflowRunSettingsInput,
   AmendWorkflowRunSettingsResult,
   TurnResult,
+  ModelConnectivityProbeResult,
+  ModelSpeedProbeMetrics,
   WorkspaceGenerateTextInput,
   WorkspaceGenerateTextResult,
   WorkspaceForkResult,

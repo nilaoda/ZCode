@@ -91,9 +91,12 @@ export interface ModelConnectivityProbeResult {
  * 固定字符串会让 TTFT 失真；decode 吞吐虽与 prefill 无关，但整响应缓存会让
  * 两次测速失去独立性。decode 吞吐与内容熵无关，随机词只为缓存失效。
  */
-export function buildSpeedProbeUserPrompt(now: number = Date.now(), random = Math.random): string {
-  const seed = `${now.toString(36)}-${Math.floor(random * 0xffffffff).toString(36)}`;
-  const word = SPEED_PROBE_SEED_WORDS[Math.floor(random * SPEED_PROBE_SEED_WORDS.length)]!;
+export function buildSpeedProbeUserPrompt(
+  now: number = Date.now(),
+  random: () => number = Math.random,
+): string {
+  const seed = `${now.toString(36)}-${Math.floor(random() * 0xffffffff).toString(36)}`;
+  const word = SPEED_PROBE_SEED_WORDS[Math.floor(random() * SPEED_PROBE_SEED_WORDS.length)]!;
   return [
     `Throughput probe session ${seed}.`,
     `Write exactly ${SPEED_PROBE_TARGET_LINES} numbered lines.`,

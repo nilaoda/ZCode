@@ -19,6 +19,9 @@ describe("speed probe prompt", () => {
     expect(prompt).toContain("Throughput probe session");
     expect(prompt).toContain('the word "');
     expect(prompt).toContain("No preamble");
+    // 回归：seed 与随机词必须是有效 token（曾把 random 函数当数字相乘产出 NaN）
+    expect(prompt).toMatch(/session [0-9a-z]+-[0-9a-z]+\./);
+    expect(prompt).not.toContain("NaN");
   });
 });
 

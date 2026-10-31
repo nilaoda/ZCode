@@ -84,6 +84,7 @@ import { createRuntimeCommandQueue } from "./command-queue.js";
 import type { RuntimeCommandQueue } from "./command-queue.js";
 import type {
   ModelConnectivityTestInput,
+  ModelConnectivityProbeResult,
   WorkspaceGenerateTextInput,
   WorkspaceGenerateTextResult,
 } from "./methods/workspace-generate-text.js";
@@ -838,7 +839,7 @@ export interface AgentRuntime {
   testModelConnectivity(
     input: ModelConnectivityTestInput,
     options?: { abortSignal?: AbortSignal; traceContext?: TraceContext },
-  ): Promise<void>;
+  ): Promise<ModelConnectivityProbeResult>;
   isProjectMemoryEnabled(): boolean;
   /** 缺省等待最多 60 秒；null 等待全部已调度提取结束，不设置 drain deadline。 */
   drainMemoryExtractions(timeoutMs?: number | null): Promise<void>;
