@@ -92,6 +92,9 @@ export const inspectImageToolEntry: ToolEntry = {
   metadata: {
     ...agentToolEntry.metadata,
     name: "InspectImage",
+    // 与其余非驻留内建工具一致：schema 延迟到 ToolSearch 之后加载（上游
+    // tool-search-builtins 测试强制所有非驻留 builtin 声明 shouldDefer）。
+    shouldDefer: true,
     description:
       "Inspect an image using a vision model. Use the vision-image reference supplied in the conversation, or a local image file_path, and ask a focused question. Uploaded images retain the user's chosen model. The main conversation model stays unchanged. This does not provide a CUA coordinate frame.",
   },

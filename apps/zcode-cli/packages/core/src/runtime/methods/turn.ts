@@ -631,7 +631,7 @@ export async function executeTurnCommand(
         injectReferencedSessionContextReminderIntoMessageHistory.call(this, input, options);
         // 话题原文由标准文本附件按需读取，可信来源归档不能再次生成隐藏上下文。
         const resolvedAttachments = await resolveTurnAttachments(attachments, {
-          visionAssistantAvailable: this.registry.has("InspectImage"),
+          visionAssistantAvailable: this.registry?.has("InspectImage") === true,
           abortSignal: turnAbortSignal,
           artifactStore: this.artifactStore,
           fileSystemPort: this.fileSystemPort,

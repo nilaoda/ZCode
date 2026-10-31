@@ -1248,7 +1248,8 @@ async function drainPendingInputUnlocked(
     // 每条输入记自己的 query；一起取出时不能都归到最后一条。
     const inputTraceContext = withQueryId(options.traceContext, pendingInput.queryId);
     const resolvedAttachments = await resolveTurnAttachments(pendingInput.attachments, {
-      visionAssistantAvailable: this.registry.has("InspectImage"),
+      // 测试夹具/无工具注册表的构造路径没有 registry；缺省按视觉助手不可用处理。
+      visionAssistantAvailable: this.registry?.has("InspectImage") === true,
       artifactStore: this.artifactStore,
       fileSystemPort: this.fileSystemPort,
       imageProcessorPort: this.imageProcessorPort,

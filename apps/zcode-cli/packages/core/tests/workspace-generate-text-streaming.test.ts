@@ -195,7 +195,7 @@ describe("workspace generateText streaming aggregation", () => {
       createRuntimeWithModel(model).testModelConnectivity({
         selection: { providerId: "test-provider", modelId: "glm-test" },
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({}); // connectivity 模式返回无指标空对象（speed 才带 metrics）
   });
 
   it.each([
