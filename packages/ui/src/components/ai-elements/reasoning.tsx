@@ -6,21 +6,17 @@
  */
 "use client";
 
+import { SummaryPreviewContext } from "@/v4/conversationRowContext.js";
+
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.js";
 import { cn } from "../lib/utils.js";
-import { estimateTokens } from "@zcode/shared";
-import { TID_CHAT_REASONING_CONTENT, TID_CHAT_REASONING_TRIGGER } from "@zcode/shared/test-ids";import { BrainIcon, ChevronRightIcon } from "lucide-react";
+import { TID_CHAT_REASONING_CONTENT, TID_CHAT_REASONING_TRIGGER } from "@zcode/shared/test-ids";
+import { BrainIcon, ChevronRightIcon } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { QueuedSummaryContent } from "@/ToolCallBlocks/QueuedSummaryContent.js";
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
-import {
-  EMPTY_SCROLL_MASK_STATE,
-  getVerticalScrollMaskStyle,
-  resolveVerticalScrollMaskState,
-  type ScrollMetrics,
-  type ScrollMaskState,
-} from "@/mentions/components/scrollMask.js";
+import { useBottomFollowingScroll } from "@/mentions/components/scrollMask.js";
 import {
   createContext,
   memo,
@@ -61,7 +57,6 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
 
 const MS_IN_S = 1000;
 const REASONING_CONTENT_COLLAPSE_UNMOUNT_DELAY_MS = 300;
-const REASONING_BOTTOM_LOCK_DISTANCE_PX = 2;
 
 export function shouldAutoCollapseReasoning({
   autoCollapseKey,
@@ -73,18 +68,6 @@ export function shouldAutoCollapseReasoning({
   userInteracted: boolean;
 }) {
   return autoCollapseKey != null && autoCollapseKey !== previousAutoCollapseKey && !userInteracted;
-}
-
-export function getReasoningBottomDistance({
-  clientHeight,
-  scrollHeight,
-  scrollTop,
-}: ScrollMetrics) {
-  return Math.max(0, scrollHeight - clientHeight - scrollTop);
-}
-
-export function isReasoningScrollAtBottom(metrics: ScrollMetrics) {
-  return getReasoningBottomDistance(metrics) <= REASONING_BOTTOM_LOCK_DISTANCE_PX;
 }
 
 export const Reasoning = memo(
@@ -99,11 +82,12 @@ export const Reasoning = memo(
     children,
     ...props
   }: ReasoningProps) => {
-    const isOpenControlled = open !== undefined;
+    const preview = useContext(SummaryPreviewContext);
+    const isOpenControlled = preview || open !== undefined;
     const [isOpen, setIsOpen] = useControllableState<boolean>({
       defaultProp: defaultOpen,
       onChange: onOpenChange,
-      prop: open,
+      prop: preview ? false : open,
     });
     const [duration, setDuration] = useControllableState<number | undefined>({
       defaultProp: undefined,
@@ -222,7 +206,8 @@ export const Reasoning = memo(
     return (
       <ReasoningContext.Provider value={contextValue}>
         <Collapsible
-          className={cn("not-prose flex flex-col", className)}
+          // 分组预览把思考块放进 flex 摘要，默认 min-width:auto 会撑开视口，令溢出测量失效。
+          className={cn("not-prose min-w-0 flex flex-col", className)}
           onOpenChange={handleOpenChange}
           open={isOpen}
           {...props}
@@ -282,97 +267,6 @@ export function getReasoningSummaryMaskStyle(isOverflowing: boolean): CSSPropert
   };
 }
 
-/**
- * 实时速度的刷新间隔。
- *
- * 刻意比 `Reasoning` 展开态的耗时秒表（1s）慢：这个读数是「从开始思考到现在」的**累计平均**，
- * 本身随时间收敛、两次刷新之间变化很小，刷新太快只是白白重渲染。
- * 想更灵敏就调小，想更稳就调大 —— 只影响观感，不影响读数本身。
- */
-const LIVE_SPEED_REFRESH_MS = 3000;
-
-/**
- * 流式思考中的实时速度估算，渲染成「（≈38 tok/s）」跟在「正在思考」后面。
- *
- * 为什么独立成叶子组件：收起态的 reasoning 刻意不跑每秒定时器（见 `Reasoning` 里
- * duration effect 的注释），不能因为加一个读数就把整块拉回每秒重渲染。
- * 定时器放在这里，重渲染只影响这一个 span。
- *
- * 为什么只能是估算：agent 侧的 token 计数在请求结束时才结算，流式过程中拿不到增量，
- * 因此这里用已接收文本按仓库既有的 `estimateTokens` 换算。读数带 ≈ 前缀，与完成后
- * 上下文浮窗里的精确「生成速度」区分开。
- */
-const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: string }) {
-  const { intl } = useZCodeIntl();
-  /**
-   * 观测起点：开始测速那一刻已有的文本量，作为基线。
-   *
-   * **必须扣掉基线**：切换会话会让本组件卸载再挂载，而那时 `text` 里已经累积了
-   * 整段思考内容。若把它当成"刚产生的 token"，就会拿「大 token 数 ÷ 极小耗时」
-   * 算出几千 tok/s —— 这正是切走再回来时的现象。
-   *
-   * 扣掉之后语义也更准确：只对**观测期间新增**的文本测速，而不是假装整段都是
-   * 在这几毫秒里生成的。
-   */
-  const [observation, setObservation] = useState<{
-    startedAt: number;
-    baselineTokens: number;
-  } | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const textRef = useRef(text);
-  useEffect(() => {
-    textRef.current = text;
-  }, [text]);
-
-  // 首个非空文本到达时才开始计时：把 TTFT 算进生成时间会低估速度。
-  useEffect(() => {
-    if (observation === null && text.length > 0) {
-      setObservation({ startedAt: Date.now(), baselineTokens: estimateTokens(text) });
-      setNow(Date.now());
-    }
-  }, [observation, text]);
-
-  useEffect(() => {
-    if (observation === null) {
-      return;
-    }
-    const timer = window.setInterval(() => setNow(Date.now()), LIVE_SPEED_REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [observation]);
-
-  // 依赖里刻意不含 text：文本每个 delta 都变，但读数按 LIVE_SPEED_REFRESH_MS 才刷新一次。
-  // 否则长思考文本会在每次 delta 上重复做全串正则扫描。
-  const label = useMemo(() => {
-    if (observation === null) {
-      return null;
-    }
-    const elapsedMs = now - observation.startedAt;
-    // 这是**测量窗口**下限（样本不足一秒算出来的速度没有意义），与上面的刷新间隔无关。
-    if (elapsedMs < MS_IN_S) {
-      return null;
-    }
-    // 只统计观测开始之后新增的文本；基线之前的部分不属于这段时长。
-    const tokens = estimateTokens(textRef.current) - observation.baselineTokens;
-    if (tokens <= 0) {
-      return null;
-    }
-    const tokensPerSecond = tokens / (elapsedMs / MS_IN_S);
-    if (!Number.isFinite(tokensPerSecond) || tokensPerSecond <= 0) {
-      return null;
-    }
-    const tps =
-      tokensPerSecond >= 10
-        ? String(Math.round(tokensPerSecond))
-        : String(Math.round(tokensPerSecond * 10) / 10);
-    return intl.formatMessage({ id: "chat.reasoning.liveTokensPerSecond" }, { tps });
-  }, [intl, now, observation]);
-
-  if (label === null) {
-    return null;
-  }
-  return <span className="ml-1 font-normal text-foreground-subtle">{label}</span>;
-});
-
 export const ReasoningTrigger = memo(
   ({
     className,
@@ -381,6 +275,7 @@ export const ReasoningTrigger = memo(
     streamingText = "",
     ...props
   }: ReasoningTriggerProps) => {
+    const preview = useContext(SummaryPreviewContext);
     const { isStreaming, isOpen, duration } = useReasoning();
     const { intl } = useZCodeIntl();
     const streamingSummary =
@@ -388,18 +283,21 @@ export const ReasoningTrigger = memo(
     const streamingSummaryRef = useRef<HTMLSpanElement | null>(null);
     const streamingSummaryTextRef = useRef<HTMLSpanElement | null>(null);
     const [isStreamingSummaryOverflowing, setIsStreamingSummaryOverflowing] = useState(false);
+    const streamingSummaryText = streamingSummary?.text;
 
     useEffect(() => {
       const viewport = streamingSummaryRef.current;
-      if (!viewport || !streamingSummary) {
+      if (!viewport || !streamingSummaryText) {
         return;
       }
 
       const syncSummaryViewport = () => {
-        setIsStreamingSummaryOverflowing((current) => {
-          const next = isReasoningSummaryOverflowing(viewport);
-          return current === next ? current : next;
-        });
+        const next = isReasoningSummaryOverflowing(viewport);
+        // #185：连续同步更新时，函数 updater 即使返回旧值也可能留下待处理更新。
+        // 溢出状态未变就不 dispatch；只有遮罩实际切换时才更新 React state。
+        if (next !== isStreamingSummaryOverflowing) {
+          setIsStreamingSummaryOverflowing(next);
+        }
         // 流式摘要超过可用宽度后，普通 overflow-hidden 会固定显示旧前缀，
         // 最新 token 被裁在右侧。每次内容增长后把单行视口推到末尾，让旧内容向左移。
         scrollReasoningSummaryToEnd(viewport);
@@ -415,36 +313,33 @@ export const ReasoningTrigger = memo(
         resizeObserver.observe(streamingSummaryTextRef.current);
       }
       return () => resizeObserver.disconnect();
-    }, [streamingSummary?.text]);
+    }, [streamingSummaryText, isStreamingSummaryOverflowing]);
 
+    // 末尾思考完成后，未闭合的收起组头仍需扫光；保留真实完成文案和耗时。
+    const thoughtLabelClassName = cn(
+      "font-normal text-foreground-subtle",
+      preview && "animated-gradient-text animated-gradient-text-foreground",
+    );
     const thinkingMessage =
       getThinkingMessage?.(isStreaming, duration) ??
       (isStreaming && !isOpen ? (
-        <>
-          <span className="animated-gradient-text font-medium">
-            {intl.formatMessage({ id: "chat.reasoning.thinking" })}
-          </span>
-          {/* 实时速度只在确实有文本可估算时出现；拿不到就不显示，不留占位。 */}
-          {streamingText ? <LiveReasoningSpeed text={streamingText} /> : null}
-        </>
+        <span className="animated-gradient-text animated-gradient-text-foreground font-normal text-foreground-subtle">
+          {intl.formatMessage({ id: "chat.reasoning.thinking" })}
+        </span>
       ) : duration === undefined ? (
         <span className="inline-flex items-center gap-2">
-          {/* 完成态“思考”单独使用 semibold，比同列工具类型标签更粗。
-              统一为 medium，保持对话时间线的视觉层级一致。 */}
-          <span className="font-medium text-foreground-subtlest">
+          <span className={thoughtLabelClassName}>
             {intl.formatMessage({ id: "chat.reasoning.thought" })}
           </span>
-          <span className="font-normal text-foreground-subtlest">·</span>
           <span className="font-normal text-foreground-subtlest">
             {intl.formatMessage({ id: "chat.reasoning.durationFewSeconds" })}
           </span>
         </span>
       ) : (
         <span className="inline-flex items-center gap-2">
-          <span className="font-medium text-foreground-subtlest">
+          <span className={thoughtLabelClassName}>
             {intl.formatMessage({ id: "chat.reasoning.thought" })}
           </span>
-          <span className="font-normal text-foreground-subtlest">·</span>
           <span className="font-normal text-foreground-subtlest">
             {intl.formatMessage(
               { id: "chat.reasoning.durationSeconds" },
@@ -454,30 +349,29 @@ export const ReasoningTrigger = memo(
         </span>
       ));
 
-    return (
-      <CollapsibleTrigger
-        data-testid={TID_CHAT_REASONING_TRIGGER}
-        className={cn(
-          "group/reasoning inline-flex max-w-full min-w-0 items-center gap-2 self-start text-ui-base transition-colors",
-          className,
-        )}
-        {...props}
-      >
+    const summaryClassName = cn(
+      "summary-hover-text group/reasoning inline-flex max-w-full min-w-0 items-center gap-2 self-start text-ui-base transition-colors",
+      className,
+    );
+    const summaryContent = (
+      <>
         {children ?? (
           <>
             {/* thinking 会在长流式回复里持续存在，旋转 loader 会长期占用渲染资源；
             运行态保留文案扫光，图标固定为静态思考语义。 */}
-            <BrainIcon className="size-4 shrink-0 text-foreground-subtlest" />
+            <BrainIcon
+              data-summary-leading-icon
+              className="size-4 shrink-0 text-foreground-subtle group-hover/reasoning:text-foreground"
+            />
             {/* 右侧流式摘要是可伸缩内容；如果左侧标签也参与 flex shrink，
                 长摘要会把思考状态标签挤成多行。固定语义标签宽度，只让摘要占剩余空间。 */}
             <span className="shrink-0 whitespace-nowrap" data-reasoning-label="true">
               {thinkingMessage}
             </span>
-            {streamingSummary ? <span className="shrink-0 text-foreground-subtlest">·</span> : null}
             {streamingSummary ? (
               <span
                 ref={streamingSummaryRef}
-                className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-foreground-subtle"
+                className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-foreground-subtlest"
                 data-reasoning-streaming-mask={isStreamingSummaryOverflowing ? "both" : "none"}
                 data-reasoning-streaming-line="true"
                 data-reasoning-streaming-roll="true"
@@ -495,20 +389,33 @@ export const ReasoningTrigger = memo(
                       {streamingSummary.text}
                     </span>
                   }
-                  enabled
+                  enabled={!preview}
                 />
               </span>
             ) : null}
-            <ChevronRightIcon
-              className={cn(
-                "size-4 shrink-0 text-foreground-subtlest transition-opacity transition-transform",
-                isOpen
-                  ? "rotate-90 opacity-100"
-                  : "rotate-0 opacity-0 group-hover/reasoning:opacity-100",
-              )}
-            />
+            {!preview ? (
+              <ChevronRightIcon
+                data-summary-chevron
+                className={cn(
+                  "size-4 shrink-0 text-foreground-subtlest transition-opacity transition-transform",
+                  isOpen
+                    ? "rotate-90 opacity-100"
+                    : "rotate-0 opacity-0 group-hover/reasoning:opacity-100",
+                )}
+              />
+            ) : null}
           </>
         )}
+      </>
+    );
+    if (preview) return <div className={summaryClassName}>{summaryContent}</div>;
+    return (
+      <CollapsibleTrigger
+        data-testid={TID_CHAT_REASONING_TRIGGER}
+        className={summaryClassName}
+        {...props}
+      >
+        {summaryContent}
       </CollapsibleTrigger>
     );
   },
@@ -523,107 +430,13 @@ export const ReasoningContent = memo(
   ({ className, children, forceMount, variant = "default", ...props }: ReasoningContentProps) => {
     const { isOpen, shouldRenderContent } = useReasoning();
     const shouldRenderChildren = isOpen || shouldRenderContent || Boolean(forceMount);
-    const scrollRef = useRef<HTMLDivElement | null>(null);
-    const contentRef = useRef<HTMLDivElement | null>(null);
-    const autoFollowBottomRef = useRef(true);
-    const [scrollMaskState, setScrollMaskState] =
-      useState<ScrollMaskState>(EMPTY_SCROLL_MASK_STATE);
-    const updateScrollMaskState = useCallback(() => {
-      const scrollNode = scrollRef.current;
-      if (!scrollNode) {
-        setScrollMaskState(EMPTY_SCROLL_MASK_STATE);
-        return;
-      }
-
-      setScrollMaskState(
-        resolveVerticalScrollMaskState({
-          clientHeight: scrollNode.clientHeight,
-          scrollHeight: scrollNode.scrollHeight,
-          scrollTop: scrollNode.scrollTop,
-        }),
-      );
-    }, []);
-    const scrollToReasoningBottom = useCallback(() => {
-      const scrollNode = scrollRef.current;
-      if (!scrollNode) {
-        return;
-      }
-
-      scrollNode.scrollTop = scrollNode.scrollHeight;
-      updateScrollMaskState();
-    }, [updateScrollMaskState]);
-    const handleScroll = useCallback(() => {
-      const scrollNode = scrollRef.current;
-      if (!scrollNode) {
-        return;
-      }
-
-      autoFollowBottomRef.current = isReasoningScrollAtBottom({
-        clientHeight: scrollNode.clientHeight,
-        scrollHeight: scrollNode.scrollHeight,
-        scrollTop: scrollNode.scrollTop,
-      });
-      updateScrollMaskState();
-    }, [updateScrollMaskState]);
-
-    useEffect(() => {
-      if (!shouldRenderChildren) {
-        autoFollowBottomRef.current = true;
-        setScrollMaskState(EMPTY_SCROLL_MASK_STATE);
-        return;
-      }
-
-      const scrollNode = scrollRef.current;
-      if (!scrollNode || typeof ResizeObserver === "undefined") {
-        if (autoFollowBottomRef.current) {
-          scrollToReasoningBottom();
-        } else {
-          updateScrollMaskState();
-        }
-        return;
-      }
-
-      // thought 内容流式追加时 scrollHeight 会变化；同时监听容器和内容尺寸。
-      // 默认吸底跟随最新思考；用户主动离底后暂停，直到用户自己滚回底部再恢复。
-      const syncScrollPosition = () => {
-        if (autoFollowBottomRef.current) {
-          scrollToReasoningBottom();
-          return;
-        }
-        updateScrollMaskState();
-      };
-      syncScrollPosition();
-      const resizeObserver = new ResizeObserver(syncScrollPosition);
-      resizeObserver.observe(scrollNode);
-      if (contentRef.current) {
-        resizeObserver.observe(contentRef.current);
-      }
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }, [scrollToReasoningBottom, shouldRenderChildren, updateScrollMaskState]);
-
-    useEffect(() => {
-      if (!shouldRenderChildren) {
-        return;
-      }
-      if (autoFollowBottomRef.current) {
-        scrollToReasoningBottom();
-        return;
-      }
-      updateScrollMaskState();
-    }, [children, scrollToReasoningBottom, shouldRenderChildren, updateScrollMaskState]);
-
-    const scrollMaskStyle = getVerticalScrollMaskStyle(scrollMaskState);
-    const scrollMaskData =
-      scrollMaskState.showTop && scrollMaskState.showBottom
-        ? "both"
-        : scrollMaskState.showTop
-          ? "top"
-          : scrollMaskState.showBottom
-            ? "bottom"
-            : "none";
+    const {
+      scrollRef,
+      contentRef,
+      onScroll: handleScroll,
+      maskData: scrollMaskData,
+      maskStyle: scrollMaskStyle,
+    } = useBottomFollowingScroll(shouldRenderChildren, children);
 
     return (
       <CollapsibleContent

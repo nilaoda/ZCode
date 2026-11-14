@@ -29,12 +29,9 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   "skill-creator@zcode-plugins-official",
   "plugin-creator@zcode-plugins-official",
   "zcode-guide@zcode-plugins-official",
-  // visualize（交互视图）随 UI 插件合入时 CLI 定义已标 defaultEnabled，但这里漏加，
-  // Settings 会把它当成默认关闭，与 CLI 实际启用状态不一致。
-  // 视觉助手为 fork 独有插件但默认关闭（与 official-plugin-definitions 的
+  // 视觉助手为 fork 独有插件，默认关闭（与 official-plugin-definitions 的
   // defaultEnabled 机械对照，bootstrap 单测校验逐一对应），故不在此名单内。
-  "visualize@zcode-plugins-official",
-  // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
+  // 电脑控制、交互视图、搜图、站点部署默认关闭或不分发，均不在此名单内。
   // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
   // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
 ]);

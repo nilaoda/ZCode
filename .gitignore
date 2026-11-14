@@ -84,3 +84,7 @@ packages/desktop/.e2e-network-capture/
 
 # 本地 AI 助手的工作数据（记忆笔记等），仅存在于开发机，不入库。
 .workbuddy-ai/
+.zcode-runtime
+
+# CR-01：afterPack 生成的 NSIS helper define，按架构命名，不得入库
+packages/desktop/build/generated/

@@ -1,3 +1,4 @@
+import { Emitter } from "@zcode/rpc";
 import {
   collectTelemetryRendererContext,
   resolveWorkspaceTelemetryDetail,
@@ -7,19 +8,25 @@ import {
 // 插件安装/市场/启停的事实源在 zcode-cli 进程（读写 ~/.zcode 插件目录并热更新
 // 运行态），host 无副本，故实现保持 agent 协议往返；收敛价值在 UI 层不再直触
 // IZCodeAgentService，词表消费面从 UI 散点收拢到本文件一处。
-// 视觉助手的零候选关闭规则在此观察模型投影，再沿同一插件命令写入，不保存配置副本。
 import type { IZCodeAgentService } from "../zcode-agent/zcodeAgent.js";
 import type { IPluginManagementService } from "./pluginManagement.js";
-import { Emitter } from "@zcode/rpc";
-import { listVisionModelCandidates, type ModelSelectionView } from "@zcode/provider";
-import { VISION_ASSISTANT_PLUGIN_ID } from "@zcode/shared";
-import type { IModelSelectionService } from "../model-provider/providerFacadeServices.js";
-import { createServiceLogger } from "../logger/serviceLogger.js";
+
+/** 插件管理变更成功的信号（Window Host 侧）。action 与遥测的动作名相同。 */
+export interface PluginMutationSucceededEvent {
+  /** install、uninstall、update、restore、configure、reset_config、enable、disable、source_* 等。 */
+  action: string;
+  pluginId?: string;
+  scope?: "user" | "workspace";
+}
 
 export interface PluginManagementServiceDependencies {
-  // 本地化（视觉助手）：上游测试与纯 Agent 宿主不注入模型选择服务；缺省时跳过联动。
-  modelSelectionService?: IModelSelectionService;
   reportTelemetryEvent?: (event: RendererTelemetryEventPayload) => void | Promise<void>;
+  /**
+   * 插件清单「变了」的 Window Host 侧信号：安装、卸载、启停、配置等变更成功返回后调用。
+   * 扩展进程据此重读插件清单（docs/plugins/extension-host.md §3.4、§13）；配置与重置还通知该插件的
+   * settings.onDidChange（§16.7）。dryRun 不触发。
+   */
+  onMutationSucceeded?: (event: PluginMutationSucceededEvent) => void;
   now?: () => number;
   zcodeAgentService: Pick<
     IZCodeAgentService,
@@ -46,15 +53,10 @@ export interface PluginManagementServiceDependencies {
 
 export function createPluginManagementService(
   dependencies: PluginManagementServiceDependencies,
-): IPluginManagementService & { disposeAll(): void } {
-  const agent = dependencies.zcodeAgentService;
-  const models = dependencies.modelSelectionService;
+): IPluginManagementService {
   const changed = new Emitter<void>();
-  const logger = createServiceLogger("vision-assistant");
-  let disposed = false;
-  let latestView: ModelSelectionView | undefined;
-  let reconciliation = Promise.resolve();
-  let writes = Promise.resolve();
+
+  const agent = dependencies.zcodeAgentService;
   const now = dependencies.now ?? Date.now;
   type Params =
     import("../zcode-agent/zcodeAgentPluginParams.js").ZCodeAgentPluginMutationTarget & {
@@ -82,7 +84,7 @@ export function createPluginManagementService(
   };
   const report = (
     action: string,
-    params: Params | ({ telemetry?: Params["telemetry"] } & Partial<Omit<Params, "telemetry">>),
+    params: Params,
     startedAt: number,
     result?: Result,
     error?: unknown,
@@ -170,118 +172,70 @@ export function createPluginManagementService(
       /* 观测端故障与业务隔离。 */
     }
   };
-  // 参数形状解耦 MutationTarget：用户级 setPluginEnabled 可不带 workspace 目标，
-  // 遥测观察只需要剥离 telemetry 字段本身。
-  const observeMutation = async <T, P extends { telemetry?: Params["telemetry"] }>(
+  const observe = async <T extends Result>(
     action: string,
-    params: P,
-    invoke: (clean: Omit<P, "telemetry">) => Promise<T>,
+    params: Params,
+    invoke: (clean: Params) => Promise<T>,
   ): Promise<T> => {
     const startedAt = now();
     const { telemetry: _telemetry, ...clean } = params;
     try {
       const result = await invoke(clean);
-      report(action, params, startedAt, result as Result | undefined);
+      report(action, params, startedAt, result);
+      if (!params.dryRun) {
+        // 通知方故障不能改变已成功的业务返回。
+        try {
+          dependencies.onMutationSucceeded?.({
+            action,
+            ...(params.pluginId ? { pluginId: params.pluginId } : {}),
+            ...(params.scope ? { scope: params.scope } : {}),
+          });
+        } catch {
+          /* 观察者自行记录错误。 */
+        }
+      }
       return result;
     } catch (error) {
       report(action, params, startedAt, undefined, error);
       throw error;
     }
   };
-
-  const service: IPluginManagementService & { disposeAll(): void } = {
+  return {
     onDidChange: changed.event,
-      listPlugins: (params) => agent.listPlugins(params),
+    listPlugins: (params) => agent.listPlugins(params),
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),
     resolveSuggestedPluginReference: (params) => agent.resolveSuggestedPluginReference(params),
     onDynamicPluginOperationProgress: (operationId) =>
       agent.onDynamicPluginOperationProgress(operationId),
     getPluginsOverview: (params) => agent.getPluginsOverview(params),
     addPluginMarketplace: (params) =>
-      observeMutation("source_add", params, (clean) => agent.addPluginMarketplace(clean as typeof params)),
+      observe("source_add", params, (clean) => agent.addPluginMarketplace(clean as typeof params)),
     removePluginMarketplace: (params) =>
-      observeMutation("source_remove", params, (clean) =>
+      observe("source_remove", params, (clean) =>
         agent.removePluginMarketplace(clean as typeof params),
       ),
     updatePluginMarketplace: (params) =>
-      observeMutation("source_refresh", params, (clean) =>
+      observe("source_refresh", params, (clean) =>
         agent.updatePluginMarketplace(clean as typeof params),
       ),
     installPlugin: (params) =>
-      observeMutation("install", params, (clean) => agent.installPlugin(clean as typeof params)),
+      observe("install", params, (clean) => agent.installPlugin(clean as typeof params)),
     cancelPluginOperation: (params) => agent.cancelPluginOperation(params),
     uninstallPlugin: (params) =>
-      observeMutation("uninstall", params, (clean) => agent.uninstallPlugin(clean as typeof params)),
+      observe("uninstall", params, (clean) => agent.uninstallPlugin(clean as typeof params)),
     updatePlugin: (params) =>
-      observeMutation("update", params, (clean) => agent.updatePlugin(clean as typeof params)),
+      observe("update", params, (clean) => agent.updatePlugin(clean as typeof params)),
     restoreBuiltinPlugin: (params) =>
-      observeMutation("restore", params, (clean) => agent.restoreBuiltinPlugin(clean as typeof params)),
+      observe("restore", params, (clean) => agent.restoreBuiltinPlugin(clean as typeof params)),
     configurePlugin: (params) =>
-      observeMutation("configure", params, (clean) => agent.configurePlugin(clean as typeof params)),
+      observe("configure", params, (clean) => agent.configurePlugin(clean as typeof params)),
     resetPluginConfig: (params) =>
-      observeMutation("reset_config", params, (clean) => agent.resetPluginConfig(clean as typeof params)),
+      observe("reset_config", params, (clean) => agent.resetPluginConfig(clean as typeof params)),
     validatePlugin: (params) => agent.validatePlugin(params),
     describePlugin: (params) => agent.describePlugin(params),
-    setPluginEnabled(params) {
-      const operation = writes.then(async () => {
-        if (disposed) throw new Error("Plugin management service is disposed");
-        if (models && params.pluginId === VISION_ASSISTANT_PLUGIN_ID && params.enabled) {
-          const read = await models.getView();
-          if (disposed) throw new Error("Plugin management service is disposed");
-          const view = latestView && latestView.revision > read.revision ? latestView : read;
-          if (listVisionModelCandidates(view).length === 0)
-            throw new Error("No configured vision model is available");
-        }
-        // 视觉助手门禁失败不进入插件生命周期上报；遥测只观察 agent 往返结果。
-        return observeMutation(params.enabled ? "enable" : "disable", params, (clean) =>
-          agent.setPluginEnabled(clean as typeof params),
-        ).then((result) => {
-          if (!disposed) changed.fire();
-          return result;
-        });
-      });
-      writes = operation.then(
-        () => {},
-        () => {},
-      );
-      return operation;
-    },
-    disposeAll() {
-      disposed = true;
-      subscription?.dispose();
-      changed.dispose();
-    },
+    setPluginEnabled: (params) =>
+      observe(params.enabled ? "enable" : "disable", params as any, (clean) =>
+        agent.setPluginEnabled(clean as unknown as typeof params),
+      ),
   };
-
-  const observe = (view: ModelSelectionView) => {
-    if (disposed || (latestView && view.revision < latestView.revision)) return;
-    latestView = view;
-    // 无候选必须在 Host 持久化关闭，不能依赖设置页是否挂载；读取失败不是零候选。
-    // 串行且只接受当前 revision 的读取，避免过期删除事件覆盖后来新增的模型。
-    reconciliation = reconciliation
-      .then(async () => {
-        // 模型删除可发生在启用 RPC 途中；先等已接纳的配置写入，避免读到旧的关闭状态而漏关。
-        await writes;
-        if (disposed || latestView !== view || listVisionModelCandidates(view).length > 0) return;
-        const result = await agent.listPlugins({ configScope: "user" });
-        if (disposed || latestView !== view) return;
-        const plugin = result.plugins.find((item) => item.id === VISION_ASSISTANT_PLUGIN_ID);
-        if (plugin?.enabled)
-          await service.setPluginEnabled({
-            pluginId: VISION_ASSISTANT_PLUGIN_ID,
-            enabled: false,
-            scope: "user",
-          });
-      })
-      .catch((error: unknown) => {
-        if (!disposed) logger.warn(undefined, "视觉助手自动关闭失败", error);
-      });
-  };
-  const subscription = models?.onDidChange(observe);
-  void models
-    ?.getView()
-    .then(observe, (error: unknown) => {
-      if (!disposed) logger.warn(undefined, "视觉模型候选初始化失败，保留现有启用状态", error);
-    });
-  return service;
 }
