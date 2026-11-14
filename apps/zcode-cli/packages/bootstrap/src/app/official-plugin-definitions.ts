@@ -103,7 +103,9 @@ export const OFFICIAL_VISION_ASSISTANT_PLUGIN_ID = VISION_ASSISTANT_PLUGIN_ID;
 // 内网版仅注册随包离线交付的本地能力，不能恢复依赖官方服务的搜图与模拟器下载。
 export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = [
 {
-    defaultEnabled: true,
+    // 产品决策：视觉助手默认关闭，需用户在插件管理或设置页显式开启。
+    // 判定式是 enabledPlugins[id] ?? defaultEnabled：曾在设置页手动开过的用户已落盘
+    // 显式 true，不受本默认值影响。
     name: "vision-assistant",
     version: "0.1.0",
     rootCandidates: [
