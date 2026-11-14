@@ -39,6 +39,34 @@ export function extractPrebuiltArchive({ archivePath, archiveExt, extractDir, cw
   mkdirSync(extractDir, { recursive: true });
   if (archiveExt === "zip") {
     if (process.platform === "win32") {
+      // Bugfix（CI 实证）：windows-2022 镜像更新后，PowerShell 7 的
+      // Microsoft.PowerShell.Archive 模块在最新 .NET 上找不到
+      // ZipFileExtensions.ExtractToDirectory 的 3 参重载，Expand-Archive 整体失效
+      // （"Cannot find an overload for "ExtractToDirectory" and the argument count: "3""）。
+      // 改用系统自带的 System32\bsdtar（Win10 1803+ 内置，原生支持 zip 格式自动识别），
+      // 不再依赖镜像中随 PowerShell/.NET 版本漂移的 Archive 模块；显式用绝对路径调
+      // System32\tar.exe，避免 PATH 上 GNU tar（Git Bash）抢先（见 toTarPosixPath 注释）。
+      // 仅当 tar.exe 不存在（极端旧系统）时才回退 Expand-Archive。
+      const systemTar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+      const winTarCwd = cwd ?? process.cwd();
+      try {
+        runCommand(
+          systemTar,
+          [
+            "-xf",
+            resolveTarArchiveArg(archivePath, winTarCwd),
+            "-C",
+            toTarPosixPath(extractDir),
+          ],
+          { cwd: winTarCwd },
+        );
+        return;
+      } catch (error) {
+        // spawn ENOENT = tar.exe 不存在才回退；tar 解压失败（退出码非 0）必须原样抛出，
+        // 不能掩盖真实解压错误后用另一条可能同样失败的路径重试。
+        if (error?.code !== "ENOENT") throw error;
+      }
+
       runCommand("powershell.exe", [
         "-NoProfile",
         "-NonInteractive",
