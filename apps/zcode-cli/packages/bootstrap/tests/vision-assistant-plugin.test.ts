@@ -22,7 +22,8 @@ test("离线视觉插件具备稳定身份，启停控制能力，模型覆盖�
   );
   const definition = OFFICIAL_PLUGIN_DEFINITIONS.find((item) => item.name === manifest.name)!;
   assert.equal(definition.version, manifest.version);
-  assert.equal(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has(VISION_ASSISTANT_PLUGIN_ID), true);
+  // 产品决策：视觉助手默认关闭，需用户显式开启；插件本身仍随包分发可随时打开。
+  assert.equal(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has(VISION_ASSISTANT_PLUGIN_ID), false);
   const plugin = {
     id: VISION_ASSISTANT_PLUGIN_ID,
     name: manifest.name,
