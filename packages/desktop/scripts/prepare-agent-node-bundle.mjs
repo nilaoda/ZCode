@@ -177,10 +177,10 @@ function assertOfficialPluginRuntime(plugin) {
   }
 }
 
-function stageBundle() {
+async function stageBundle() {
   // 实现已抽到 stage-agent-bundle.mjs：dev 链（scripts/build-desktop-agent-cli.mjs）
   // 必须用同一份，否则 dev 会继续跑上一次打包留下的陈旧 agent。
-  stageAgentBundle({ repoRoot, platformKey });
+  await stageAgentBundle({ repoRoot, platformKey });
 }
 
 async function stageBundledSkillPack() {

@@ -23,7 +23,7 @@ import { auxiliaryModelOptions } from "../../model/auxiliary-model-options.js";
 import { INPUT_PREDICTION_QUERY_SOURCE } from "./input-prediction-sidecar.js";
 
 const WORKSPACE_GENERATE_TEXT_TIMEOUT_MS = 60_000;
-const CONNECTIVITY_PROBE_MAX_OUTPUT_TOKENS = 1;
+const CONNECTIVITY_PROBE_MAX_OUTPUT_TOKENS = 512;
 // 探测请求使用固定最小 prompt，避免多余推理开销；不可改写角色、文本或混入会话历史。
 const CONNECTIVITY_PROBE_SYSTEM = "You are ZCode connectivity probe.";
 const CONNECTIVITY_PROBE_USER = "hi";
@@ -132,12 +132,15 @@ export async function testModelConnectivity(
 ): Promise<ModelConnectivityProbeResult> {
   const speed = input.mode === "speed";
   const baseModel = createRuntimeModel(this, { selection: input.selection, scope: "workspace" });
-  // 连接探测不需要生成正文；复用辅助生成的 5,000 预算会等待多余推理和输出。
-  // 独立限制为 1 Token，仍使用最低公开档位，不改变其他辅助调用的预算。
   // 测速模式需要足量 decode tokens 才能形成稳定窗口；随机 prompt 每次防缓存。
   const model = baseModel.bind({
     reasoningLevel: baseModel.optionSpecs.reasoningLevel.values[0]!,
-    maxOutputTokens: speed ? SPEED_PROBE_MAX_OUTPUT_TOKENS : CONNECTIVITY_PROBE_MAX_OUTPUT_TOKENS,
+    maxOutputTokens: speed
+      ? SPEED_PROBE_MAX_OUTPUT_TOKENS
+      : Math.min(
+          CONNECTIVITY_PROBE_MAX_OUTPUT_TOKENS,
+          baseModel.optionSpecs.maxOutputTokens.max,
+        ),
   });
   const querySource = speed
     ? PROVIDER_SETTINGS_SPEED_TEST_QUERY_SOURCE
@@ -162,6 +165,7 @@ export async function testModelConnectivity(
       },
     ],
   };
+  using statusSink = this.createModelStatusSink(traceContext, []);
   let finished = false;
   let finishedAt = 0;
   let firstContentAt: number | null = null;
@@ -171,7 +175,7 @@ export async function testModelConnectivity(
     {
       metadata: traceContextToLogContext(traceContext),
       modelCall: { operation: "workspace_generate_text" },
-      statusSink: this.createModelStatusSink(traceContext, []),
+      statusSink,
       traceContext,
       refreshRuntimeHeadersBeforeAttempt: createRefreshRuntimeHeadersBeforeModelAttempt(this, {
         abortSignal,
@@ -296,6 +300,7 @@ async function generateWorkspaceTextImpl(
       : { options: { maxOutputTokens: requestMaxOutputTokens } }),
   };
 
+  using statusSink = this.createModelStatusSink(modelTraceContext, events);
   const result = await runWithModelInvocationContext(
     {
       metadata: traceContextToLogContext(modelTraceContext),
@@ -308,7 +313,7 @@ async function generateWorkspaceTextImpl(
           ? { reasoning: { requestedLevel: model.options.reasoningLevel } }
           : {}),
       },
-      statusSink: this.createModelStatusSink(modelTraceContext, events),
+      statusSink,
       traceContext: modelTraceContext,
       refreshRuntimeHeadersBeforeAttempt: createRefreshRuntimeHeadersBeforeModelAttempt(this, {
         abortSignal,

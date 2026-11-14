@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   const serverId = resolveHttpServerId();
   const { services, workspaceIdentityMapper, migrationFailedPathCount } =
     await createServerHostServices({
-      topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
+      topicResourceRelayChannel: (request: unknown) => topicResourcePeers.getChannel(request),
       sourceServerId: serverId,
       zcodeBuiltinProviderConfigFilePath,
       providerProvisioningTargetEnabled: Boolean(authToken),
