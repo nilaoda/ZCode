@@ -588,6 +588,8 @@ GET /shares/mine ─► items[{…, source_session_id?}]   （只在管理 API �
 
 入口：设置 → 数据与统计 → 分享管理（排在归档管理之后）。只在桌面端显示；Web 与手机远控继续使用 `/share/manage`。
 
+本地化发行版（`ZCODE_LOCAL_ONLY_BUILD`）：外部登录服务已移除，未登录页的「登录」按钮无法完成，因此设置页不注册该分区，历史停留位置也会回退到默认分区。组件与 Web `/share/manage` 实现保留，非 Local 构建行为不变。
+
 ```text
 SettingsShareManagement（页面内唯一状态 owner；服务端响应是唯一事实源）
   ├─ base services.conversationShareService（本机 Host，桌面登录账号的 JWT）

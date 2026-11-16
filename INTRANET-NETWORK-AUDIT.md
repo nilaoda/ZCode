@@ -453,3 +453,40 @@ URL 字面量集合与合并前完全一致（228 = 228，零新增）。
 - 协议休眠字段 `botDeliveryTarget`（可选接受侧，无写入方）维持与上游兼容。
 - 12 个上游保留但不在 engineering 清单的单测文件（多为 E2E 夹具），与上游状态一致，不运行。
 - i18n 存在 7 个上游自身的中英文不对称键，非 fork 引入。
+
+---
+
+## 12. 合并上游 v3.18.2 后的登录入口复审（2026-11）
+
+起因：v3.18 新增「设置 → 数据与统计 → 分享管理」，Local 构建下入口仍可见；
+未登录页的「登录」按钮会打开 WelcomeScreen，而 OAuth 登录服务已整体移除。
+
+### 12.1 处置
+
+- `isSettingsSectionEnabled` 在 `ZCODE_LOCAL_ONLY_BUILD` 下不再注册 `shares` 分区，
+  历史停留位置回退默认分区。规格见 `docs/conversation-share-v1.md`「设置页分享管理」。
+- `packages/web` 构建补注入 `__ZCODE_PRODUCT_FLAVOR__`；`scripts/build-zcode.mjs`
+  构建 Web 产物时固定 `ZCODE_LOCAL_IDENTITY=1`。浏览器模式与桌面 renderer 共用同一档位
+  信号，侧栏/命令面板登录、预设供应商、升级入口不再复现。`pnpm dev:web` 不设置该变量，
+  开发态保持上游身份。
+
+### 12.2 桌面 Local 登录入口复审
+
+| 入口 | 现状 |
+| --- | --- |
+| 设置 → 分享管理 | 本次隐藏（`isSettingsSectionEnabled`） |
+| 侧栏头像菜单「登录」 | `ZCODE_LOCAL_ONLY_BUILD` 直接不渲染 |
+| 命令面板「登录/登出」 | `isProductEndpointDisabled()` 过滤命令 |
+| WelcomeScreen（OAuth / API Key 登录页） | 仅由登录入口或启动门禁打开；Local 下 provider 启动门禁恒关闭，登录入口已全部隐藏 |
+| 会话分享发布按钮 | `user` 为空时不渲染 |
+| 语音输入 | 可用条件含登录态，Local 下不渲染 |
+| 奖励 / 营销 / 闲时任务 | Provider 不挂载或远端灰度不可达，登录续接不会启动 |
+| 模型供应商预设（Z.ai / BigModel）与 Coding Plan | Local 过滤预设分组；升级弹窗与入口按档位禁用 |
+| Web 远控 | 桌面入口已移除，main 侧 featureGate 恒 false |
+
+### 12.3 已知保留项
+
+- `packages/web` 的 `/remote/v4` 登录页仍可通过直接输入 URL 打开；该路由依赖 Web 远控，
+  桌面入口已移除且 featureGate 恒 false，应用内无任何链接可达。
+- 分享落地页仅在服务端返回 `login_required` 时显示登录卡片；Local 下分享请求走不通，
+  不会进入该状态。

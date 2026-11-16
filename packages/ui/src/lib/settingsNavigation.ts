@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- 设置导航意图集中管理 sessionStorage、事件桥接和解析校验，拆分会让一次性意图消费顺序更难保证。 */
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
 export type SettingsSectionId =
@@ -99,6 +100,11 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
 }
 
 export function isSettingsSectionEnabled(section: SettingsSectionId): boolean {
+  // 本地化发行版：外部登录服务已整体移除，分享管理页未登录时只会给出一个
+  // 永远无法完成的「登录」按钮，所以整个分区不出现（含上次停留分区的回退）。
+  if (ZCODE_LOCAL_ONLY_BUILD && section === "shares") {
+    return false;
+  }
   return !HIDDEN_SETTINGS_SECTIONS.has(section);
 }
 

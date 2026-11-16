@@ -151,7 +151,11 @@ async function buildOutputs(skipBuild) {
     recursive: true,
   });
   run("pnpm", ["--filter", "@zcode/server", "build"]);
-  run("pnpm", ["--filter", "@zcode/web", "build"]);
+  // 本分支只发行 Local 身份：Web 产物必须与桌面共用同一档位信号，
+  // 否则浏览器模式会重新出现登录、预设供应商等联网入口。
+  run("pnpm", ["--filter", "@zcode/web", "build"], {
+    env: { ...process.env, ZCODE_LOCAL_IDENTITY: "1" },
+  });
 }
 
 async function stageZCodePackage({ packageRoot, version }) {

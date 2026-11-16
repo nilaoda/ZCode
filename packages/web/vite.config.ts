@@ -118,6 +118,16 @@ export default defineConfig(({ mode }) => {
       __ZCODE_MIN_COMPATIBLE_VERSION__: JSON.stringify(minCompatibleVersion),
       __ZCODE_COMMIT__: JSON.stringify(env.ZCODE_COMMIT || "unknown"),
       __ZCODE_ENV__: JSON.stringify(zcodeEnv),
+      // 与桌面 renderer 同源的档位信号：Local 发行版若缺这个 define，
+      // ZCODE_LOCAL_ONLY_BUILD 会在浏览器恒为 false，登录、预设供应商等联网入口全部复现。
+      // 开发态不设置 ZCODE_LOCAL_IDENTITY，保持现行的 preview/production 身份。
+      __ZCODE_PRODUCT_FLAVOR__: JSON.stringify(
+        process.env.ZCODE_LOCAL_IDENTITY?.trim() === "1"
+          ? "local"
+          : zcodeEnv === "production"
+            ? "production"
+            : "preview",
+      ),
       "import.meta.env.VITE_ZCODE_BASE_URL": JSON.stringify(zcodeEndpointOrigin),
       // 兼容旧 Web runtime 读取名；新代码统一读 VITE_ZCODE_BASE_URL。
       "import.meta.env.VITE_ZCODE_ENDPOINT_ORIGIN": JSON.stringify(zcodeEndpointOrigin),
