@@ -2,13 +2,17 @@ import { Emitter } from "@zcode/rpc";
 import {
   collectTelemetryRendererContext,
   resolveWorkspaceTelemetryDetail,
+  VISION_ASSISTANT_PLUGIN_ID,
   type RendererTelemetryEventPayload,
 } from "@zcode/shared";
+import { listVisionModelCandidates, type ModelSelectionView } from "@zcode/provider";
 // 设置页插件管理薄服务实现——plugins/* 旧协议词的唯一 host 侧消费点。
 // 插件安装/市场/启停的事实源在 zcode-cli 进程（读写 ~/.zcode 插件目录并热更新
 // 运行态），host 无副本，故实现保持 agent 协议往返；收敛价值在 UI 层不再直触
 // IZCodeAgentService，词表消费面从 UI 散点收拢到本文件一处。
 import type { IZCodeAgentService } from "../zcode-agent/zcodeAgent.js";
+import type { IModelSelectionService } from "../model-provider/providerFacadeServices.js";
+import { createServiceLogger } from "../logger/serviceLogger.js";
 import type { IPluginManagementService } from "./pluginManagement.js";
 
 /** 插件管理变更成功的信号（Window Host 侧）。action 与遥测的动作名相同。 */
@@ -20,6 +24,8 @@ export interface PluginMutationSucceededEvent {
 }
 
 export interface PluginManagementServiceDependencies {
+  /** 视觉助手的零候选关闭规则需要读取当前模型投影；缺省时跳过该守卫。 */
+  modelSelectionService?: IModelSelectionService;
   reportTelemetryEvent?: (event: RendererTelemetryEventPayload) => void | Promise<void>;
   /**
    * 插件清单「变了」的 Window Host 侧信号：安装、卸载、启停、配置等变更成功返回后调用。
@@ -53,8 +59,15 @@ export interface PluginManagementServiceDependencies {
 
 export function createPluginManagementService(
   dependencies: PluginManagementServiceDependencies,
-): IPluginManagementService {
+): IPluginManagementService & { disposeAll(): void } {
   const changed = new Emitter<void>();
+  const models = dependencies.modelSelectionService;
+  const logger = createServiceLogger("vision-assistant");
+  let disposed = false;
+  let latestView: ModelSelectionView | undefined;
+  let reconciliation = Promise.resolve();
+  let writes = Promise.resolve();
+  let subscription: { dispose(): void } | undefined;
 
   const agent = dependencies.zcodeAgentService;
   const now = dependencies.now ?? Date.now;
@@ -183,6 +196,8 @@ export function createPluginManagementService(
       const result = await invoke(clean);
       report(action, params, startedAt, result);
       if (!params.dryRun) {
+        // 配置写入后的失效信号：设置页与视觉助手按当前目标重新读取。
+        changed.fire();
         // 通知方故障不能改变已成功的业务返回。
         try {
           dependencies.onMutationSucceeded?.({
@@ -200,7 +215,7 @@ export function createPluginManagementService(
       throw error;
     }
   };
-  return {
+  const service: IPluginManagementService & { disposeAll(): void } = {
     onDidChange: changed.event,
     listPlugins: (params) => agent.listPlugins(params),
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),
@@ -233,9 +248,67 @@ export function createPluginManagementService(
       observe("reset_config", params, (clean) => agent.resetPluginConfig(clean as typeof params)),
     validatePlugin: (params) => agent.validatePlugin(params),
     describePlugin: (params) => agent.describePlugin(params),
-    setPluginEnabled: (params) =>
-      observe(params.enabled ? "enable" : "disable", params as any, (clean) =>
-        agent.setPluginEnabled(clean as unknown as typeof params),
-      ),
+    setPluginEnabled: (params) => {
+      const operation = writes.then(async () => {
+        if (disposed) throw new Error("Plugin management service is disposed");
+        if (params.pluginId === VISION_ASSISTANT_PLUGIN_ID && params.enabled) {
+          const read = await models?.getView();
+          if (disposed) throw new Error("Plugin management service is disposed");
+          const view = latestView && read && latestView.revision > read.revision ? latestView : read;
+          if (view && listVisionModelCandidates(view).length === 0) {
+            throw new Error("No configured vision model is available");
+          }
+        }
+        return observe(params.enabled ? "enable" : "disable", params as any, (clean) =>
+          agent.setPluginEnabled(clean as unknown as typeof params),
+        );
+      });
+      writes = operation.then(
+        () => {},
+        () => {},
+      );
+      return operation;
+    },
+    disposeAll() {
+      disposed = true;
+      subscription?.dispose();
+      changed.dispose();
+    },
   };
+
+  const observeModelCandidates = (view: ModelSelectionView) => {
+    if (disposed || !models) return;
+    if (latestView && view.revision < latestView.revision) return;
+    latestView = view;
+    // 无候选必须在 Host 持久化关闭，不能依赖设置页是否挂载；读取失败不是零候选。
+    // 串行且只接受当前 revision 的读取，避免过期删除事件覆盖后来新增的模型。
+    reconciliation = reconciliation
+      .then(async () => {
+        // 模型删除可发生在启用 RPC 途中；先等已接纳的配置写入，避免读到旧的关闭状态而漏关。
+        await writes;
+        if (disposed || latestView !== view || listVisionModelCandidates(view).length > 0) return;
+        const result = await agent.listPlugins({ configScope: "user" });
+        if (disposed || latestView !== view) return;
+        const plugin = result.plugins.find((item) => item.id === VISION_ASSISTANT_PLUGIN_ID);
+        if (plugin?.enabled) {
+          await service.setPluginEnabled({
+            pluginId: VISION_ASSISTANT_PLUGIN_ID,
+            enabled: false,
+            scope: "user",
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!disposed) logger.warn(undefined, "视觉助手自动关闭失败", error);
+      });
+  };
+
+  if (models) {
+    subscription = models.onDidChange(observeModelCandidates);
+    void models.getView().then(observeModelCandidates, (error: unknown) => {
+      if (!disposed) logger.warn(undefined, "视觉模型候选初始化失败，保留现有启用状态", error);
+    });
+  }
+
+  return service;
 }

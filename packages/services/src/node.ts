@@ -3159,7 +3159,8 @@ export function createLocalServices(options: {
       IPluginManagementService,
       createPluginManagementService({
         zcodeAgentService,
-              }),
+        modelSelectionService: providerRuntime.modelSelection,
+      }),
     )
     .register(ISubagentsService, subagentsService)
     .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))

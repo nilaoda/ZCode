@@ -495,24 +495,27 @@ URL 字面量集合与合并前完全一致（228 = 228，零新增）。
 
 ## 13. 合并上游 v3.18.2 后的 fork 功能回归复审（2026-11-16）
 
-按 68 个 fork 自有提交逐项核对源码标记，发现 5 处功能被上游整文件替换或遗漏：
+按 68 个 fork 自有提交逐项核对源码标记，发现 8 处功能被上游整文件替换或遗漏：
 
 | 功能 | 回归 | 处置 |
 | --- | --- | --- |
 | 思考中实时速度 | `reasoning.tsx` 上游整版替换，`LiveReasoningSpeed`、3s 刷新与切会话基线全部丢失 | 恢复最终实现，补 ja-JP / ko-KR / ru-RU 文案 |
+| 上下文生成速度 | `product-projection.ts` 的 `clone`/`adopt` 与 hydration seed 保留被上游覆盖，速度窗口被清空 | 补回 `decodeSamples` 搬运与 `decodeWindow: current.decodeWindow`，UI 侧原本完好 |
 | 外部登录移除 | 上游把 OAuth provider adapter / runtimeConfig 带回，登录能力重新可创建 | `createOAuthProviderAdapters` 恒定返回空数组；`startOAuth` fail-closed |
 | 自动更新开关删除 | 上游重新带回两个无效开关、状态、handler 与搜索项 | 再次删除 UI / 状态 / 搜索索引 / i18n；保留 AppSettings 契约与不可达的更新弹窗 |
 | 反馈出网闸门 | `feedbackHttpClient` 重构后丢失 `isProductEndpointDisabled` | 在请求入口补回 Local 禁用边界 |
 | CLI / Web 登录入口 | CLI 与 TUI 的 `/login` 从未按 Local 档位关闭；Web `/remote/v4` 直连仍渲染登录页 | CLI 构建注入 Local 档位，命令行与 TUI 登录 fail-closed；Web 远控/登录回调路由回首页 |
+| 设置页默认目录 | `SettingsPage` 退回 `info.homedir`，Local 数据根显示错误 | 恢复 `info.dataBaseDir ?? info.homedir` |
+| 视觉助手 Host 守卫 | `pluginManagementService` 丢失模型候选校验、零候选自动关闭与 `onDidChange` 触发 | 恢复模型投影观察、启用前校验与 dispose 生命周期 |
 
 根因是上游同步按整文件取新版，merge 时未保住 fork 增补。新增
-`scripts/test/fork-feature-guards.test.mjs`（8 项源码守卫，已挂入 `test:architecture`，
+`scripts/test/fork-feature-guards.test.mjs`（10 项源码守卫，已挂入 `test:architecture`，
 不依赖 node_modules），钉住上述功能与本轮登录/Web 档位改动。
 
 已核对未回归：零出网开关与客户端配置短路、内置目录 revision 999999、侧栏/命令面板/分享/语音
 登录入口、预设供应商与 Coding Plan、插件市场、视觉助手默认关闭、image-search / zcode-site
-未分发、数据根隔离、项目记忆存储、diff 行尾归一化、`decodeWindow` 可选、模型测速、上下文
-生成速度、供应商空态、品牌名、打包与 CI 改动。
+未分发、数据根隔离、项目记忆存储、diff 行尾归一化、`decodeWindow` 可选、模型测速、供应商
+空态、品牌名、打包与 CI 改动。
 
 已知未动（非本次回归）：`packages/shared/src/bots.ts` 仅为协议类型/常量回流，无运行时请求；
 `oauthUnauthorizedRequest` 的 `active_provider` 分支随上游回流，零 adapter 下不可达。

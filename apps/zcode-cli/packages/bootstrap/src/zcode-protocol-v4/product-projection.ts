@@ -1000,6 +1000,8 @@ export class ProductProjection {
               }
             : null,
           cumulative,
+          // 速度窗口是投影自身按事件累加的派生事实，hydration seed 不携带，原样保留。
+          decodeWindow: current.decodeWindow,
         },
       };
       return;
@@ -1022,6 +1024,8 @@ export class ProductProjection {
             ? null
             : { ...seededContextWindow, maxTokens: seededContextWindow.maxTokens },
         cumulative,
+        // 同上：速度窗口不来自 seed。
+        decodeWindow: current.decodeWindow,
       },
     };
   }
@@ -1545,6 +1549,9 @@ export class ProductProjection {
     clone.configModeTouchedByEvent = this.configModeTouchedByEvent;
     clone.droppedContentStreamEventCount = this.droppedContentStreamEventCount;
     clone.normalizationDiagnostics = [...this.normalizationDiagnostics];
+    // Object.create 不执行类字段初始化器：新增的可变字段必须逐个搬，
+    // 漏掉会让 clone 上该字段为 undefined，实时原子发布路径随即抛错。
+    clone.decodeSamples = [...this.decodeSamples];
     return clone;
   }
 
@@ -1593,6 +1600,7 @@ export class ProductProjection {
     this.configModeTouchedByEvent = candidate.configModeTouchedByEvent;
     this.droppedContentStreamEventCount = candidate.droppedContentStreamEventCount;
     this.normalizationDiagnostics = candidate.normalizationDiagnostics;
+    this.decodeSamples = candidate.decodeSamples;
   }
 
   /**

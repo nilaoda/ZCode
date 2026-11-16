@@ -31,6 +31,20 @@ test("fork: 思考中的实时速度保留最终实现（3s 刷新 + 切会话�
   }
 });
 
+test("fork: 上下文生成速度窗口在投影 clone/adopt 与 hydration seed 中保留", async () => {
+  const source = await read(
+    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts",
+  );
+  for (const marker of [
+    "decodeWindow: current.decodeWindow",
+    "clone.decodeSamples = [...this.decodeSamples]",
+    "this.decodeSamples = candidate.decodeSamples",
+    "recordDecodeSample",
+  ]) {
+    assert.ok(source.includes(marker), `product-projection.ts 缺少 ${marker}`);
+  }
+});
+
 test("fork: 不创建 OAuth provider adapter，且登录入口 fail-closed", async () => {
   const providers = await read("packages/services/src/oauth/providers/index.ts");
   assert.ok(providers.includes("外部登录服务已整体移除"));
@@ -79,6 +93,22 @@ test("fork: CLI 登录命令与 Web 远控登录路由在 Local 构建关闭", a
   const webMain = await read("packages/web/src/main.tsx");
   assert.ok(webMain.includes("ZCODE_LOCAL_ONLY_BUILD"));
   assert.ok(webMain.includes('window.location.replace("/")'));
+});
+
+test("fork: 数据根展示与视觉助手 Host 守卫保留", async () => {
+  const settings = await read("packages/ui/src/SettingsPage.tsx");
+  assert.ok(settings.includes("info.dataBaseDir ?? info.homedir"));
+  const pluginManagement = await read(
+    "packages/services/src/plugins/pluginManagementService.ts",
+  );
+  for (const marker of [
+    "VISION_ASSISTANT_PLUGIN_ID",
+    "listVisionModelCandidates",
+    "changed.fire()",
+    "disposeAll()",
+  ]) {
+    assert.ok(pluginManagement.includes(marker), `pluginManagementService 缺少 ${marker}`);
+  }
 });
 
 test("fork: 视觉助手保持默认关闭", async () => {
