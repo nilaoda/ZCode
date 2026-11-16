@@ -3655,12 +3655,6 @@ const jaJP: Record<string, string> = {
     "一部の GPU やドライバーが原因の白い画面、クラッシュ、描画の問題を回避するにはオフにしてください。反映にはアプリの再起動が必要です。",
   "settings.desktopChromiumHardwareAccelerationSavedHint":
     "Chrome のハードウェアアクセラレーション設定を保存しました。反映にはアプリの再起動が必要です。",
-  "settings.receivePreviewUpdates": "プレビュー版の更新を早めに受け取る",
-  "settings.receivePreviewUpdatesDescription":
-    "有効にすると、新機能や改善をいち早く利用できます。無効にすると、通常のリリーススケジュールに従って更新が配信されます。",
-  "settings.autoDownloadAndInstallUpdates": "更新を自動でダウンロードしてインストール",
-  "settings.autoDownloadAndInstallUpdatesDescription":
-    "有効にすると、更新が見つかり次第ダウンロードを開始します。タスクの実行中は、再起動の前に確認が必要です。",
   "settings.notification": "タスクの通知",
   "settings.notificationDescription":
     "タスクの完了、失敗、承認が必要なときにデスクトップ通知を送信します。",
@@ -6255,6 +6249,7 @@ const jaJP: Record<string, string> = {
   "chat.preparing": "準備中...",
   "chat.remoteGenerating": "別のデバイスがメッセージを送信中です...",
   "chat.reasoning.thinking": "思考中",
+  "chat.reasoning.liveTokensPerSecond": "（≈{tps} tok/s）",
   "chat.reasoning.thought": "思考",
   "chat.reasoning.durationFewSeconds": "数秒",
   "chat.reasoning.durationSeconds": "{seconds} 秒",

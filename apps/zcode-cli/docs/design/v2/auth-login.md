@@ -1,5 +1,8 @@
 # Auth Login
 
+> **Local 发行版**：CLI 构建注入 `__ZCODE_PRODUCT_FLAVOR__=local`，`zcode login`、TUI `/login`
+> 与 Coding Plan API Key 配置统一 fail-closed；本文描述的 OAuth 流程仅作为上游代码保留。
+
 ## Project Access Token migration
 
 OAuth account availability and request authentication must not read or decrypt legacy

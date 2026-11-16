@@ -35,7 +35,11 @@ import {
 import { createConfig } from "@zcode/adapters/config";
 import { createNodeHttpClientAdapter } from "@zcode/adapters/http";
 import type { EnvRecord } from "@zcode/adapters/model";
-import { buildZCodeEndpointUrls, resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared";
+import {
+  buildZCodeEndpointUrls,
+  resolveRuntimeZCodeEndpointOrigin,
+  ZCODE_LOCAL_ONLY_BUILD,
+} from "@zcode/shared";
 import { setTimeout as delay } from "node:timers/promises";
 import {
   createStandaloneAccountIdentityFromSecret,
@@ -67,6 +71,10 @@ const DEFAULT_LOGIN_TIMEOUT_MS = 5 * 60 * 1_000;
 export async function loginZCodeCli(
   options: LoginZCodeCliOptions = {},
 ): Promise<LoginZCodeCliResult> {
+  // 本地化发行版：外部登录服务已整体移除，任何调用方都不可发起登录。
+  if (ZCODE_LOCAL_ONLY_BUILD) {
+    throw new ZCodeCliLoginError("auth_failed", "Login is disabled in this build.");
+  }
   const env = options.env ?? process.env;
   const providerId = options.providerId ?? "zai";
   const now = options.now ?? Date.now;
@@ -229,6 +237,10 @@ export async function loginBigmodelCodingPlan(
 export async function configureCodingPlanApiKey(
   options: ConfigureCodingPlanApiKeyOptions,
 ): Promise<ConfigureCodingPlanApiKeyResult> {
+  // 本地化发行版：Coding Plan API Key 同属账号体系，一并关闭。
+  if (ZCODE_LOCAL_ONLY_BUILD) {
+    throw new ZCodeCliLoginError("auth_failed", "Login is disabled in this build.");
+  }
   const apiKey = options.apiKey.trim();
   if (!apiKey) {
     throw new ZCodeCliLoginError("config_update_failed", "API key must not be empty.");

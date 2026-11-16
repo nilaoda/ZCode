@@ -20,7 +20,7 @@ TUI 的 slash command 候选列表见 [`tui-slash-command-suggestions.md`](./tui
 - `/effort [list|<level>]`: 查询或切换当前 session 的 reasoning/thinking 深度；可选 level 来自当前模型 catalog/config 的 reasoning metadata。交互式 TUI 在 composer 内用类似 `/model` 的候选 popup 选择，提交显式 `/effort <level>`。`/variant` 是输入兼容别名。
 - `/fork [latest|checkpointId]`: 从 workspace checkpoint 分叉新 session；无参数或 `latest` 使用最新 checkpoint，有参数时按 checkpoint id 分叉。
 - `/help [command]`: 本地只读展示 slash command 帮助；不创建 session、不发模型请求、不访问外部 I/O。有参数时只展示目标命令的用法，参数可带或不带开头的 `/`。
-- `/login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录；命令层调用 bootstrap 登录服务，不创建普通模型 session。Init 返回授权 URL 后必须立刻通过 assistant transcript message 展示链接，避免 SSH/远程终端场景只在宿主机打开浏览器而用户看不到可复制链接。
+- `/login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录；命令层调用 bootstrap 登录服务，不创建普通模型 session。Init 返回授权 URL 后必须立刻通过 assistant transcript message 展示链接，避免 SSH/远程终端场景只在宿主机打开浏览器而用户看不到可复制链接。**Local 发行版关闭**：返回 `Login is disabled in this build.`，不发起任何请求。
 - `/locale [auto|en-US|zh-CN]`: 查询或切换当前 UI 语言，并把请求值持久化到配置文件；`/language` 是输入兼容别名。
 - `/logout`: 清理共享 credential store 中的 ZAI 登录态；不创建普通模型 session。
 - `/mcp [list|status|connect <server>|disconnect <server>]`: 查询或管理当前 session 可见的 MCP server 连接状态；命令层只调用 app/server 暴露的 MCP 管理接口。
@@ -48,7 +48,7 @@ TUI 的 slash command 候选列表见 [`tui-slash-command-suggestions.md`](./tui
 - 全局 `--target-replace`: `--target` 的显式覆盖确认开关。若当前 session 已有 goal，而未显式提供 `--target-replace`，CLI 必须在本地返回明确错误，不得静默覆盖 goal，也不得发送模型请求。`--target-replace` 单独出现时必须报错。
 - `zcode skills list`: 只读列举当前工作目录可发现的 skills。它复用 bootstrap 的 skill discovery 接口，不启动 TUI、不创建 session、不发模型请求；`zcode skills` 等价于 `zcode skills list`。普通输出展示 name、scope/source、description 和 path；`--json` 输出结构化 skills 与 diagnostics；`--verbose` 在普通输出后追加 diagnostics。
 - `zcode commands list`: 只读列举当前工作目录可发现的自定义 prompt commands。它复用 bootstrap 的 custom command discovery 接口，不启动 TUI、不创建 session、不发模型请求；`zcode commands` 等价于 `zcode commands list`。普通输出展示 `/name`、argument hint、scope/source、description 和 path；`--json` 输出结构化 commands 与 diagnostics；`--verbose` 追加 diagnostics。
-- `zcode login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录，浏览器授权后把敏感 token 写入与桌面 Z Code 共享的 `~/.zcode/v2/credentials.json`，并只在 `~/.zcode/cli/config.json` patch 非敏感 provider/model 默认配置。`--no-browser` 只打印授权 URL，不自动打开浏览器，仍继续轮询。
+- `zcode login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录，浏览器授权后把敏感 token 写入与桌面 Z Code 共享的 `~/.zcode/v2/credentials.json`，并只在 `~/.zcode/cli/config.json` patch 非敏感 provider/model 默认配置。`--no-browser` 只打印授权 URL，不自动打开浏览器，仍继续轮询。**Local 发行版关闭**：命令返回错误，不发起任何请求。
 - `zcode logout`: 清理共享 credential store 中的 ZAI 登录态；如果 `oauth:active_provider` 当前是 `zai`，同步清空 active provider。
 - `zcode doctor`: 输出运行时和打包假设检查，是 CLI 健康检查和 smoke-test 的唯一进程级入口。
 

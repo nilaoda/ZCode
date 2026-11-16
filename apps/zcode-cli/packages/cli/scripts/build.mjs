@@ -183,6 +183,9 @@ export const buildCli = async ({
     bundle: true,
     define: {
       __CLI_VERSION__: JSON.stringify(cliVersion),
+      // 本分支只发行 Local 身份：命令行发行包与桌面共用同一档位信号，
+      // 登录、插件市场等联网入口不再依赖运行时环境变量。
+      __ZCODE_PRODUCT_FLAVOR__: JSON.stringify("local"),
     },
     entryPoints: [resolve(cliDirectory, "src/main.ts")],
     // Ink 7 and yoga-layout use top-level await, so the CJS CLI bundle loads the TUI

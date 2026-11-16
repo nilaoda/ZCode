@@ -49,13 +49,11 @@ Options:
   --workflow-mode <mode>  Dynamic workflows for prompts/TUI: disabled, onDemand, or alwaysOn (default: disabled)
   -c, --continue        Resume the latest session for the current directory
   --json           Print machine-readable JSON where supported
-  --no-browser     Print the OAuth URL without opening a browser
   --no-color       Disable ANSI colors
   --verbose        Print extra diagnostic detail
 
 Slash Commands:
   /help [command]       Show slash command help
-  /login                Choose Z.AI or BigModel browser login
   /logout               Remove the shared Z.AI login credentials
   /compact [instructions]  Compact the current conversation
   /expert [status|resume|stop|<task>]  Run or manage the expert workflow
@@ -101,9 +99,9 @@ Slash Commands:
       typePrompt: "Type a question and press Enter.",
     },
     loginRequired: {
-      help: "Use /model to view models, or /login to connect a Coding Plan account.",
-      message: "No available models. Configure a provider or sign in with /login.",
-      status: "No available models. Configure a provider or sign in with /login.",
+      help: "Use /model to view models and add a custom provider.",
+      message: "No available models. Configure a custom provider in /model.",
+      status: "No available models. Configure a custom provider in /model.",
       title: "model setup required",
     },
     loginSetup: {

@@ -16,6 +16,7 @@ import {
   resolveWebRemoteControlRelayWsUrl,
   matchesWebRemoteControlRoutePath,
   resolveWebRemoteControlWorkspaceKey,
+  ZCODE_LOCAL_ONLY_BUILD,
 } from "@zcode/shared";
 /* eslint-disable max-lines -- Web 远程控制启动、错误页和 web 平台桥接暂时集中在入口编排。 */
 import type { ComponentProps } from "react";
@@ -1832,6 +1833,17 @@ async function bootstrapExternalRelayWebRemoteControl(
 
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
+  // 本地化发行版：Web 远控与登录回调依赖官方账号，整条路由不可达。
+  // 直接回首页，不渲染登录页，也不触发任何 OAuth 流程。
+  if (
+    ZCODE_LOCAL_ONLY_BUILD &&
+    (isWebRemoteControlRoute() ||
+      isWebRemoteControlOAuthCallback(new URL(window.location.href)) ||
+      isWebOAuthCallback(params))
+  ) {
+    window.location.replace("/");
+    return;
+  }
   if (isWebRemoteControlRoute() || isWebRemoteControlOAuthCallback(new URL(window.location.href))) {
     document.documentElement.lang = resolveWebRemoteControlScreenLocale(navigator.language);
   }

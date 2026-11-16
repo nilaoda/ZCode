@@ -11,6 +11,7 @@ import { SummaryPreviewContext } from "@/v4/conversationRowContext.js";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible.js";
 import { cn } from "../lib/utils.js";
+import { estimateTokens } from "@zcode/shared";
 import { TID_CHAT_REASONING_CONTENT, TID_CHAT_REASONING_TRIGGER } from "@zcode/shared/test-ids";
 import { BrainIcon, ChevronRightIcon } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -267,6 +268,94 @@ export function getReasoningSummaryMaskStyle(isOverflowing: boolean): CSSPropert
   };
 }
 
+/**
+ * 实时速度的刷新间隔。
+ *
+ * 刻意比 `Reasoning` 展开态的耗时秒表（1s）慢：这个读数是「从开始思考到现在」的**累计平均**，
+ * 本身随时间收敛、两次刷新之间变化很小，刷新太快只是白白重渲染。
+ * 想更灵敏就调小，想更稳就调大 —— 只影响观感，不影响读数本身。
+ */
+const LIVE_SPEED_REFRESH_MS = 3000;
+
+/**
+ * 流式思考中的实时速度估算，渲染成「（≈38 tok/s）」跟在「正在思考」后面。
+ *
+ * 为什么独立成叶子组件：收起态的 reasoning 刻意不跑每秒定时器（见 `Reasoning` 里
+ * duration effect 的注释），不能因为加一个读数就把整块拉回每秒重渲染。
+ * 定时器放在这里，重渲染只影响这一个 span。
+ *
+ * 为什么只能是估算：agent 侧的 token 计数在请求结束时才结算，流式过程中拿不到增量，
+ * 因此这里用已接收文本按仓库既有的 `estimateTokens` 换算。读数带 ≈ 前缀，与完成后
+ * 上下文浮窗里的精确「生成速度」区分开。
+ */
+const LiveReasoningSpeed = memo(function LiveReasoningSpeed({ text }: { text: string }) {
+  const { intl } = useZCodeIntl();
+  /**
+   * 观测起点：开始测速那一刻已有的文本量，作为基线。
+   *
+   * **必须扣掉基线**：切换会话会让本组件卸载再挂载，而那时 `text` 里已经累积了
+   * 整段思考内容。若把它当成"刚产生的 token"，就会拿「大 token 数 ÷ 极小耗时」
+   * 算出几千 tok/s —— 这正是切走再回来时的现象。
+   */
+  const [observation, setObservation] = useState<{
+    startedAt: number;
+    baselineTokens: number;
+  } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const textRef = useRef(text);
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
+
+  // 首个非空文本到达时才开始计时：把 TTFT 算进生成时间会低估速度。
+  useEffect(() => {
+    if (observation === null && text.length > 0) {
+      setObservation({ startedAt: Date.now(), baselineTokens: estimateTokens(text) });
+      setNow(Date.now());
+    }
+  }, [observation, text]);
+
+  useEffect(() => {
+    if (observation === null) {
+      return;
+    }
+    const timer = window.setInterval(() => setNow(Date.now()), LIVE_SPEED_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [observation]);
+
+  // 依赖里刻意不含 text：文本每个 delta 都变，但读数按 LIVE_SPEED_REFRESH_MS 才刷新一次。
+  // 否则长思考文本会在每次 delta 上重复做全串正则扫描。
+  const label = useMemo(() => {
+    if (observation === null) {
+      return null;
+    }
+    const elapsedMs = now - observation.startedAt;
+    // 这是**测量窗口**下限（样本不足一秒算出来的速度没有意义），与上面的刷新间隔无关。
+    if (elapsedMs < MS_IN_S) {
+      return null;
+    }
+    // 只统计观测开始之后新增的文本；基线之前的部分不属于这段时长。
+    const tokens = estimateTokens(textRef.current) - observation.baselineTokens;
+    if (tokens <= 0) {
+      return null;
+    }
+    const tokensPerSecond = tokens / (elapsedMs / MS_IN_S);
+    if (!Number.isFinite(tokensPerSecond) || tokensPerSecond <= 0) {
+      return null;
+    }
+    const tps =
+      tokensPerSecond >= 10
+        ? String(Math.round(tokensPerSecond))
+        : String(Math.round(tokensPerSecond * 10) / 10);
+    return intl.formatMessage({ id: "chat.reasoning.liveTokensPerSecond" }, { tps });
+  }, [intl, now, observation]);
+
+  if (label === null) {
+    return null;
+  }
+  return <span className="ml-1 font-normal text-foreground-subtle">{label}</span>;
+});
+
 export const ReasoningTrigger = memo(
   ({
     className,
@@ -323,9 +412,13 @@ export const ReasoningTrigger = memo(
     const thinkingMessage =
       getThinkingMessage?.(isStreaming, duration) ??
       (isStreaming && !isOpen ? (
-        <span className="animated-gradient-text animated-gradient-text-foreground font-normal text-foreground-subtle">
-          {intl.formatMessage({ id: "chat.reasoning.thinking" })}
-        </span>
+        <>
+          <span className="animated-gradient-text animated-gradient-text-foreground font-normal text-foreground-subtle">
+            {intl.formatMessage({ id: "chat.reasoning.thinking" })}
+          </span>
+          {/* 实时速度只在确实有文本可估算时出现；拿不到就不显示，不留占位。 */}
+          {streamingText ? <LiveReasoningSpeed text={streamingText} /> : null}
+        </>
       ) : duration === undefined ? (
         <span className="inline-flex items-center gap-2">
           <span className={thoughtLabelClassName}>

@@ -3561,12 +3561,6 @@ const koKR: Record<string, string> = {
     "일부 GPU 또는 드라이버로 인해 빈 창, 충돌, 렌더링 문제가 발생하면 이 옵션을 끄세요. 앱을 다시 시작해야 적용됩니다.",
   "settings.desktopChromiumHardwareAccelerationSavedHint":
     "Chrome 하드웨어 가속 설정이 저장되었습니다. 앱을 다시 시작해야 적용됩니다.",
-  "settings.receivePreviewUpdates": "미리 보기 업데이트 먼저 받기",
-  "settings.receivePreviewUpdatesDescription":
-    "켜면 새로운 기능과 개선 사항을 가장 먼저 사용할 수 있습니다. 끄면 정기 릴리스 일정에 따라 업데이트를 받습니다.",
-  "settings.autoDownloadAndInstallUpdates": "업데이트 자동 다운로드 및 설치",
-  "settings.autoDownloadAndInstallUpdatesDescription":
-    "켜면 업데이트가 발견되는 즉시 다운로드가 시작됩니다. 작업이 실행 중일 때는 다시 시작하기 전에 확인이 필요합니다.",
   "settings.notification": "작업 알림",
   "settings.notificationDescription":
     "작업이 완료되거나 실패하거나 승인이 필요할 때 데스크톱 알림을 보냅니다.",
@@ -6106,6 +6100,7 @@ const koKR: Record<string, string> = {
   "chat.preparing": "준비 중...",
   "chat.remoteGenerating": "다른 기기에서 메시지를 보내는 중...",
   "chat.reasoning.thinking": "생각 중",
+  "chat.reasoning.liveTokensPerSecond": "(≈{tps} tok/s)",
   "chat.reasoning.thought": "생각함",
   "chat.reasoning.durationFewSeconds": "몇 초",
   "chat.reasoning.durationSeconds": "{seconds}초",

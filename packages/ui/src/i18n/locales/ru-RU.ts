@@ -3628,12 +3628,6 @@ const ruRU: Record<string, string> = {
     "Отключите, если из-за некоторых GPU или драйверов окна пустые, приложение падает или есть проблемы с отрисовкой. Требуется перезапуск приложения.",
   "settings.desktopChromiumHardwareAccelerationSavedHint":
     "Настройка аппаратного ускорения Chrome сохранена. Перезапустите приложение, чтобы она вступила в силу.",
-  "settings.receivePreviewUpdates": "Получать предварительные обновления",
-  "settings.receivePreviewUpdatesDescription":
-    "Если включено, вы первыми получаете новые функции и улучшения. Если выключено, обновления приходят по обычному графику релизов.",
-  "settings.autoDownloadAndInstallUpdates": "Автоматически скачивать и устанавливать обновления",
-  "settings.autoDownloadAndInstallUpdatesDescription":
-    "Если включено, обновления начинают загружаться сразу после обнаружения. Перезапуск при выполняемых задачах по-прежнему требует подтверждения.",
   "settings.notification": "Уведомления о задачах",
   "settings.notificationDescription":
     "Отправлять уведомления на рабочий стол, когда задача завершена, завершилась с ошибкой или требует одобрения.",
@@ -6234,6 +6228,7 @@ const ruRU: Record<string, string> = {
   "chat.preparing": "Подготовка...",
   "chat.remoteGenerating": "Другое устройство отправляет сообщение...",
   "chat.reasoning.thinking": "Думаю",
+  "chat.reasoning.liveTokensPerSecond": " (≈{tps} tok/s)",
   "chat.reasoning.thought": "Размышление",
   "chat.reasoning.durationFewSeconds": "несколько секунд",
   "chat.reasoning.durationSeconds": "{seconds} с",

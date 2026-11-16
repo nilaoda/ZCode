@@ -41,7 +41,6 @@ import {
   type OAuthProviderAdapter,
 } from "./providers/index.js";
 import { OAuthCredentialRepo } from "./repo/oauthCredentialRepo.js";
-import { createOAuthRuntimeConfig } from "./runtimeConfig.js";
 import {
   buildDesktopOAuthRedirectUriFromEnv,
   buildZCodeApiUrlFromEnv,
@@ -163,11 +162,8 @@ export class OAuthService implements IOAuthService {
     this.apiClient = dependencies.apiClient;
     this.env = dependencies.env ?? process.env;
 
-    const adapters =
-      dependencies.adapters ??
-      createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
-        apiClient: dependencies.apiClient,
-      });
+    // 本地化版本：外部登录服务已移除，adapters 恒为空数组。
+    const adapters = dependencies.adapters ?? createOAuthProviderAdapters();
 
     for (const adapter of adapters) {
       this.adapters.set(adapter.providerId, adapter);
@@ -734,6 +730,10 @@ export class OAuthService implements IOAuthService {
   }
 
   async startOAuth(provider: OAuthProviderId): Promise<OAuthStartResponse> {
+    // 本地化发行版：登录不可达，fail-closed。
+    if (isProductEndpointDisabled()) {
+      throw new Error("Login is disabled in Local builds");
+    }
     if (provider === ZAI_CN_PROVIDER_ID) return this.startOAuthWithPolling(provider);
     return this.startOAuthInternal(provider);
   }
@@ -1442,8 +1442,6 @@ export function createOAuthService(
 ): OAuthService {
   return new OAuthService(credentialService, {
     ...dependencies,
-    adapters: createOAuthProviderAdapters(createOAuthRuntimeConfig(dependencies.env), {
-      apiClient: dependencies.apiClient,
-    }),
+    adapters: createOAuthProviderAdapters(),
   });
 }

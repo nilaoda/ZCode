@@ -1,4 +1,5 @@
 import { formatJson } from "@zcode/core";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import type { GlobalOptions, RunContext } from "@zcode/shared-types";
 import { loadBootstrapModule } from "./bootstrap-loader.js";
 import { loadCliDotenv } from "./env.js";
@@ -11,6 +12,11 @@ export async function runLoginCommand(
   noBrowser: boolean,
   args: readonly string[] = [],
 ): Promise<number> {
+  // 本地化发行版：外部登录服务已整体移除，命令行登录不可达。
+  if (ZCODE_LOCAL_ONLY_BUILD) {
+    ctx.stderr.write("Login is disabled in this build.\n");
+    return 1;
+  }
   try {
     const providerId = args[0] ?? "zai";
     if (args.length > 1 || (providerId !== "zai" && providerId !== "bigmodel")) {

@@ -1,4 +1,5 @@
 import type { TuiSubmitPrompt } from "@zcode/tui";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import {
   formatAvailableCommandNames,
   listCustomCommandsForHelp,
@@ -84,6 +85,13 @@ export function createCommandCenter(deps: CommandCenterDeps): TuiSubmitPrompt {
       }
 
       if (command.name === "login") {
+        // 本地化发行版：外部登录服务已整体移除，TUI 登录命令不可达。
+        if (ZCODE_LOCAL_ONLY_BUILD) {
+          return {
+            mode: deps.getMode?.(),
+            response: "Login is disabled in this build.",
+          };
+        }
         if (command.args.length === 0) {
           return {
             loginRequired: await isLoginRequired(deps),
