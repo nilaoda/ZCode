@@ -70,6 +70,11 @@ const enUS: Record<string, string> = {
   "preinstalledTools.downloadInfo": "Downloading {loaded} / {total} MB",
   "preinstalledTools.sizeInfo":
     "About {download} MB to download; {installed} GB after installation",
+  "preinstalledTools.sizeInfo.bundled":
+    "Included in the installer; about {installed} GB after preparation.",
+  "preinstalledTools.prepare": "Prepare",
+  "preinstalledTools.deleteAutoNotice.bundled":
+    "With automatic preinstall enabled, ZCode will prepare it again the next time it starts.",
   "preinstalledTools.status.not-installed": "Not installed",
   "preinstalledTools.status.preparing": "Preparing",
   "preinstalledTools.status.ready": "Ready",

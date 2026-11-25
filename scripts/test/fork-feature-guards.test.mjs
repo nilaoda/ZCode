@@ -98,9 +98,7 @@ test("fork: CLI 登录命令与 Web 远控登录路由在 Local 构建关闭", a
 test("fork: 数据根展示与视觉助手 Host 守卫保留", async () => {
   const settings = await read("packages/ui/src/SettingsPage.tsx");
   assert.ok(settings.includes("info.dataBaseDir ?? info.homedir"));
-  const pluginManagement = await read(
-    "packages/services/src/plugins/pluginManagementService.ts",
-  );
+  const pluginManagement = await read("packages/services/src/plugins/pluginManagementService.ts");
   for (const marker of [
     "VISION_ASSISTANT_PLUGIN_ID",
     "listVisionModelCandidates",
@@ -120,4 +118,36 @@ test("fork: 视觉助手保持默认关闭", async () => {
   assert.ok(!visionBlock.includes("defaultEnabled: true"), "视觉助手不应默认启用");
   const marketplaces = await read("packages/shared/src/plugin-marketplaces.ts");
   assert.ok(!marketplaces.includes("vision-assistant@zcode-plugins-official"));
+});
+
+test("fork: SEA 清单保持剔除云端插件与 CUA 运行时", async () => {
+  const sea = await read("apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs");
+  for (const name of ["image-search", "zcode-site", "computer-use"]) {
+    assert.ok(!sea.includes(`name: "${name}"`), `${name} 不得随发行版分发`);
+  }
+  assert.ok(sea.includes('name: "vision-assistant"'), "视觉助手必须随发行版分发");
+});
+
+test("fork: 预装工具优先使用包内归档，Local 构建不出网", async () => {
+  const installation = await read("packages/desktop/src/preinstalled-tools/installation.ts");
+  for (const marker of [
+    "findBundledArchive",
+    "verifyBundledArchive",
+    "ZCODE_LOCAL_ONLY_BUILD",
+    "包内未提供预装工具归档",
+  ]) {
+    assert.ok(installation.includes(marker), `installation.ts 缺少 ${marker}`);
+  }
+
+  const builder = await read("packages/desktop/electron-builder.config.js");
+  assert.ok(
+    builder.includes("bundled-tools/${targetPlatform.key}/preinstalled-tools"),
+    "electron-builder 必须把当前平台的预装归档打进安装包",
+  );
+
+  const bundle = await read("packages/desktop/scripts/bundle.mjs");
+  assert.ok(
+    bundle.includes("prepare:preinstalled-tool-archives"),
+    "bundle.mjs 必须在打包前暂存预装归档",
+  );
 });

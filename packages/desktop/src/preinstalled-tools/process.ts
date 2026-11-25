@@ -66,6 +66,7 @@ async function initialize(
     tools: message.tools,
     appStartup: message.autoPrepare,
     windowsEntryShim: message.windowsEntryShim,
+    archivesRoot: process.env.ZCODE_PREINSTALLED_TOOLS_ARCHIVE_DIR?.trim(),
     readAutoInstall: async () => (await settings.get()).preinstalledToolsAutoInstall ?? true,
     persistAutoInstall: (enabled) => settings.update({ preinstalledToolsAutoInstall: enabled }),
     readAgentDisabled: async () => (await settings.get()).preinstalledToolsAgentDisabled ?? [],

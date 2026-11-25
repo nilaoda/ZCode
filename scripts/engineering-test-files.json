@@ -117,6 +117,7 @@
   "packages/desktop/test/preinstalledEntryShim.test.ts",
   "packages/desktop/test/preinstalledEntryShimBuild.test.ts",
   "packages/desktop/test/preinstalledToolsFaultServer.test.ts",
+  "packages/desktop/test/preinstalled-tools-local-archive.test.ts",
   "packages/desktop/test/prepare-native-search-tools.test.ts",
   "packages/desktop/test/projectPointerDrag.test.ts",
   "packages/desktop/test/providerPrefix.test.ts",

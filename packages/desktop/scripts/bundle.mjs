@@ -769,6 +769,8 @@ async function main() {
 
   if (!skipPrepare) {
     run(pnpmCommand, ["prepare:runtime-assets"], buildEnv);
+    // 预装工具归档只服务打包：pnpm build 不触发，避免开发构建反复拉取大文件。
+    run(pnpmCommand, ["prepare:preinstalled-tool-archives"], buildEnv);
   }
 
   if (!skipBuild) {

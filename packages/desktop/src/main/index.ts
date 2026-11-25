@@ -337,7 +337,8 @@ const fallbackEnabled = enablePrivateFileKeyFallback({
     }),
   onReset: ({ status, ...event }) => {
     const detail = { ...event, platform: process.platform };
-    if (status === "reset") logger.info("[credential] 凭据密钥不可用，已备份并重置凭据存储", detail);
+    if (status === "reset")
+      logger.info("[credential] 凭据密钥不可用，已备份并重置凭据存储", detail);
     else if (status === "failed") logger.warn("[credential] 凭据存储自动重置失败", detail);
     else logger.info("[credential] 凭据存储自动重置已放弃（锁内复核不再满足）", detail);
   },
@@ -2414,18 +2415,35 @@ app.whenReady().then(async () => {
   applicationLocaleResolved = true;
 
   // 清单只属于预装进程；异步读取不能成为 Host 或聊天的启动屏障。
+  // 包内预装归档：打包态在 Resources/preinstalled-tools；开发/E2E 指向 bundled-tools 或显式目录。
+  // 见 docs/preinstalled-tools/local-archive-source.md。
+  const bundledPreinstalledArchivesRoot =
+    process.env.ZCODE_PREINSTALLED_TOOLS_ARCHIVE_DIR?.trim() ||
+    (app.isPackaged
+      ? join(process.resourcesPath, "preinstalled-tools")
+      : join(
+          app.getAppPath(),
+          "bundled-tools",
+          `${process.platform}-${process.arch}`,
+          "preinstalled-tools",
+        ));
   const preinstalledToolsConfiguration = loadPreinstalledToolsCatalog(logger).then((tools) => ({
     dataRoot: getZCodeDataRootDir(),
     release: resolvePreinstalledToolsRelease({
       runtimeEnv: desktopRuntimeEnv,
-      productFlavor: ZCODE_PRODUCT_FLAVOR,
+      // Local 沿用 production 发布目录名；数据根本身已与官方版隔离。
+      productFlavor: ZCODE_PRODUCT_FLAVOR === "local" ? "production" : ZCODE_PRODUCT_FLAVOR,
     }),
     tools,
     windowsEntryShim: resolvePreinstalledEntryShimPath(),
   }));
   preinstalledToolsProcess = spawnPreinstalledToolsProcess({
     configuration: preinstalledToolsConfiguration,
-    hostProcessLocalEnv,
+    // 包内归档根随子进程环境下发：契约消息不为此新增字段，worker 读取环境变量。
+    hostProcessLocalEnv: {
+      ...hostProcessLocalEnv,
+      ZCODE_PREINSTALLED_TOOLS_ARCHIVE_DIR: bundledPreinstalledArchivesRoot,
+    },
     logger,
     windows: getMainApplicationWindows,
   });

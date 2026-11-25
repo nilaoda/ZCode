@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isRemoteWorkspaceIdentity } from "@zcode/shared";
+import { isRemoteWorkspaceIdentity, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import type {
   PreinstalledToolsCommand,
   PreinstalledToolsState,
@@ -150,6 +150,12 @@ function PreinstalledToolCard({
         download: size(state.target.archiveSizeBytes),
         installed: size(state.target.installedSizeBytes, 3),
       },
+    );
+  } else if (ZCODE_LOCAL_ONLY_BUILD) {
+    // 内网发行版把归档随安装包分发，这里不展示"下载"体积，避免让人以为会联网。
+    info = intl.formatMessage(
+      { id: "preinstalledTools.sizeInfo.bundled" },
+      { installed: size(state.target.installedSizeBytes, 3) },
     );
   } else {
     info = intl.formatMessage(
@@ -303,7 +309,13 @@ function PreinstalledToolCard({
                     onClick={() => void execute({ type: "prepare", toolId: state.toolId })}
                   >
                     {text(
-                      state.status === "failed" ? "retry" : updateAvailable ? "update" : "download",
+                      state.status === "failed"
+                        ? "retry"
+                        : updateAvailable
+                          ? "update"
+                          : ZCODE_LOCAL_ONLY_BUILD
+                            ? "prepare"
+                            : "download",
                     )}
                   </Button>
                 ) : null}
@@ -335,7 +347,9 @@ function PreinstalledToolCard({
                 { id: "preinstalledTools.deleteDescription" },
                 { size: size(installed?.installedSizeBytes ?? 0, 3) },
               )}
-              {autoInstallEnabled ? ` ${text("deleteAutoNotice")}` : null}
+              {autoInstallEnabled
+                ? ` ${text(ZCODE_LOCAL_ONLY_BUILD ? "deleteAutoNotice.bundled" : "deleteAutoNotice")}`
+                : null}
               {deleteNotice ? ` ${deleteNotice}` : null}
             </AlertDialogDescription>
           </AlertDialogHeader>

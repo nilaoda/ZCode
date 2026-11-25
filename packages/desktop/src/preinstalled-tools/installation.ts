@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import {
   preinstalledToolInstallationSchema,
   type PreinstalledToolManifest,
@@ -37,6 +38,10 @@ import {
   preinstalledEntryExecutable,
   preinstalledEntryFiles,
 } from "@desktop/preinstalled-tools/entries.js";
+import {
+  findBundledArchive,
+  verifyBundledArchive,
+} from "@desktop/preinstalled-tools/localArchive.js";
 
 type Paths = ReturnType<typeof resolvePreinstalledToolPaths>;
 const RUNTIME_CHECK_MAX_BUFFER = 1024 * 1024;
@@ -134,6 +139,8 @@ export class PreinstalledToolOwner {
       log: ReturnType<typeof createServiceLogger>;
       /** Windows 入口 shim 的绝对路径，由 Main 解析；其他平台没有。 */
       windowsEntryShim?: string;
+      /** 包内预装归档根目录；缺省时只走网络候选（上游行为）。 */
+      archivesRoot?: string;
     },
   ) {
     const { toolId, displayName, manifest } = options;
@@ -492,22 +499,37 @@ export class PreinstalledToolOwner {
       )
         throw new PreinstalledToolFailure("unsupported", "目标平台不匹配");
       await mkdir(payload, { recursive: true });
-      await checkPreinstalledToolSpace(paths.stagingDir, manifest);
-      await downloadPreinstalledTool({
-        manifest,
-        archive,
-        signal,
-        createNetwork: this.options.createNetwork,
-        progress: (downloadedBytes) => {
-          if (this.flight?.id === id && !signal.aborted) this.update({ downloadedBytes });
-        },
-        phase,
-        operationId: id,
-        log,
-      });
+      // 内网发行版：优先使用随安装包分发的归档，见 docs/preinstalled-tools/local-archive-source.md。
+      // 本地源直接作为解压输入、不复制到 staging，空间检查只要求展开后的目录。
+      const bundledArchive = await findBundledArchive(this.options.archivesRoot, manifest);
+      if (bundledArchive) {
+        phase("verifying");
+        await verifyBundledArchive(bundledArchive, manifest, signal);
+        await checkPreinstalledToolSpace(paths.stagingDir, manifest, { includeArchive: false });
+      } else {
+        // Local 构建禁止出网：包内归档缺失直接失败，不创建网络传输、不发起请求。
+        if (ZCODE_LOCAL_ONLY_BUILD)
+          throw new PreinstalledToolFailure(
+            "network",
+            `包内未提供预装工具归档: ${manifest.resourceId}`,
+          );
+        await checkPreinstalledToolSpace(paths.stagingDir, manifest);
+        await downloadPreinstalledTool({
+          manifest,
+          archive,
+          signal,
+          createNetwork: this.options.createNetwork,
+          progress: (downloadedBytes) => {
+            if (this.flight?.id === id && !signal.aborted) this.update({ downloadedBytes });
+          },
+          phase,
+          operationId: id,
+          log,
+        });
+      }
       errorKind = "extract";
       phase("extracting");
-      await extractPreinstalledArchive(archive, payload, manifest, signal);
+      await extractPreinstalledArchive(bundledArchive ?? archive, payload, manifest, signal);
       errorKind = "checksum";
       await validatePreinstalledFiles(payload, manifest);
       signal.throwIfAborted();

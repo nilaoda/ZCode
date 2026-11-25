@@ -125,9 +125,9 @@ export function createClientConfigService(dependencies: {
     async getSnapshot(options = {}) {
       const { forceRefresh } = clientConfigReadOptionsSchema.parse(options);
       // 纯内网 / 纯本地发行版：不请求产品 Endpoint，直接返回空快照。
-      // ClientConfigSnapshot 只有一个字段，消费方按 null 回退各自默认值。
+      // 走与网络响应同一个解析器，上游新增快照字段时不必逐处补字面量。
       if (isProductEndpointDisabled()) {
-        return { pluginStoreOrder: null, zsrcUrl: null, uiPluginRecommendations: [] };
+        return parseClientConfigSnapshot({ code: 0, data: { configs: null } });
       }
       const context = await dependencies.resolveRequestContext();
       const authorization = await resolveOptionalZCodeAuthorization(

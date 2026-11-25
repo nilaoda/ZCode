@@ -836,6 +836,18 @@ export default {
     }
   },
   extraResources: [
+    // 预装工具归档：由 prepare:preinstalled-tool-archives 暂存，只服务内网发行版打包。
+    // 目录缺失时跳过，保持上游构建行为。见 docs/preinstalled-tools/local-archive-source.md。
+    ...(existsSync(
+      join(desktopPackageRoot, "bundled-tools", targetPlatform.key, "preinstalled-tools"),
+    )
+      ? [
+          {
+            from: `bundled-tools/${targetPlatform.key}/preinstalled-tools`,
+            to: "preinstalled-tools",
+          },
+        ]
+      : []),
     ...(targetPlatform.os === "win32"
       ? [
           {

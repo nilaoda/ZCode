@@ -19,13 +19,19 @@ if (!artifactPath) {
 }
 
 const absoluteArtifactPath = resolve(artifactPath);
+// 内网发行版随包内置五个预装工具归档（mac ~550MB / win ~700MB），
+// 安装包体积上限单独放宽；上游身份仍按 500MiB 审计。
+const isLocalIdentity = ["1", "true", "yes", "on"].includes(
+  (process.env.ZCODE_LOCAL_IDENTITY ?? "").trim().toLowerCase(),
+);
+const limitMb = isLocalIdentity ? 1200 : 500;
 const limitsMb = {
-  default: 500,
-  ".dmg": 500,
-  ".zip": 500,
-  ".exe": 500,
-  ".appimage": 500,
-  ".deb": 500,
+  default: limitMb,
+  ".dmg": limitMb,
+  ".zip": limitMb,
+  ".exe": limitMb,
+  ".appimage": limitMb,
+  ".deb": limitMb,
 };
 
 function formatMiB(bytes) {

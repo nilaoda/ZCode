@@ -43,11 +43,25 @@ export function classifyPreinstalledToolFailure(
 export async function checkPreinstalledToolSpace(
   directory: string,
   manifest: PreinstalledToolManifest,
+  options: {
+    /**
+     * 包内归档直接作为解压输入、不复制到 staging 时传 false：峰值磁盘只算展开后的目录。
+     * 缺省保持上游口径（归档 + 展开）。
+     */
+    includeArchive?: boolean;
+  } = {},
 ): Promise<void> {
   const space = await statfs(directory, { bigint: true });
-  const needed = BigInt(manifest.archive.sizeBytes) + BigInt(manifest.installedSizeBytes);
+  const needed =
+    BigInt(manifest.installedSizeBytes) +
+    (options.includeArchive === false ? 0n : BigInt(manifest.archive.sizeBytes));
   if (space.bavail * space.bsize < needed)
-    throw new PreinstalledToolFailure("disk-space", "可用空间不足以同时容纳归档与展开文件");
+    throw new PreinstalledToolFailure(
+      "disk-space",
+      options.includeArchive === false
+        ? "可用空间不足以展开预装工具"
+        : "可用空间不足以同时容纳归档与展开文件",
+    );
 }
 
 const downloadErrorDepth = { network: 1, interrupted: 2, checksum: 3 } as const;

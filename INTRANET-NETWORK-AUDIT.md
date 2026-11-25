@@ -519,3 +519,21 @@ URL 字面量集合与合并前完全一致（228 = 228，零新增）。
 
 已知未动（非本次回归）：`packages/shared/src/bots.ts` 仅为协议类型/常量回流，无运行时请求；
 `oauthUnauthorizedRequest` 的 `active_provider` 分支随上游回流，零 adapter 下不可达。
+
+## 14. 合并上游 v4.0.0 后的出网复审（2026-11）
+
+上游 v4.0.0 新增预装工具子系统：运行期从 `https://cdn-zcode.z.ai/zcode/preinstalled-tools`
+下载 Python / qpdf / pandoc / poppler / LibreOffice 五个归档，且默认开启自动预装。
+内网无静态资源服务，发行版改为**随安装包内置归档**：
+
+| 行为 | 上游位置 | fork 处理 |
+| --- | --- | --- |
+| 预装工具下载 | `desktop/src/preinstalled-tools/catalog.ts` + `download.ts` | `installation.ts` 优先使用包内归档；Local 构建（`ZCODE_LOCAL_ONLY_BUILD`）在包内缺失时直接以 `network` 失败，不创建网络传输。归档由 `scripts/prepare-preinstalled-tool-archives.mjs` 在打包时暂存并经 `extraResources` 打入安装包。规格见 `docs/preinstalled-tools/local-archive-source.md`。 |
+| 帮助菜单「漏洞提交」 | `WorkspaceHelpMenuButton.tsx` + `useVulnerabilityReportUrl` | Local 构建整组外部站点入口不渲染；`useVulnerabilityReportUrl` 在 Local 不读取。`clientConfigService` 的端点禁用兜底仍然生效。 |
+| Computer Use 打包 | 上游 SEA 新增 `computer-use` 与 CUA runtime | 不采纳：SEA 清单保持剔除，避免 CUA Helper 下载链路与运行时体积。 |
+| 会话遥测 v4 facts | `shared/src/conversation-telemetry/*` | 仍由既有遥测开关短路：Local 构建上报端点为编译期空值，ARMS RUM 关闭。 |
+| 新增设置项 | token 预算提醒 / 子智能体后台 / 回复语言 / 工作区插件信任 | 纯本地设置，无出网。 |
+| OAuth | `oauthService` 时钟偏差修复 | 登录入口仍由 `ZCODE_LOCAL_ONLY_BUILD` 在 UI、服务与网络三层拦截。 |
+
+构建期来源：`ZCODE_PREINSTALLED_TOOLS_ARCHIVE_SOURCE`（逗号分隔，http(s) 基址或本地目录），
+未设置时使用官方 CDN，仅构建机可达，不进入产品运行期。

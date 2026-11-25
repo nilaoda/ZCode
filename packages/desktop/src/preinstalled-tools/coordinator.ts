@@ -48,6 +48,8 @@ export class PreinstalledToolsCoordinator {
       publish(state: PreinstalledToolsState): void;
       log: ReturnType<typeof createServiceLogger>;
       windowsEntryShim?: string;
+      /** 包内预装归档根目录；内网发行版由 Main 下发。 */
+      archivesRoot?: string;
     },
   ) {
     this.owners = new Map(
@@ -59,6 +61,7 @@ export class PreinstalledToolsCoordinator {
           paths: resolvePreinstalledToolPaths({ ...options, toolId: tool.toolId }),
           createNetwork: options.createNetwork,
           windowsEntryShim: options.windowsEntryShim,
+          archivesRoot: options.archivesRoot,
           agentEnabled: () => !this.agentDisabled.has(tool.toolId),
           log: options.log,
           publish: () => this.publish(),

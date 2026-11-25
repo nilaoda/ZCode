@@ -4054,7 +4054,9 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                 dataRoot: getZCodeDataRootDir(),
                 release: resolvePreinstalledToolsRelease({
                   runtimeEnv: resolveZCodeRuntimeEnv(process.env),
-                  productFlavor: ZCODE_PRODUCT_FLAVOR,
+                  // Local 沿用 production 发布目录名；数据根本身已与官方版隔离。
+                  productFlavor:
+                    ZCODE_PRODUCT_FLAVOR === "local" ? "production" : ZCODE_PRODUCT_FLAVOR,
                 }),
               }),
               onAppControlServiceCreated: (handle) => {
