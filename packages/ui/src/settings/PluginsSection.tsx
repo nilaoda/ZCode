@@ -960,7 +960,7 @@ function PluginList({
               id: "settings.plugin.plugins.emptyInstalledDescription",
             })}
             actions={
-              onAdd ? (
+              onAdd && !ZCODE_LOCAL_ONLY_BUILD ? (
                 <Button type="button" variant="default" size="lg" onClick={onAdd}>
                   <Plus aria-hidden="true" data-icon="inline-start" />
                   {intl.formatMessage({
