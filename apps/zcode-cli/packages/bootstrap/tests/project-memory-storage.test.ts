@@ -12,6 +12,8 @@ test("Agent 项目记忆跟随 Host profile，保留独立 CLI 和子代理存�
       storageRoot: "/legacy",
       configResult: { config: DefaultRuntimeConfig } as never,
       options: { env } as never,
+      // v4 起 MCP 配置源由调用方显式传入；测试只验证记忆存储路径。
+      mcpConfiguration: {},
       subagentOutputRootDir: "/legacy/cli/agents",
       workingDirectory: "/workspace/example",
       workspaceIdentity: " remote-workspace-identity ",

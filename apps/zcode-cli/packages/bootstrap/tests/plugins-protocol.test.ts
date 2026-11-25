@@ -16,7 +16,12 @@ const FAKE_HOME = await vi.hoisted(async () => {
     import("node:os"),
     import("node:path"),
   ]);
-  return await mkdtemp(join(tmpdir(), "zcode-protocol-home-"));
+  const fakeHome = await mkdtemp(join(tmpdir(), "zcode-protocol-home-"));
+  // 本地化发行版的数据根解析优先读 HOME/USERPROFILE，而不只看 os.homedir()；
+  // 同步覆盖环境变量，避免信任记录等用户域文件写进真实目录。
+  process.env.HOME = fakeHome;
+  process.env.USERPROFILE = fakeHome;
+  return fakeHome;
 });
 vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:os")>();

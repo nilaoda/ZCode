@@ -104,30 +104,53 @@ function joinSource(source, relativePath) {
   return `${source.replace(/\/+$/u, "")}/${relativePath.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+const HTTP_TIMEOUT_MS = 30 * 60_000;
+const HTTP_ATTEMPTS = 3;
+
+async function fetchArchive(url, tempPath) {
+  const response = await fetch(url, {
+    headers: { "accept-encoding": "identity" },
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+  });
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    throw new Error(`下载失败 ${url}: HTTP ${response.status}`);
+  }
+  await pipeline(Readable.fromWeb(response.body), createWriteStream(tempPath));
+}
+
 async function download(source, targetPath, resource) {
   const url = isHttpSource(source) ? joinSource(source, archivePathFor(resource)) : null;
   const tempPath = `${targetPath}.part`;
   await mkdir(dirname(targetPath), { recursive: true });
-  await rm(tempPath, { force: true });
   if (!url) {
     // 本地目录来源：直接复制到临时文件后校验。
     const localPath = isAbsolute(source)
       ? join(source, ...archivePathFor(resource).split("/"))
       : resolve(repoRoot, source, ...archivePathFor(resource).split("/"));
-    await copyFile(localPath, tempPath);
-  } else {
-    const response = await fetch(url, { headers: { "accept-encoding": "identity" } });
-    if (!response.ok || !response.body) {
-      await response.body?.cancel();
-      throw new Error(`下载失败 ${url}: HTTP ${response.status}`);
-    }
-    await pipeline(Readable.fromWeb(response.body), createWriteStream(tempPath));
-  }
-  try {
-    await writeVerified(tempPath, targetPath, resource);
-  } catch (error) {
     await rm(tempPath, { force: true });
-    throw error;
+    await copyFile(localPath, tempPath);
+    await writeVerified(tempPath, targetPath, resource).catch(async (error) => {
+      await rm(tempPath, { force: true });
+      throw error;
+    });
+    return;
+  }
+  // CI runner 到 CDN 偶发超时；同一来源重试，全部失败才交给下一个候选。
+  for (let attempt = 1; attempt <= HTTP_ATTEMPTS; attempt += 1) {
+    await rm(tempPath, { force: true });
+    try {
+      await fetchArchive(url, tempPath);
+      await writeVerified(tempPath, targetPath, resource);
+      return;
+    } catch (error) {
+      await rm(tempPath, { force: true });
+      if (attempt === HTTP_ATTEMPTS) throw error;
+      console.warn(
+        `[preinstalled-tool-archives] 第 ${attempt} 次失败，重试: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      await new Promise((resolveRetry) => setTimeout(resolveRetry, attempt * 2_000));
+    }
   }
 }
 
@@ -146,6 +169,10 @@ if (resources.length === 0) {
 }
 
 const sources = resolveSources();
+if (sources.length === 0)
+  throw new Error(
+    "[preinstalled-tool-archives] ZCODE_PREINSTALLED_TOOLS_ARCHIVE_SOURCE 未给出有效来源",
+  );
 let downloaded = 0;
 let reused = 0;
 
