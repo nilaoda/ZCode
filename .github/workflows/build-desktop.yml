@@ -8,8 +8,9 @@ name: Build Desktop
 # 不会因为 push、tag 或 PR 自动消耗构建资源。
 #
 # 产物：
-#   - 每次运行都上传 Actions artifacts，保留 1 天。
-#   - 填了 release_tag（或从 tag ref 手动运行时）额外上传到 GitHub Release。
+#   - 填了 release_tag（或从 tag ref 手动运行时）直接上传到 GitHub Release，
+#     不再重复上传 Actions artifacts。
+#   - 未填 release_tag 时才上传 Actions artifacts，保留 1 天。
 #
 # 签名：默认产出**未签名**包。仓库的 electron-builder 配置要求显式
 # ZCODE_ENABLE_MAC_SIGN=1 且提供 APPLE_SIGNING_IDENTITY / CSC_NAME 才启用
@@ -127,7 +128,9 @@ jobs:
           # 未签名构建：禁止 electron-builder 自动发现本机签名身份。
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
+      # 发布到 Release 时产物已经进 Release，跳过 artifacts，避免重复上传与额外存储。
       - name: Upload artifacts
+        if: inputs.release_tag == '' && !startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v7
         with:
           name: zcode-desktop-${{ matrix.os }}-${{ matrix.arch }}
