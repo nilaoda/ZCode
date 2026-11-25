@@ -1,10 +1,11 @@
+import { PreinstalledToolsDialog } from "@/preinstalled-tools/index.js";
 import { useState } from "react";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds, ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";
 import {
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
   TID_WORKSPACE_HELP_MENU_TRIGGER,
 } from "@zcode/shared/test-ids";
-import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";import {
+import {
   ActivityIcon,
   BookOpenIcon,
   CircleHelpIcon,
@@ -15,6 +16,7 @@ import { ZCODE_LOCAL_ONLY_BUILD } from "@zcode/shared";import {
   MessageSquareIcon,
   UsersIcon,
   RefreshCwIcon,
+  ShieldAlertIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
@@ -30,6 +32,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useVulnerabilityReportUrl } from "@/hooks/useVulnerabilityReportUrl.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { createHelpMenuActionHandlers } from "@/lib/helpMenuActions.js";
 import { toast } from "@/components/ui/toast.js";
@@ -48,6 +51,9 @@ export function WorkspaceHelpMenuButton({
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const [open, setOpen] = useState(false);
+  const [preinstalledToolsOpen, setPreinstalledToolsOpen] = useState(false);
+  const { url: vulnerabilityReportUrl, loading: vulnerabilityReportLoading } =
+    useVulnerabilityReportUrl(open && !ZCODE_LOCAL_ONLY_BUILD);
   const updateMenu = useDesktopUpdateMenu(isDesktop);
   const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const openFeatureRequest = useFeedbackStore((state) => state.openFeatureRequest);
@@ -82,105 +88,132 @@ export function WorkspaceHelpMenuButton({
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <ControlHintTooltip title={helpMenuLabel} side="bottom">
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-md"
-            // Settings 页会把帮助按钮绝对定位在 Electron 顶部拖拽区上方。
-            // 只依赖外层容器 no-drag 时，真实 trigger 仍可能被标题栏 drag 区吞掉点击。
-            className={cn(
-              "text-foreground hover:bg-hover hover:text-foreground [app-region:no-drag]",
-              className,
-            )}
-            aria-label={helpMenuLabel}
-            data-testid={TID_WORKSPACE_HELP_MENU_TRIGGER}
-          >
-            <CircleHelpIcon className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-      </ControlHintTooltip>
-      <DropdownMenuContent
-        align="end"
-        className="min-w-0 w-max [&_[data-slot=dropdown-menu-item]]:pr-6"
-      >
-        {/* 本地化发行版：这四项都指向外部站点（文档站 / 用户社群 / 问题上报 / 需求提交），
-            纯内网或离线环境不可用，整组不渲染。production 档位保持原样。 */}
-        {ZCODE_LOCAL_ONLY_BUILD ? null : (
-          <>
-            <DropdownMenuItem onSelect={helpMenuActions.openProductDocs}>
-              <BookOpenIcon className="size-4" />
-              {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleOpenCommunity}>
-              <UsersIcon className="size-4" />
-              {intl.formatMessage({ id: "workspaceHeader.help.community" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
-              <MessageSquareIcon className="size-4" />
-              {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={openFeatureRequest}>
-              <LightbulbIcon className="size-4" />
-              {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
-            </DropdownMenuItem>
-          </>
-        )}
-        {/* Windows/Linux 没有原生菜单栏，自绘标题栏箭头菜单也已下线，
-            资源管理器只能从这里进；Web 端没有该窗口，不渲染。 */}
-        {isDesktop ? (
-          <>
-            <DropdownMenuSeparator />
-            {/* 独立导出入口曾被移除；复用原菜单动作，保持打包、系统定位与提示一致。 */}
-            <DropdownMenuItem onSelect={helpMenuActions.exportLogs}>
-              <DownloadIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleCopyDeviceMid}>
-              <CopyIcon className="size-4" />
-              {intl.formatMessage({ id: "workspaceHeader.help.copyDeviceMid" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}
-              onSelect={handleOpenResourceManager}
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <ControlHintTooltip title={helpMenuLabel} side="bottom">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-md"
+              // Settings 页会把帮助按钮绝对定位在 Electron 顶部拖拽区上方。
+              // 只依赖外层容器 no-drag 时，真实 trigger 仍可能被标题栏 drag 区吞掉点击。
+              className={cn(
+                "text-foreground hover:bg-hover hover:text-foreground [app-region:no-drag]",
+                className,
+              )}
+              aria-label={helpMenuLabel}
+              data-testid={TID_WORKSPACE_HELP_MENU_TRIGGER}
             >
-              <ActivityIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.resourceManager" })}
-            </DropdownMenuItem>
-            {/* 本地化发行版不展示更新入口：自动更新本就不启用（initAutoUpdater 只在
-                production 档位开启），留着只会是一个点了没反应的菜单项。 */}
-            {!ZCODE_LOCAL_ONLY_BUILD && updateMenu.visible ? (
-              <DropdownMenuItem
-                disabled={updateMenu.disabled}
-                onSelect={updateMenu.checkForUpdates}
-              >
-                <RefreshCwIcon className="size-4" />
-                {updateMenu.labelId === "desktopMenu.help.restartToUpdate" ? (
-                  <>
-                    <span className="whitespace-nowrap">
-                      {intl.formatMessage({ id: "desktopMenu.help.restartUpdateAction" })}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="h-4 px-1.5 py-0 bg-success/10 text-success"
-                    >
-                      {updateMenu.labelValues?.version}
-                    </Badge>
-                  </>
-                ) : (
-                  intl.formatMessage({ id: updateMenu.labelId }, updateMenu.labelValues)
-                )}
+              <CircleHelpIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </ControlHintTooltip>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-0 w-max [&_[data-slot=dropdown-menu-item]]:pr-6"
+        >
+          {/* 本地化发行版：文档站 / 用户社群 / 问题上报 / 漏洞提交 / 需求提交都指向外部站点，
+              纯内网或离线环境不可用，整组不渲染。production 档位保持原样。 */}
+          {ZCODE_LOCAL_ONLY_BUILD ? null : (
+            <>
+              <DropdownMenuItem onSelect={helpMenuActions.openProductDocs}>
+                <BookOpenIcon className="size-4" />
+                {intl.formatMessage({ id: "workspaceHeader.help.docs" })}
               </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem onSelect={handleShowAbout}>
-              <InfoIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.about" })}
-            </DropdownMenuItem>
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              <DropdownMenuItem onSelect={handleOpenCommunity}>
+                <UsersIcon className="size-4" />
+                {intl.formatMessage({ id: "workspaceHeader.help.community" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
+                <MessageSquareIcon className="size-4" />
+                {intl.formatMessage({ id: "workspaceHeader.help.issueReport" })}
+              </DropdownMenuItem>
+              {vulnerabilityReportLoading || vulnerabilityReportUrl ? (
+                <DropdownMenuItem
+                  disabled={vulnerabilityReportLoading}
+                  aria-busy={vulnerabilityReportLoading}
+                  onSelect={
+                    vulnerabilityReportUrl
+                      ? () => platform.openExternal(vulnerabilityReportUrl)
+                      : undefined
+                  }
+                >
+                  <ShieldAlertIcon className="size-4" />
+                  {intl.formatMessage({ id: "workspaceHeader.help.reportVulnerability" })}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onSelect={openFeatureRequest}>
+                <LightbulbIcon className="size-4" />
+                {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
+              </DropdownMenuItem>
+            </>
+          )}
+          {/* Windows/Linux 没有原生菜单栏，自绘标题栏箭头菜单也已下线，
+            资源管理器只能从这里进；Web 端没有该窗口，不渲染。 */}
+          {isDesktop ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* 独立导出入口曾被移除；复用原菜单动作，保持打包、系统定位与提示一致。 */}
+              <DropdownMenuItem onSelect={helpMenuActions.exportLogs}>
+                <DownloadIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleCopyDeviceMid}>
+                <CopyIcon className="size-4" />
+                {intl.formatMessage({ id: "workspaceHeader.help.copyDeviceMid" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}
+                onSelect={handleOpenResourceManager}
+              >
+                <ActivityIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.resourceManager" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="workspace-help-menu-preinstalled-tools"
+                onSelect={() => setPreinstalledToolsOpen(true)}
+              >
+                <DownloadIcon className="size-4" />
+                {intl.formatMessage({ id: "preinstalledTools.title" })}
+              </DropdownMenuItem>
+              {!ZCODE_LOCAL_ONLY_BUILD && updateMenu.visible ? (
+                <DropdownMenuItem
+                  disabled={updateMenu.disabled}
+                  onSelect={updateMenu.checkForUpdates}
+                >
+                  <RefreshCwIcon className="size-4" />
+                  {updateMenu.labelId === "desktopMenu.help.restartToUpdate" ? (
+                    <>
+                      <span className="whitespace-nowrap">
+                        {intl.formatMessage({ id: "desktopMenu.help.restartUpdateAction" })}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="h-4 px-1.5 py-0 bg-success/10 text-success"
+                      >
+                        {updateMenu.labelValues?.version}
+                      </Badge>
+                    </>
+                  ) : (
+                    intl.formatMessage({ id: updateMenu.labelId }, updateMenu.labelValues)
+                  )}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onSelect={handleShowAbout}>
+                <InfoIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.about" })}
+              </DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {isDesktop ? (
+        <PreinstalledToolsDialog
+          open={preinstalledToolsOpen}
+          onOpenChange={setPreinstalledToolsOpen}
+        />
+      ) : null}
+    </>
   );
 }

@@ -3,9 +3,11 @@ import {
   collectTelemetryRendererContext,
   resolveWorkspaceTelemetryDetail,
   VISION_ASSISTANT_PLUGIN_ID,
+  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   type RendererTelemetryEventPayload,
 } from "@zcode/shared";
 import { listVisionModelCandidates, type ModelSelectionView } from "@zcode/provider";
+import type { ConversationTelemetryFact } from "@zcode/shared/zcode-protocol-v4";
 // 设置页插件管理薄服务实现——plugins/* 旧协议词的唯一 host 侧消费点。
 // 插件安装/市场/启停的事实源在 zcode-cli 进程（读写 ~/.zcode 插件目录并热更新
 // 运行态），host 无副本，故实现保持 agent 协议往返；收敛价值在 UI 层不再直触
@@ -54,6 +56,7 @@ export interface PluginManagementServiceDependencies {
     | "validatePlugin"
     | "describePlugin"
     | "setPluginEnabled"
+    | "setWorkspacePluginTrust"
   >;
 }
 
@@ -274,6 +277,7 @@ export function createPluginManagementService(
       subscription?.dispose();
       changed.dispose();
     },
+    setWorkspacePluginTrust: (params) => agent.setWorkspacePluginTrust(params),
   };
 
   const observeModelCandidates = (view: ModelSelectionView) => {
@@ -311,4 +315,52 @@ export function createPluginManagementService(
   }
 
   return service;
+}
+
+type PluginDiscoveryFact = Extract<ConversationTelemetryFact, { kind: "plugin.discovery" }>;
+
+const DISCOVERY_ACTION = {
+  searched: "agent_search",
+  card_shown: "recommend_view",
+  card_resolved: "recommend_decision",
+} as const;
+
+/** Agent 推荐链路的 CLI 事实 → 插件业务埋点；Host 单点调用，见 docs/monitoring/plugin-lifecycle-telemetry.md。 */
+export function toAgentPluginDiscoveryTelemetry(
+  fact: PluginDiscoveryFact,
+  workspace: { workspaceIdentity?: string | null; remoteSessionId?: string | null },
+): RendererTelemetryEventPayload {
+  const detail: Record<string, string> = {
+    schema_version: "1",
+    entry: "agent_recommendation",
+    ...resolveWorkspaceTelemetryDetail(workspace),
+    ...(fact.pluginId
+      ? { plugin_id: fact.pluginId, marketplace: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID }
+      : {}),
+    ...(fact.result ? { result: fact.result } : {}),
+    ...(fact.decision ? { decision: fact.decision } : {}),
+    ...(fact.resultCount !== undefined ? { result_count: String(fact.resultCount) } : {}),
+  };
+  if (fact.phase === "install_settled") {
+    return {
+      elementName: "plugin_lifecycle",
+      eventRegion: "app",
+      eventType: "result",
+      context: collectTelemetryRendererContext(),
+      eventExtraDetail: {
+        ...detail,
+        action: fact.action ?? "install",
+        trigger: "user",
+        scope: "workspace",
+        ...(fact.durationMs !== undefined ? { duration_ms: String(fact.durationMs) } : {}),
+      },
+    };
+  }
+  return {
+    elementName: "plugin_discovery",
+    eventRegion: "app",
+    eventType: fact.phase === "card_resolved" ? "ck" : "view",
+    context: collectTelemetryRendererContext(),
+    eventExtraDetail: { ...detail, action: DISCOVERY_ACTION[fact.phase] },
+  };
 }

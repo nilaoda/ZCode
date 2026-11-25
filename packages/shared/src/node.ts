@@ -29,6 +29,12 @@ export function resolveServerOsUser(): string {
   }
 }
 
+export {
+  discoverWindowsGitBash,
+  type WindowsGitBashDiscoveryOptions,
+  type WindowsGitBashInstallation,
+} from "./node/windowsGitBashDiscovery/contract.js";
+
 export { acquireFileLock } from "./node/atomicFileLock.js";
 export {
   resolveProjectMemoryCliStorageRoot,
@@ -62,6 +68,7 @@ export {
   withFileLock,
   withCredentialFileRead,
   withCredentialFileMutation,
+  withCredentialGeneration,
   captureCredentialFileGuard,
   type CredentialFileGuard,
   type SharedFileLockOptions,

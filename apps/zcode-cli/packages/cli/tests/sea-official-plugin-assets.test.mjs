@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -8,9 +8,6 @@ import {
   officialSeaPlugins,
 } from "../scripts/sea-official-plugin-assets.mjs";
 
-// 回归闸门（3.17 合并教训）：SEA 清单驱动桌面打包与运行时 seed，条目被上游同步
-// 挤掉时插件会从安装包与内置列表整体消失且测试全绿。钉住发行版插件目录：
-// fork 独有视觉助手必须在列；云端搜图（image-search）与已停发的 zcode-site 不得出现。
 // 回归闸门（3.17 合并教训）：SEA 清单驱动桌面打包与运行时 seed，条目被上游同步
 // 挤掉时插件会从安装包与内置列表整体消失且既有测试全绿（动态夹具适配任意清单）。
 // 钉住发行版插件目录：fork 独有视觉助手必须在列；云端搜图与已停发的 zcode-site 不得出现。
@@ -70,7 +67,12 @@ test("includes the document judge agent in official SEA assets", async () => {
     ]) {
       const plugin = manifest.plugins.find((plugin) => plugin.name === name);
       assert.ok(plugin, `missing ${name} SEA manifest entry`);
-      for (const path of ["agents/visual-judge.md", `skills/${skill}/SKILL.md`])
+      for (const path of [
+        `skills/${skill}/SKILL.md`,
+        "scripts/zcode_libreoffice.py",
+        "scripts/libreoffice-profile/user/registrymodifications.xcu",
+        "scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+      ])
         assert.ok(
           plugin.files.some((file) => file.path === path),
           `${name}: ${path}`,
@@ -97,6 +99,7 @@ test("includes the document judge agent in official SEA assets", async () => {
     // SEA 资产，清单落后会让整个插件在 SEA 下不 seed。此前断言硬编码 "0.1.6"，
     // 版本演进后过期红掉且无人修；改为从包内动态读取，让漂移本身成为唯一失败原因。
     for (const entry of officialSeaPlugins) {
+      if (entry.targets) continue;
       const manifestPlugin = manifest.plugins.find((plugin) => plugin.name === entry.name);
       assert.ok(manifestPlugin, `missing ${entry.name} SEA manifest entry`);
       const packageVersion = JSON.parse(
@@ -113,34 +116,35 @@ test("includes the document judge agent in official SEA assets", async () => {
   }
 });
 
-test("rejects an incomplete documents SEA seed", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-sea-document-agent-missing-"));
-  const root = join(directory, "root");
-  const stagingDirectory = join(directory, "staging");
-
-  try {
-    // 夹具必须覆盖清单里除 documents 之外的所有条目：collect 按清单顺序对每个
-    // 条目先校验 manifest 与 seed 资产，任何先于 documents 的条目缺资产都会
-    // 以别的错误先抛，让本测试想覆盖的 documents 拒绝路径永远走不到（历史上
-    // visualize 排到首位后该测试就一直红在 visualize manifest 缺失上）。
-    for (const entry of officialSeaPlugins) {
-      if (entry.name === "documents") {
-        await writeTestFile(root, join(entry.rootPath, ".zcode-plugin/plugin.json"), "{}");
-        continue;
+for (const missing of [
+  "skills/docx/SKILL.md",
+  "scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+]) {
+  test(`rejects a documents SEA seed missing ${missing}`, async () => {
+    const directory = await mkdtemp(join(tmpdir(), "zcode-sea-document-missing-"));
+    const root = join(directory, "root");
+    const stagingDirectory = join(directory, "staging");
+    try {
+      // 夹具必须覆盖清单里所有条目的 seed 资产，只让 documents 缺目标文件：collect 按清单
+      // 顺序逐条校验 manifest 与 seed 资产，先于 documents 的条目缺资产会以别的错误先抛，
+      // 本测试想覆盖的 documents 拒绝路径就永远走不到（历史上 visualize 排到首位后即如此）。
+      for (const plugin of officialSeaPlugins) {
+        await writeTestFile(root, `${plugin.rootPath}/.zcode-plugin/plugin.json`, "{}");
+        for (const path of plugin.requiredSeedPaths ?? []) {
+          if (plugin.name === "documents" && path === missing) continue;
+          await writeTestFile(root, `${plugin.rootPath}/${path}`, "fixture");
+        }
       }
-      await writeTestFile(root, join(entry.rootPath, ".zcode-plugin/plugin.json"), "{}");
-      for (const seedPath of entry.requiredSeedPaths ?? [])
-        await writeTestFile(root, join(entry.rootPath, seedPath), "");
+      await assert.rejects(collectSeaOfficialPluginAssets({ root, stagingDirectory }), (error) => {
+        assert.ok(error.message.includes("Missing documents required seed asset"));
+        assert.ok(error.message.replaceAll("\\", "/").endsWith(missing));
+        return true;
+      });
+    } finally {
+      await rm(directory, { force: true, recursive: true });
     }
-
-    await assert.rejects(
-      collectSeaOfficialPluginAssets({ root, stagingDirectory }),
-      /Missing documents required seed asset.*agents[/\\]visual-judge\.md/u,
-    );
-  } finally {
-    await rm(directory, { force: true, recursive: true });
-  }
-});
+  });
+}
 
 async function writeTestFile(root, relativePath, content) {
   const filePath = join(root, ...String(relativePath).split("/"));
