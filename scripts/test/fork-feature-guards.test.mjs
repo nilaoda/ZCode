@@ -151,3 +151,24 @@ test("fork: 预装工具优先使用包内归档，Local 构建不出网", async
     "bundle.mjs 必须在打包前暂存预装归档",
   );
 });
+
+test("fork: 逐图识图模型选择保留在 composer 附件链路", async () => {
+  const attachments = await read("packages/ui/src/v4/composer/useComposerAttachments.ts");
+  for (const marker of [
+    "setVisionModel",
+    "visionModel: attachmentRef.visionModel",
+    "visionModel: item.visionModel",
+  ]) {
+    assert.ok(attachments.includes(marker), `useComposerAttachments 缺少 ${marker}`);
+  }
+  const composer = await read("packages/ui/src/v4/ConversationComposer.tsx");
+  for (const marker of ["ImageVisionModelSelect", "attachmentsApi.setVisionModel"]) {
+    assert.ok(composer.includes(marker), `ConversationComposer 缺少 ${marker}`);
+  }
+  assert.ok(
+    (await read("packages/ui/src/v4/composer/ImageVisionModelSelect.tsx")).includes(
+      "vision.thisImage",
+    ),
+    "ImageVisionModelSelect 必须保留逐图文案",
+  );
+});

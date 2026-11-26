@@ -30,6 +30,7 @@ import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js
  * - 工具条（模型/思考深度/模式/context usage）见 V4ComposerToolbar。
  */
 import {
+  Fragment,
   memo,
   useCallback,
   useContext,
@@ -117,6 +118,7 @@ import type { LexicalChatInputHandle } from "@/LexicalChatInput.js";
 import { ChatPromptEditor } from "@/prompt-editor/ChatPromptEditor.js";
 import { usePromptEditorDragState } from "@/prompt-editor/usePromptEditorDragState.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { ImageVisionModelSelect } from "@/v4/composer/ImageVisionModelSelect.js";
 import { advanceComposerDraftRevision } from "@/v4/composer/composerDraftRevision.js";
 import type { AppSlashCommand } from "@/slashCommandHelpers.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
@@ -2318,226 +2320,240 @@ function ConversationComposerImpl({
                 !attachment.localZeroCopy &&
                 (attachment.uploadStatus !== "ready" || attachment.showComplete);
               return (
-                <Attachment
-                  key={attachment.id}
-                  variant={isMediaAttachment ? "grid" : "inline"}
-                  data-composer-attachment-kind={
-                    isVideoAttachment
-                      ? "video"
-                      : isMediaAttachment
-                        ? "image"
-                        : isPdfAttachment
-                          ? "pdf"
-                          : "file"
-                  }
-                  data-testid={testId(TID_V4_ATTACHMENT, attachment.id)}
-                  data-upload-status={attachment.uploadStatus}
-                  className={cn(
-                    isMediaAttachment
-                      ? "relative size-12 overflow-hidden rounded-lg bg-surface after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border after:border-border after:content-['']"
-                      : "h-12 w-fit max-w-full min-w-0 gap-2 rounded-lg border border-border bg-surface p-1.5 pr-6 [--attachment-bg:var(--color-surface)] hover:bg-surface-hover",
-                    isHiddenWebElementScreenshot(attachment) && "hidden",
-                  )}
-                  data={{
-                    id: attachment.id,
-                    type: "file",
-                    filename: attachment.filename,
-                    ...(isClipboardTextAttachment
-                      ? {
-                          description: intl.formatMessage(
-                            {
-                              id: "chat.attachments.clipboardText.description",
-                            },
-                            {
-                              lineCount: formatAttachmentLineCount(attachment, locale),
-                            },
-                          ),
-                          displayName: intl.formatMessage({
-                            id: "chat.attachments.clipboardText",
-                          }),
-                          sourceKind: "clipboard-text" as const,
-                        }
-                      : {}),
-                    mediaType,
-                    url: attachment.objectUrl ?? "",
-                  }}
-                  onRemove={() => attachmentsApi.removeAttachment(attachment.id)}
-                  // 附件支持非图片格式，PDF 走独立 PdfViewer，
-                  // 其他文件展示类型图标和文件名，避免 doc 等普通文件被当成图片渲染失败。
-                  // 图片与视频统一按添加顺序进入发送前 gallery，
-                  // 保证同一组媒体可以连续导航。
-                  onOpen={
-                    canPreviewImageAttachment || canPreviewVideoAttachment
-                      ? () => {
-                          const previewIndex = composerMediaPreviewItems.findIndex(
-                            (item) => item.src === attachment.objectUrl,
-                          );
-                          if (previewIndex < 0) return;
-                          setAttachmentPreviewIndex(previewIndex);
-                          setAttachmentPreviewOpen(true);
-                        }
-                      : canPreviewPdfAttachment
-                        ? () => {
-                            setPdfAttachmentPreview({
-                              filename: attachment.filename,
-                              mediaType: "application/pdf",
-                              url: attachment.objectUrl,
-                            });
-                            setPdfAttachmentPreviewOpen(true);
-                          }
-                        : undefined
-                  }
-                  openLabel={
-                    canPreviewVideoAttachment
-                      ? videoAttachmentPreviewTitle
-                      : canPreviewImageAttachment
-                        ? attachmentPreviewTitle
-                        : canPreviewPdfAttachment
-                          ? intl.formatMessage({ id: "chat.attachments.preview.openPdf" })
-                          : undefined
-                  }
-                >
-                  <div
+                <Fragment key={attachment.id}>
+                  <Attachment
+                    variant={isMediaAttachment ? "grid" : "inline"}
+                    data-composer-attachment-kind={
+                      isVideoAttachment
+                        ? "video"
+                        : isMediaAttachment
+                          ? "image"
+                          : isPdfAttachment
+                            ? "pdf"
+                            : "file"
+                    }
+                    data-testid={testId(TID_V4_ATTACHMENT, attachment.id)}
+                    data-upload-status={attachment.uploadStatus}
                     className={cn(
-                      "relative shrink-0",
-                      isMediaAttachment ? "size-full" : "size-9 rounded-md bg-background",
+                      isMediaAttachment
+                        ? "relative size-12 overflow-hidden rounded-lg bg-surface after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border after:border-border after:content-['']"
+                        : "h-12 w-fit max-w-full min-w-0 gap-2 rounded-lg border border-border bg-surface p-1.5 pr-6 [--attachment-bg:var(--color-surface)] hover:bg-surface-hover",
+                      isHiddenWebElementScreenshot(attachment) && "hidden",
                     )}
+                    data={{
+                      id: attachment.id,
+                      type: "file",
+                      filename: attachment.filename,
+                      ...(isClipboardTextAttachment
+                        ? {
+                            description: intl.formatMessage(
+                              {
+                                id: "chat.attachments.clipboardText.description",
+                              },
+                              {
+                                lineCount: formatAttachmentLineCount(attachment, locale),
+                              },
+                            ),
+                            displayName: intl.formatMessage({
+                              id: "chat.attachments.clipboardText",
+                            }),
+                            sourceKind: "clipboard-text" as const,
+                          }
+                        : {}),
+                      mediaType,
+                      url: attachment.objectUrl ?? "",
+                    }}
+                    onRemove={() => attachmentsApi.removeAttachment(attachment.id)}
+                    // 附件支持非图片格式，PDF 走独立 PdfViewer，
+                    // 其他文件展示类型图标和文件名，避免 doc 等普通文件被当成图片渲染失败。
+                    // 图片与视频统一按添加顺序进入发送前 gallery，
+                    // 保证同一组媒体可以连续导航。
+                    onOpen={
+                      canPreviewImageAttachment || canPreviewVideoAttachment
+                        ? () => {
+                            const previewIndex = composerMediaPreviewItems.findIndex(
+                              (item) => item.src === attachment.objectUrl,
+                            );
+                            if (previewIndex < 0) return;
+                            setAttachmentPreviewIndex(previewIndex);
+                            setAttachmentPreviewOpen(true);
+                          }
+                        : canPreviewPdfAttachment
+                          ? () => {
+                              setPdfAttachmentPreview({
+                                filename: attachment.filename,
+                                mediaType: "application/pdf",
+                                url: attachment.objectUrl,
+                              });
+                              setPdfAttachmentPreviewOpen(true);
+                            }
+                          : undefined
+                    }
+                    openLabel={
+                      canPreviewVideoAttachment
+                        ? videoAttachmentPreviewTitle
+                        : canPreviewImageAttachment
+                          ? attachmentPreviewTitle
+                          : canPreviewPdfAttachment
+                            ? intl.formatMessage({ id: "chat.attachments.preview.openPdf" })
+                            : undefined
+                    }
                   >
-                    <AttachmentPreview
+                    <div
                       className={cn(
-                        isMediaAttachment ? "size-full rounded-none" : "size-9 rounded-md",
+                        "relative shrink-0",
+                        isMediaAttachment ? "size-full" : "size-9 rounded-md bg-background",
                       )}
-                      fallbackIcon={
-                        isClipboardTextAttachment ? (
-                          <ClipboardPenLineIcon className="size-3.5 text-muted-foreground" />
-                        ) : (
-                          <FileDisplayIcon
-                            src={fileDisplayDescriptor.fileIconSrc}
-                            size={16}
-                            className="size-4 shrink-0"
-                          />
-                        )
-                      }
-                    />
-                    {showUploadStatus && isMediaAttachment ? (
+                    >
+                      <AttachmentPreview
+                        className={cn(
+                          isMediaAttachment ? "size-full rounded-none" : "size-9 rounded-md",
+                        )}
+                        fallbackIcon={
+                          isClipboardTextAttachment ? (
+                            <ClipboardPenLineIcon className="size-3.5 text-muted-foreground" />
+                          ) : (
+                            <FileDisplayIcon
+                              src={fileDisplayDescriptor.fileIconSrc}
+                              size={16}
+                              className="size-4 shrink-0"
+                            />
+                          )
+                        }
+                      />
+                      {showUploadStatus && isMediaAttachment ? (
+                        <span
+                          data-testid={testId(TID_V4_ATTACHMENT_UPLOAD_PROGRESS, attachment.id)}
+                          role={attachment.uploadStatus === "failed" ? "alert" : "status"}
+                          aria-label={uploadStatusLabel}
+                          className="absolute inset-0 grid place-items-center rounded-lg bg-background/85 text-[7px] font-semibold text-foreground"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="absolute inset-0 size-full -rotate-90 text-brand"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="stroke-border"
+                              cx="12"
+                              cy="12"
+                              fill="none"
+                              pathLength="100"
+                              r="9"
+                              strokeWidth="2"
+                            />
+                            <circle
+                              className={
+                                attachment.uploadStatus === "failed"
+                                  ? "stroke-destructive"
+                                  : "stroke-current"
+                              }
+                              cx="12"
+                              cy="12"
+                              fill="none"
+                              pathLength="100"
+                              r="9"
+                              strokeDasharray={`${attachment.uploadProgress} 100`}
+                              strokeLinecap="round"
+                              strokeWidth="2"
+                            />
+                          </svg>
+                          <span className="relative">
+                            {attachment.uploadStatus === "failed"
+                              ? "!"
+                              : `${attachment.uploadProgress}%`}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                    {!isMediaAttachment ? (
+                      isClipboardTextAttachment ? (
+                        <AttachmentInfo className="max-w-48 text-ui-base text-foreground" />
+                      ) : (
+                        <div className="min-w-0 max-w-40 flex-1">
+                          <span
+                            className="block truncate text-ui-base font-medium text-foreground"
+                            title={attachment.filename}
+                          >
+                            {attachment.sourceKind === "topic-history"
+                              ? intl.formatMessage(
+                                  { id: "chat.attachments.topicHistory" },
+                                  { count: attachment.messageCount ?? 0 },
+                                )
+                              : attachment.filename}
+                          </span>
+                          <span className="block truncate text-ui-sm font-normal text-foreground-subtle">
+                            {getComposerAttachmentTypeLabel(
+                              attachment.filename,
+                              attachment.mimeType,
+                            )}
+                          </span>
+                        </div>
+                      )
+                    ) : null}
+                    {showUploadStatus && !isMediaAttachment ? (
                       <span
                         data-testid={testId(TID_V4_ATTACHMENT_UPLOAD_PROGRESS, attachment.id)}
                         role={attachment.uploadStatus === "failed" ? "alert" : "status"}
-                        aria-label={uploadStatusLabel}
-                        className="absolute inset-0 grid place-items-center rounded-lg bg-background/85 text-[7px] font-semibold text-foreground"
+                        title={uploadStatusLabel}
+                        className={cn(
+                          "max-w-28 truncate text-ui-sm font-normal text-foreground-subtle",
+                          attachment.uploadStatus === "failed" && "text-destructive",
+                        )}
                       >
-                        <svg
-                          aria-hidden="true"
-                          className="absolute inset-0 size-full -rotate-90 text-brand"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="stroke-border"
-                            cx="12"
-                            cy="12"
-                            fill="none"
-                            pathLength="100"
-                            r="9"
-                            strokeWidth="2"
-                          />
-                          <circle
-                            className={
-                              attachment.uploadStatus === "failed"
-                                ? "stroke-destructive"
-                                : "stroke-current"
-                            }
-                            cx="12"
-                            cy="12"
-                            fill="none"
-                            pathLength="100"
-                            r="9"
-                            strokeDasharray={`${attachment.uploadProgress} 100`}
-                            strokeLinecap="round"
-                            strokeWidth="2"
-                          />
-                        </svg>
-                        <span className="relative">
-                          {attachment.uploadStatus === "failed"
-                            ? "!"
-                            : `${attachment.uploadProgress}%`}
-                        </span>
+                        {attachment.uploadStatus === "uploading"
+                          ? `${attachment.uploadProgress}%`
+                          : uploadStatusLabel}
                       </span>
                     ) : null}
-                  </div>
-                  {!isMediaAttachment ? (
-                    isClipboardTextAttachment ? (
-                      <AttachmentInfo className="max-w-48 text-ui-base text-foreground" />
-                    ) : (
-                      <div className="min-w-0 max-w-40 flex-1">
-                        <span
-                          className="block truncate text-ui-base font-medium text-foreground"
-                          title={attachment.filename}
-                        >
-                          {attachment.sourceKind === "topic-history"
-                            ? intl.formatMessage(
-                                { id: "chat.attachments.topicHistory" },
-                                { count: attachment.messageCount ?? 0 },
-                              )
-                            : attachment.filename}
-                        </span>
-                        <span className="block truncate text-ui-sm font-normal text-foreground-subtle">
-                          {getComposerAttachmentTypeLabel(attachment.filename, attachment.mimeType)}
-                        </span>
-                      </div>
-                    )
-                  ) : null}
-                  {showUploadStatus && !isMediaAttachment ? (
-                    <span
-                      data-testid={testId(TID_V4_ATTACHMENT_UPLOAD_PROGRESS, attachment.id)}
-                      role={attachment.uploadStatus === "failed" ? "alert" : "status"}
-                      title={uploadStatusLabel}
-                      className={cn(
-                        "max-w-28 truncate text-ui-sm font-normal text-foreground-subtle",
-                        attachment.uploadStatus === "failed" && "text-destructive",
-                      )}
-                    >
-                      {attachment.uploadStatus === "uploading"
-                        ? `${attachment.uploadProgress}%`
-                        : uploadStatusLabel}
-                    </span>
-                  ) : null}
-                  {attachment.uploadStatus === "failed" ? (
-                    <button
+                    {attachment.uploadStatus === "failed" ? (
+                      <button
+                        type="button"
+                        data-testid={testId(TID_V4_ATTACHMENT_UPLOAD_RETRY, attachment.id)}
+                        aria-label={intl.formatMessage({
+                          id: "chat.attachments.upload.retry",
+                        })}
+                        title={uploadStatusLabel}
+                        className="grid size-5 shrink-0 place-items-center rounded-md text-destructive hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          attachmentsApi.retryAttachment(attachment.id);
+                        }}
+                      >
+                        <RotateCcwIcon className="size-3" />
+                      </button>
+                    ) : null}
+                    <Button
                       type="button"
-                      data-testid={testId(TID_V4_ATTACHMENT_UPLOAD_RETRY, attachment.id)}
+                      variant="ghost"
+                      size="icon-xs"
+                      data-composer-attachment-remove={attachment.id}
                       aria-label={intl.formatMessage({
-                        id: "chat.attachments.upload.retry",
+                        id: "chat.attachments.remove",
                       })}
-                      title={uploadStatusLabel}
-                      className="grid size-5 shrink-0 place-items-center rounded-md text-destructive hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+                      className="absolute right-0.5 top-0.5 z-20 size-3.5 rounded-full bg-primary p-0 text-primary-foreground opacity-0 transition-opacity hover:bg-primary/80 hover:text-primary-foreground group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                      onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
-                        attachmentsApi.retryAttachment(attachment.id);
+                        attachmentsApi.removeAttachment(attachment.id);
                       }}
                     >
-                      <RotateCcwIcon className="size-3" />
-                    </button>
+                      <XIcon className="size-2.5" />
+                    </Button>
+                  </Attachment>
+                  {isImageChatComposerAttachment(attachment) ? (
+                    <ImageVisionModelSelect
+                      view={modelSelectionView}
+                      value={attachment.visionModel}
+                      onChange={(selection) =>
+                        attachmentsApi.setVisionModel(attachment.id, selection)
+                      }
+                      disabled={pending}
+                    />
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    data-composer-attachment-remove={attachment.id}
-                    aria-label={intl.formatMessage({
-                      id: "chat.attachments.remove",
-                    })}
-                    className="absolute right-0.5 top-0.5 z-20 size-3.5 rounded-full bg-primary p-0 text-primary-foreground opacity-0 transition-opacity hover:bg-primary/80 hover:text-primary-foreground group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      attachmentsApi.removeAttachment(attachment.id);
-                    }}
-                  >
-                    <XIcon className="size-2.5" />
-                  </Button>
-                </Attachment>
+                </Fragment>
               );
             })}
           </Attachments>
@@ -2632,6 +2648,8 @@ function ConversationComposerImpl({
     selectionCommentEnabled,
     sessionId,
     workspaceKey,
+    modelSelectionView,
+    pending,
   ]);
   // Bug 根因：草稿正文晚一帧（rAF）才载入 Lexical，状态条与附件行却随 scope 切换立即渲染；
   // 多行编辑时队列面板会先因状态条上移、下一帧再因正文上移（两次跳位，B09g 逐帧采样复现）。

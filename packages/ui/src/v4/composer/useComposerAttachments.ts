@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { registerImageComposerTarget } from "@/image-preview-editor/index.js";
 import { toast } from "@/components/ui/toast.js";
 import { nanoid } from "nanoid";
+import type { ModelSelection } from "@zcode/shared";
 import type { AttachmentRef } from "@zcode/shared/zcode-protocol-v4";
 import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import {
@@ -92,6 +93,8 @@ export interface ComposerAttachmentsApi {
   addAttachmentFiles: (files: File[]) => string[];
   removeAttachment: (id: string) => void;
   retryAttachment: (id: string) => void;
+  /** 为单张图片指定识图模型；不传表示跟随全局视觉助手配置。 */
+  setVisionModel: (id: string, selection?: ModelSelection) => void;
   /**
    * 发送成功只清冻结的附件 id；不传表示用户主动清空整个附件区。targetScopeKey 用于提交期间
    * scope 已切走（composer 编辑态结束）时仍结算提交时的 scope。
@@ -163,6 +166,7 @@ function createSessionOwnedAttachmentItems(
       uploadStatus: "ready",
       uploadProgress: 100,
       attachmentRef: { ...attachmentRef },
+      ...(attachmentRef.visionModel ? { visionModel: attachmentRef.visionModel } : {}),
       operationId: `session-owned-${id}`,
       autoRetryCount: 0,
       runtimeRebuildRetryCount: 0,
@@ -1098,12 +1102,23 @@ export function useComposerAttachments(
     [commitScope, scopeKey],
   );
 
+  const setVisionModel = useCallback(
+    (id: string, selection?: ModelSelection) => {
+      updateItem(scopeKey, id, (item) => ({ ...item, visionModel: selection }));
+    },
+    [scopeKey, updateItem],
+  );
+
   const prepareForSend = useCallback(async (): Promise<AttachmentRef[] | null> => {
     const current = readComposerAttachmentScope(scopeKey);
     if (current.some((item) => item.uploadStatus !== "ready" || !item.attachmentRef)) {
       return null;
     }
-    return current.flatMap((item) => (item.attachmentRef ? [item.attachmentRef] : []));
+    return current.flatMap((item) =>
+      // 显式覆盖（含 undefined）：撤回后把“本次识图模型”改回自动识图时，
+      // 必须清掉 ref 里上一次发送留下的 visionModel，否则会继续沿用旧选择。
+      item.attachmentRef ? [{ ...item.attachmentRef, visionModel: item.visionModel }] : [],
+    );
   }, [scopeKey]);
 
   const adoptSentAttachments = useCallback(
@@ -1152,6 +1167,7 @@ export function useComposerAttachments(
       addAttachmentFiles,
       removeAttachment,
       retryAttachment,
+      setVisionModel,
       clearAttachments,
       restoreDraftAttachments,
       restoreSessionOwnedAttachments,
@@ -1180,6 +1196,7 @@ export function useComposerAttachments(
       prepareForSend,
       removeAttachment,
       retryAttachment,
+      setVisionModel,
     ],
   );
 }
